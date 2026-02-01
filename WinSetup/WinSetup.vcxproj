@@ -17,7 +17,6 @@
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
@@ -53,27 +52,24 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
-
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
-  <ImportGroup Label="Shared" >
+  <ImportGroup Label="Shared">
   </ImportGroup>
-    <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-      <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    </ImportGroup>
-    <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    </ImportGroup>
-    <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    </ImportGroup>
-    <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    </ImportGroup>
-
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -84,7 +80,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -99,7 +95,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -112,7 +108,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -127,11 +123,59 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-
-  <ItemGroup></ItemGroup>
+  <ItemGroup>
+    <None Include="docs\api\abstractions.md" />
+    <None Include="docs\api\application.md" />
+    <None Include="docs\api\domain.md" />
+    <None Include="docs\architecture\dependencies.md" />
+    <None Include="docs\architecture\layers.md" />
+    <None Include="docs\architecture\patterns.md" />
+    <None Include="docs\guides\contributing.md" />
+    <None Include="docs\guides\migration.md" />
+    <None Include="docs\guides\testing.md" />
+    <None Include="scripts\build.bat" />
+    <None Include="scripts\clean.bat" />
+    <None Include="scripts\test.bat" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\abstractions\async\IAsyncContext.h" />
+    <ClInclude Include="src\abstractions\async\IAwaitable.h" />
+    <ClInclude Include="src\abstractions\async\IExecutor.h" />
+    <ClInclude Include="src\abstractions\async\IScheduler.h" />
+    <ClInclude Include="src\abstractions\io\IFileSystem.h" />
+    <ClInclude Include="src\abstractions\io\IPath.h" />
+    <ClInclude Include="src\abstractions\io\IStreamReader.h" />
+    <ClInclude Include="src\abstractions\io\IStreamWriter.h" />
+    <ClInclude Include="src\abstractions\messaging\IDispatcher.h" />
+    <ClInclude Include="src\abstractions\messaging\IEventBus.h" />
+    <ClInclude Include="src\abstractions\messaging\IMessageQueue.h" />
+    <ClInclude Include="src\abstractions\platform\IPlatformHandle.h" />
+    <ClInclude Include="src\abstractions\platform\ITextEncoder.h" />
+    <ClInclude Include="src\abstractions\platform\IThreadPool.h" />
+    <ClInclude Include="src\abstractions\platform\IWindowHandle.h" />
+    <ClInclude Include="src\abstractions\reactive\IObservable.h" />
+    <ClInclude Include="src\abstractions\reactive\IProperty.h" />
+    <ClInclude Include="src\adapters\platform\windows\encoding\Win32TextEncoder.h" />
+    <ClInclude Include="src\adapters\platform\windows\filesystem\Win32File.h" />
+    <ClInclude Include="src\adapters\platform\windows\filesystem\Win32FileSystem.h" />
+    <ClInclude Include="src\adapters\platform\windows\threading\Win32Thread.h" />
+    <ClInclude Include="src\adapters\platform\windows\threading\Win32ThreadPool.h" />
+    <ClInclude Include="src\adapters\platform\windows\Win32Factory.h" />
+    <ClInclude Include="src\adapters\platform\windows\window\Win32Handle.h" />
+    <ClInclude Include="src\adapters\platform\windows\window\Win32WindowHandle.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\adapters\platform\windows\encoding\Win32TextEncoder.cpp" />
+    <ClCompile Include="src\adapters\platform\windows\filesystem\Win32File.cpp" />
+    <ClCompile Include="src\adapters\platform\windows\filesystem\Win32FileSystem.cpp" />
+    <ClCompile Include="src\adapters\platform\windows\threading\Win32Thread.cpp" />
+    <ClCompile Include="src\adapters\platform\windows\threading\Win32ThreadPool.cpp" />
+    <ClCompile Include="src\adapters\platform\windows\window\Win32Handle.cpp" />
+    <ClCompile Include="src\adapters\platform\windows\window\Win32WindowHandle.cpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

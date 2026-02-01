@@ -1,0 +1,1 @@
+@rem scripts/clean.bat 
