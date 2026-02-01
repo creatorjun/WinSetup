@@ -231,14 +231,12 @@ class IWriter {
 ```
 WinSetup/
 │
-├── CMakeLists.txt
 ├── README.md
 ├── ARCHITECTURE.md
 │
 ├── src/
 │   │
 │   ├── abstractions/                    # Layer 0: 추상화
-│   │   ├── CMakeLists.txt
 │   │   │
 │   │   ├── platform/
 │   │   │   ├── ITextEncoder.h
@@ -268,7 +266,6 @@ WinSetup/
 │   │       └── IProperty.h
 │   │
 │   ├── domain/                          # Layer 1: 도메인
-│   │   ├── CMakeLists.txt
 │   │   │
 │   │   ├── primitives/
 │   │   │   ├── Expected.h
@@ -294,7 +291,6 @@ WinSetup/
 │   │       └── ValidationResult.h
 │   │
 │   ├── application/                     # Layer 2: 애플리케이션
-│   │   ├── CMakeLists.txt
 │   │   │
 │   │   ├── async/
 │   │   │   ├── Task.h
@@ -325,7 +321,6 @@ WinSetup/
 │   │       └── InstallEvent.h
 │   │
 │   ├── adapters/                        # Layer 3: 어댑터
-│   │   ├── CMakeLists.txt
 │   │   │
 │   │   └── platform/
 │   │       └── windows/
@@ -354,7 +349,6 @@ WinSetup/
 │   │           └── Win32Factory.h
 │   │
 │   └── infrastructure/                  # Layer 4: 인프라
-│       ├── CMakeLists.txt
 │       │
 │       ├── composition/
 │       │   ├── DependencyContainer.h
@@ -374,7 +368,6 @@ WinSetup/
 │           └── PerformanceMonitor.cpp
 │
 ├── tests/
-│   ├── CMakeLists.txt
 │   │
 │   ├── domain/                          # 도메인 테스트
 │   │   ├── ExpectedTests.cpp
