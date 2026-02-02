@@ -526,6 +526,8 @@ auto DiskPriorityComparator = [](const DiskInfo& a, const DiskInfo& b) {
 - **IO 우선순위**: 백업 데이터 복사(`CopyFileEx`) 시 `IoPriorityHintVeryLow`를 설정하여 이미지 적용 속도에 영향을 주지 않도록 조정 가능합니다.
 - **에러 복구**: 모든 `IOCTL` 실패 시 즉시 `Rollback` 대신 `Detailed Error Report`를 생성하여 PE 환경에서 디버깅 가능하게 설계합니다.
 
+config.ini 예시:
+
 ```config.ini
 [USERPROFILE]
 USERPROFILE=kdic
@@ -551,3 +553,124 @@ B760M HD3P PLUS=95
 15Z90S=121
 ```
 
+/**
+ * WinSetup: Step-by-Step Business Logic Implementation (Pseudo-code)
+ * Architecture: Clean Architecture (L1: Domain, L2: Application, L3: Adapter)
+ */
+
+#include <concepts>
+#include <vector>
+#include <string>
+#include <algorithm>
+
+// --- [STEP 1: 시스템 분석 및 설정 로드] ---
+namespace Application::Setup {
+    struct AppConfig {
+        std::wstring userProfile;
+        std::chrono::seconds estimatedTime;
+        std::wstring buttonText;
+        std::wstring description;
+    };
+
+    Task<AppConfig> InitializeSetup() {
+        // 1. SMBIOS (GetSystemFirmwareTable)로 메인보드 판별
+        auto mbModel = co_await HardwareAdapter::GetMotherboardModel();
+        
+        // 2. Config.ini 로드 및 유저 정보 추출
+        auto ini = co_await ConfigLoader::Load(L"config.ini");
+        AppConfig config;
+        config.userProfile = ini.GetValue(L"User", L"Name");
+        
+        // 3. 메인보드별/타입별 UI 텍스트 및 예상시간 매핑
+        config.estimatedTime = Mapper::GetTimeByModel(mbModel);
+        config.buttonText = Mapper::GetTextByType(ini.GetValue(L"Setup", L"Type"));
+        
+        co_return config;
+    }
+}
+
+// --- [STEP 2: 디스크 로드 및 인터페이스 기반 정렬] ---
+namespace Domain::DiskLogic {
+    struct DiskInfo {
+        uint32_t index;
+        BusType busType; // NVMe > SATA > USB (BusTypeUsb는 제외 대상)
+        uint64_t size;
+        std::vector<VolumeInfo> volumes;
+    };
+
+    void SortPhysicalDisks(std::vector<DiskInfo>& disks) {
+        // 1. USB 디스크 제외
+        std::erase_if(disks, [](const auto& d) { return d.busType == BusType::Usb; });
+
+        // 2. 정렬: 인터페이스 속도(BusType) 내림차순 -> 용량 오름차순
+        std::sort(disks.begin(), disks.end(), [](const auto& a, const auto& b) {
+            if (a.busType != b.busType) return a.busType > b.busType;
+            return a.size < b.size;
+        });
+    }
+}
+
+// --- [STEP 3: 휴리스틱 파티션 판별 (Heuristics)] ---
+namespace Domain::PartitionLogic {
+    enum class TargetRole { System, Data, None };
+
+    TargetRole IdentifyPartition(const VolumeInfo& vol, const std::wstring& profile) {
+        // 모든 작업은 IOCTL/저수준 API 기반 파일 체크로 수행
+        
+        // Case A: 시스템 파티션 후보 (Windows 핵심 파일 존재 여부)
+        if (vol.Exists(L"Windows\\System32") && vol.Exists(L"Users\\" + profile)) {
+            return TargetRole::System;
+        }
+        
+        // Case B: 데이터 파티션 후보 (사용자 데이터 존재 여부)
+        if (vol.Exists(profile + L"\\Desktop") || vol.Exists(profile + L"\\Downloads")) {
+            return TargetRole::Data;
+        }
+
+        return TargetRole::None;
+    }
+}
+
+// --- [STEP 4 & 5: 메인 설치 프로세스 (보존 vs 삭제)] ---
+namespace Application::InstallFlow {
+    Task<Result<void>> ExecuteInstall(bool isPreserveMode, const AppConfig& config) {
+        // 0. 준비: 기존 CDZ 드라이브 마운트 해제 (DeleteVolumeMountPoint)
+        co_await DiskAdapter::UnmountDrive(L"CDZ");
+
+        if (isPreserveMode) {
+            /** [데이터 보존 모드] **/
+            // 1. 할당: 시스템 파티션을 C:로, 데이터 파티션을 D:로 지정
+            // 2. 백업: C:의 특정 데이터를 D:\temp로 이동 (MoveFileEx - MFT 이동으로 순식간에 완료)
+            co_await FileAdapter::MoveToTemp(L"C:\\Users\\" + config.userProfile, L"D:\\temp");
+
+            // 3. 포맷 및 설치: C: 포맷(FormatEx) 후 Wim 이미지 적용(wimlib)
+            co_await DiskAdapter::Format(L"C:");
+            co_await ImagingAdapter::ApplyWim(L"install.wim", L"C:");
+
+            // 4. 복구: D:\temp 데이터를 다시 C:로 이동
+            co_await FileAdapter::MoveFromTemp(L"D:\\temp", L"C:\\Users\\" + config.userProfile);
+        } 
+        else {
+            /** [데이터 삭제 모드] **/
+            // 1. 클린: 모든 대상 디스크 초기화 (IOCTL_DISK_CREATE_DISK)
+            for (auto& disk : targetDisks) {
+                co_await DiskAdapter::CleanDisk(disk.index);
+                
+                // 2. 파티셔닝: 부트(FAT32), 시스템(NTFS), 데이터(NTFS) 생성 
+                // (IOCTL_DISK_SET_DRIVE_LAYOUT_EX로 원자적 생성)
+                co_await DiskAdapter::CreateLayout(disk.index, LayoutType::Standard);
+            }
+
+            // 3. 이미지 적용: 신규 생성된 시스템 파티션에 Wim 적용
+            co_await ImagingAdapter::ApplyWim(L"install.wim", L"C:");
+        }
+
+        // 공통 마무리: 드라이버 설치 (DismAddDriver) 및 재부팅
+        co_await DismAdapter::InstallDrivers(L"C:\\Drivers");
+        
+        // 10초 카운트다운 후 ntdll!NtShutdownSystem 호출
+        co_await UI::CountdownAndReboot(10);
+        
+        co_return {};
+    }
+}
