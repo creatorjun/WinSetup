@@ -1,5 +1,3 @@
-// src/domain/validation/ValidationResult.h
-
 #pragma once
 
 #include <vector>
@@ -10,6 +8,8 @@ namespace winsetup::domain {
 
     class ValidationResult {
     public:
+        ValidationResult() = default;
+
         static ValidationResult Valid() {
             return ValidationResult();
         }
@@ -30,11 +30,11 @@ namespace winsetup::domain {
             return errors_.empty();
         }
 
-        bool IsInvalid() const noexcept {
+        bool HasErrors() const noexcept {
             return !errors_.empty();
         }
 
-        const std::vector<std::wstring>& Errors() const noexcept {
+        const std::vector<std::wstring>& GetErrors() const noexcept {
             return errors_;
         }
 
@@ -42,16 +42,35 @@ namespace winsetup::domain {
             errors_.push_back(std::move(error));
         }
 
-        void Merge(const ValidationResult& other) {
-            errors_.insert(errors_.end(), other.errors_.begin(), other.errors_.end());
+        void AddErrors(const std::vector<std::wstring>& errors) {
+            errors_.insert(errors_.end(), errors.begin(), errors.end());
+        }
+
+        void Clear() noexcept {
+            errors_.clear();
         }
 
         size_t ErrorCount() const noexcept {
             return errors_.size();
         }
 
-        void Clear() {
-            errors_.clear();
+        std::wstring GetFirstError() const {
+            return errors_.empty() ? L"" : errors_.front();
+        }
+
+        std::wstring GetCombinedErrors(const std::wstring& separator = L"\n") const {
+            if (errors_.empty()) {
+                return L"";
+            }
+
+            std::wstring result;
+            for (size_t i = 0; i < errors_.size(); ++i) {
+                result += errors_[i];
+                if (i < errors_.size() - 1) {
+                    result += separator;
+                }
+            }
+            return result;
         }
 
         explicit operator bool() const noexcept {
@@ -59,8 +78,6 @@ namespace winsetup::domain {
         }
 
     private:
-        ValidationResult() = default;
-
         std::vector<std::wstring> errors_;
     };
 

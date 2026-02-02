@@ -1,5 +1,3 @@
-// src/domain/primitives/Error.h
-
 #pragma once
 
 #include <string>

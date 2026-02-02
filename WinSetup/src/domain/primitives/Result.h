@@ -1,12 +1,13 @@
-// src/domain/primitives/Result.h
-
 #pragma once
 
 #include "Error.h"
-#include <optional>
-#include <stdexcept>
+#include <variant>
+#include <functional>
 
 namespace winsetup::domain {
+
+    struct SuccessTag {};
+    constexpr SuccessTag Success{};
 
     template<typename E = Error>
     class Result {
@@ -17,40 +18,44 @@ namespace winsetup::domain {
         Result& operator=(Result&&) noexcept = default;
 
         static Result Success() {
-            return Result();
+            Result result;
+            result.data_ = SuccessTag{};
+            return result;
         }
 
         static Result Failure(E error) {
-            return Result(std::move(error));
+            Result result;
+            result.data_ = std::move(error);
+            return result;
         }
 
         bool IsSuccess() const noexcept {
-            return !error_.has_value();
+            return std::holds_alternative<SuccessTag>(data_);
         }
 
         bool IsFailure() const noexcept {
-            return error_.has_value();
+            return std::holds_alternative<E>(data_);
         }
 
         const E& GetError() const& {
-            if (!error_.has_value()) {
+            if (!IsFailure()) {
                 throw std::logic_error("Result does not contain an error");
             }
-            return *error_;
+            return std::get<E>(data_);
         }
 
         E& GetError()& {
-            if (!error_.has_value()) {
+            if (!IsFailure()) {
                 throw std::logic_error("Result does not contain an error");
             }
-            return *error_;
+            return std::get<E>(data_);
         }
 
         E&& GetError()&& {
-            if (!error_.has_value()) {
+            if (!IsFailure()) {
                 throw std::logic_error("Result does not contain an error");
             }
-            return std::move(*error_);
+            return std::move(std::get<E>(data_));
         }
 
         template<typename F>
@@ -58,15 +63,24 @@ namespace winsetup::domain {
             if (IsSuccess()) {
                 return func();
             }
-            return Result::Failure(GetError());
+            return Failure(GetError());
         }
 
         template<typename F>
-        Result OnError(F&& func) const {
+        const Result& OnError(F&& func) const {
             if (IsFailure()) {
                 func(GetError());
             }
             return *this;
+        }
+
+        template<typename F>
+        auto MapError(F&& func) const -> Result<decltype(func(std::declval<E>()))> {
+            using NewError = decltype(func(std::declval<E>()));
+            if (IsFailure()) {
+                return Result<NewError>::Failure(func(GetError()));
+            }
+            return Result<NewError>::Success();
         }
 
         explicit operator bool() const noexcept {
@@ -75,81 +89,7 @@ namespace winsetup::domain {
 
     private:
         Result() = default;
-        explicit Result(E error) : error_(std::move(error)) {}
-
-        std::optional<E> error_;
-    };
-
-    template<>
-    class Result<void> {
-    public:
-        Result(const Result&) = default;
-        Result(Result&&) noexcept = default;
-        Result& operator=(const Result&) = default;
-        Result& operator=(Result&&) noexcept = default;
-
-        static Result Success() {
-            return Result();
-        }
-
-        static Result Failure(Error error) {
-            return Result(std::move(error));
-        }
-
-        bool IsSuccess() const noexcept {
-            return !error_.has_value();
-        }
-
-        bool IsFailure() const noexcept {
-            return error_.has_value();
-        }
-
-        const Error& GetError() const& {
-            if (!error_.has_value()) {
-                throw std::logic_error("Result does not contain an error");
-            }
-            return *error_;
-        }
-
-        Error& GetError()& {
-            if (!error_.has_value()) {
-                throw std::logic_error("Result does not contain an error");
-            }
-            return *error_;
-        }
-
-        Error&& GetError()&& {
-            if (!error_.has_value()) {
-                throw std::logic_error("Result does not contain an error");
-            }
-            return std::move(*error_);
-        }
-
-        template<typename F>
-        Result Then(F&& func) const {
-            if (IsSuccess()) {
-                return func();
-            }
-            return Result::Failure(GetError());
-        }
-
-        template<typename F>
-        Result OnError(F&& func) const {
-            if (IsFailure()) {
-                func(GetError());
-            }
-            return *this;
-        }
-
-        explicit operator bool() const noexcept {
-            return IsSuccess();
-        }
-
-    private:
-        Result() = default;
-        explicit Result(Error err) : error_(std::move(err)) {}
-
-        std::optional<Error> error_;
+        std::variant<SuccessTag, E> data_;
     };
 
 }

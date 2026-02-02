@@ -206,6 +206,9 @@
     <ClInclude Include="src\application\reactive\Subject.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="src\application\async\CancellationToken.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\adapters\platform\windows\encoding\Win32TextEncoder.cpp">
@@ -244,7 +247,7 @@
     <ClCompile Include="src\infrastructure\logging\WindowsLogger.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\infrastructure\Main.cpp">
+    <ClCompile Include="src\Main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\application\async\AsyncContext.cpp">
@@ -257,6 +260,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\application\messaging\EventBus.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\async\CancellationToken.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

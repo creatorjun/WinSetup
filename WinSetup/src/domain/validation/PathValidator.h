@@ -1,5 +1,3 @@
-// src/domain/validation/PathValidator.h
-
 #pragma once
 
 #include "ValidationRules.h"
@@ -31,13 +29,11 @@ namespace winsetup::domain {
         }
 
         void RemoveRule(const std::string& ruleName) {
-            rules_.erase(
-                std::remove_if(rules_.begin(), rules_.end(),
-                    [&ruleName](const auto& rule) {
-                        return rule->GetName() == ruleName;
-                    }),
-                rules_.end()
-            );
+            auto it = std::remove_if(rules_.begin(), rules_.end(),
+                [&ruleName](const std::unique_ptr<IValidationRule>& rule) {
+                    return rule->GetName() == ruleName;
+                });
+            rules_.erase(it, rules_.end());
         }
 
         void ClearRules() {
@@ -46,6 +42,13 @@ namespace winsetup::domain {
 
         size_t RuleCount() const noexcept {
             return rules_.size();
+        }
+
+        bool HasRule(const std::string& ruleName) const noexcept {
+            return std::any_of(rules_.begin(), rules_.end(),
+                [&ruleName](const std::unique_ptr<IValidationRule>& rule) {
+                    return rule->GetName() == ruleName;
+                });
         }
 
     private:

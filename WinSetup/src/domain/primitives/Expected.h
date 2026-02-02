@@ -1,11 +1,10 @@
-// src/domain/primitives/Expected.h
-
 #pragma once
 
 #include "Error.h"
 #include <variant>
 #include <type_traits>
 #include <stdexcept>
+#include <utility>
 
 namespace winsetup::domain {
 
@@ -18,7 +17,9 @@ namespace winsetup::domain {
         Expected& operator=(Expected&&) noexcept = default;
 
         static Expected Success(T value) {
-            return Expected(std::move(value));
+            Expected result;
+            result.data_ = std::move(value);
+            return result;
         }
 
         static Expected Failure(E error) {
@@ -53,7 +54,7 @@ namespace winsetup::domain {
             if (!HasValue()) {
                 throw std::logic_error("Expected does not contain a value");
             }
-            return std::get<T>(std::move(data_));
+            return std::move(std::get<T>(data_));
         }
 
         const E& GetError() const& {
@@ -74,7 +75,7 @@ namespace winsetup::domain {
             if (!HasError()) {
                 throw std::logic_error("Expected does not contain an error");
             }
-            return std::get<E>(std::move(data_));
+            return std::move(std::get<E>(data_));
         }
 
         T ValueOr(T defaultValue) const& {
@@ -86,47 +87,57 @@ namespace winsetup::domain {
         }
 
         template<typename F>
-        auto Map(F&& func) const& -> Expected<decltype(func(std::declval<T>())), E> {
-            using U = decltype(func(std::declval<T>()));
+        auto Map(F&& func) const& -> Expected<std::invoke_result_t<F, const T&>, E> {
+            using U = std::invoke_result_t<F, const T&>;
             if (HasValue()) {
-                return Expected<U, E>::Success(func(Value()));
+                return Expected<U, E>::Success(std::invoke(std::forward<F>(func), Value()));
             }
             return Expected<U, E>::Failure(GetError());
         }
 
         template<typename F>
-        auto Map(F&& func) && -> Expected<decltype(func(std::declval<T>())), E> {
-            using U = decltype(func(std::declval<T>()));
+        auto Map(F&& func) && -> Expected<std::invoke_result_t<F, T&&>, E> {
+            using U = std::invoke_result_t<F, T&&>;
             if (HasValue()) {
-                return Expected<U, E>::Success(func(std::move(*this).Value()));
+                return Expected<U, E>::Success(std::invoke(std::forward<F>(func), std::move(*this).Value()));
             }
             return Expected<U, E>::Failure(std::move(*this).GetError());
         }
 
         template<typename F>
-        auto FlatMap(F&& func) const& -> decltype(func(std::declval<T>())) {
+        auto FlatMap(F&& func) const& -> std::invoke_result_t<F, const T&> {
             if (HasValue()) {
-                return func(Value());
+                return std::invoke(std::forward<F>(func), Value());
             }
-            using ReturnType = decltype(func(std::declval<T>()));
+            using ReturnType = std::invoke_result_t<F, const T&>;
             return ReturnType::Failure(GetError());
         }
 
         template<typename F>
-        auto FlatMap(F&& func) && -> decltype(func(std::declval<T>())) {
+        auto FlatMap(F&& func) && -> std::invoke_result_t<F, T&&> {
             if (HasValue()) {
-                return func(std::move(*this).Value());
+                return std::invoke(std::forward<F>(func), std::move(*this).Value());
             }
-            using ReturnType = decltype(func(std::declval<T>()));
+            using ReturnType = std::invoke_result_t<F, T&&>;
             return ReturnType::Failure(std::move(*this).GetError());
         }
 
         template<typename F>
-        Expected MapError(F&& func) const& {
+        auto MapError(F&& func) const& -> Expected<T, std::invoke_result_t<F, const E&>> {
+            using NewE = std::invoke_result_t<F, const E&>;
             if (HasError()) {
-                return Expected::Failure(func(GetError()));
+                return Expected<T, NewE>::Failure(std::invoke(std::forward<F>(func), GetError()));
             }
-            return Expected::Success(Value());
+            return Expected<T, NewE>::Success(Value());
+        }
+
+        template<typename F>
+        auto MapError(F&& func) && -> Expected<T, std::invoke_result_t<F, E&&>> {
+            using NewE = std::invoke_result_t<F, E&&>;
+            if (HasError()) {
+                return Expected<T, NewE>::Failure(std::invoke(std::forward<F>(func), std::move(*this).GetError()));
+            }
+            return Expected<T, NewE>::Success(std::move(*this).Value());
         }
 
         explicit operator bool() const noexcept {
@@ -135,7 +146,6 @@ namespace winsetup::domain {
 
     private:
         Expected() = default;
-        explicit Expected(T value) : data_(std::move(value)) {}
 
         std::variant<T, E> data_;
     };
