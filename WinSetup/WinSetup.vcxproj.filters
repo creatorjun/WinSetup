@@ -24,15 +24,6 @@
     <None Include="docs\guides\contributing.md" />
     <None Include="docs\guides\migration.md" />
     <None Include="docs\guides\testing.md" />
-    <None Include="scripts\build.bat">
-      <Filter>소스 파일</Filter>
-    </None>
-    <None Include="scripts\clean.bat">
-      <Filter>소스 파일</Filter>
-    </None>
-    <None Include="scripts\test.bat">
-      <Filter>소스 파일</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\abstractions\async\IAsyncContext.h">

@@ -1,0 +1,57 @@
+﻿param(
+    [string]$ProjectRoot = (Get-Location).Path,
+    [string]$OutputFile = "dependency_graph.dot"
+)
+
+$sb = [System.Text.StringBuilder]::new()
+[void]$sb.AppendLine("digraph WinSetupDependencies {")
+[void]$sb.AppendLine("    rankdir=BT;")
+[void]$sb.AppendLine("    node [shape=box, style=filled];")
+[void]$sb.AppendLine("")
+[void]$sb.AppendLine("    subgraph cluster_0 {")
+[void]$sb.AppendLine("        label=""Layer 0: Abstractions"";")
+[void]$sb.AppendLine("        color=blue;")
+[void]$sb.AppendLine("        Abstractions [fillcolor=lightblue];")
+[void]$sb.AppendLine("    }")
+[void]$sb.AppendLine("")
+[void]$sb.AppendLine("    subgraph cluster_1 {")
+[void]$sb.AppendLine("        label=""Layer 1: Domain"";")
+[void]$sb.AppendLine("        color=green;")
+[void]$sb.AppendLine("        Domain [fillcolor=lightgreen];")
+[void]$sb.AppendLine("    }")
+[void]$sb.AppendLine("")
+[void]$sb.AppendLine("    subgraph cluster_2 {")
+[void]$sb.AppendLine("        label=""Layer 2: Application"";")
+[void]$sb.AppendLine("        color=yellow;")
+[void]$sb.AppendLine("        Application [fillcolor=lightyellow];")
+[void]$sb.AppendLine("    }")
+[void]$sb.AppendLine("")
+[void]$sb.AppendLine("    subgraph cluster_3 {")
+[void]$sb.AppendLine("        label=""Layer 3: Adapters"";")
+[void]$sb.AppendLine("        color=orange;")
+[void]$sb.AppendLine("        Adapters [fillcolor=lightsalmon];")
+[void]$sb.AppendLine("    }")
+[void]$sb.AppendLine("")
+[void]$sb.AppendLine("    subgraph cluster_4 {")
+[void]$sb.AppendLine("        label=""Layer 4: Infrastructure"";")
+[void]$sb.AppendLine("        color=red;")
+[void]$sb.AppendLine("        Infrastructure [fillcolor=lightcoral];")
+[void]$sb.AppendLine("    }")
+[void]$sb.AppendLine("")
+[void]$sb.AppendLine("    Domain -> Abstractions;")
+[void]$sb.AppendLine("    Application -> Abstractions;")
+[void]$sb.AppendLine("    Application -> Domain;")
+[void]$sb.AppendLine("    Adapters -> Abstractions;")
+[void]$sb.AppendLine("    Adapters -> Domain;")
+[void]$sb.AppendLine("    Infrastructure -> Abstractions;")
+[void]$sb.AppendLine("    Infrastructure -> Domain;")
+[void]$sb.AppendLine("    Infrastructure -> Application;")
+[void]$sb.AppendLine("    Infrastructure -> Adapters;")
+[void]$sb.AppendLine("}")
+
+$content = $sb.ToString()
+$outputPath = Join-Path $ProjectRoot $OutputFile
+Set-Content -Path $outputPath -Value $content -Encoding UTF8
+
+Write-Host "Dependency graph generated: $outputPath" -ForegroundColor Green
+Write-Host "To visualize, use: dot -Tpng $OutputFile -o dependency_graph.png" -ForegroundColor Cyan

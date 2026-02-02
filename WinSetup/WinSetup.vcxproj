@@ -83,6 +83,11 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PreBuildEvent>
+      <Command>cd D:\kdic\Desktop\project\WinSetup\scripts
+validate_dependencies.bat
+</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -99,6 +104,11 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PreBuildEvent>
+      <Command>cd D:\kdic\Desktop\project\WinSetup\scripts
+validate_dependencies.bat
+</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -113,6 +123,11 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PreBuildEvent>
+      <Command>cd D:\kdic\Desktop\project\WinSetup\scripts
+validate_dependencies.bat
+</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -129,6 +144,11 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PreBuildEvent>
+      <Command>cd D:\kdic\Desktop\project\WinSetup\scripts
+validate_dependencies.bat
+</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="docs\api\abstractions.md" />
@@ -140,9 +160,6 @@
     <None Include="docs\guides\contributing.md" />
     <None Include="docs\guides\migration.md" />
     <None Include="docs\guides\testing.md" />
-    <None Include="scripts\build.bat" />
-    <None Include="scripts\clean.bat" />
-    <None Include="scripts\test.bat" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\abstractions\async\IAsyncContext.h" />
