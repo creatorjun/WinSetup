@@ -525,3 +525,29 @@ auto DiskPriorityComparator = [](const DiskInfo& a, const DiskInfo& b) {
 - **메모리 단편화**: WinPE 환경의 특성상 `wimlib` 추출 시 대용량 버퍼를 미리 할당하여 사용합니다.
 - **IO 우선순위**: 백업 데이터 복사(`CopyFileEx`) 시 `IoPriorityHintVeryLow`를 설정하여 이미지 적용 속도에 영향을 주지 않도록 조정 가능합니다.
 - **에러 복구**: 모든 `IOCTL` 실패 시 즉시 `Rollback` 대신 `Detailed Error Report`를 생성하여 PE 환경에서 디버깅 가능하게 설계합니다.
+
+```config.ini
+[USERPROFILE]
+USERPROFILE=kdic
+
+[BACKUPS]
+USERLIBRARY=TRUE
+STICKYNOTE=TRUE
+S_MEMO=TURE
+NPKI=TRUE
+
+[TYPES]
+TYPE_NAME_01=내부망
+TYPE_NAME_02=외부망
+TYPE_NAME_03=출장용
+TYPE_NAME_04=자회사
+TYPE_INFO_01=26/01/01 Win11 24H2 적용
+TYPE_INFO_02=26/01/02 Win11 24H2 적용
+TYPE_INFO_03=26/01/03 Win11 24H2 적용
+TYPE_INFO_04=26/01/04 Win11 24H2 적용
+
+[TIMES]
+B760M HD3P PLUS=95
+15Z90S=121
+```
+
