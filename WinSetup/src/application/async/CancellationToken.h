@@ -49,14 +49,6 @@ namespace winsetup::application {
             }
         }
 
-        void RegisterCallback(std::function<void()> callback) {
-            std::lock_guard<std::mutex> lock(callbacks_->mutex);
-            callbacks_->callbacks.push_back(std::move(callback));
-            if (IsCancelled()) {
-                callback();
-            }
-        }
-
         std::shared_ptr<std::atomic<bool>> cancelled_;
         std::shared_ptr<CallbackList> callbacks_;
 
@@ -78,12 +70,21 @@ namespace winsetup::application {
         }
 
         void Register(std::function<void()> callback) {
-            if (callbacks_) {
+            if (!callbacks_) return;
+
+            bool shouldExecute = false;
+            {
                 std::lock_guard<std::mutex> lock(callbacks_->mutex);
-                callbacks_->callbacks.push_back(std::move(callback));
-                if (IsCancelled() && callback) {
-                    callback();
+                if (IsCancelled()) {
+                    shouldExecute = true;
                 }
+                else {
+                    callbacks_->callbacks.push_back(std::move(callback));
+                }
+            }
+
+            if (shouldExecute && callback) {
+                callback();
             }
         }
 
