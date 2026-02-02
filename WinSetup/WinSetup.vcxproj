@@ -76,10 +76,11 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -91,10 +92,11 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -104,10 +106,11 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -119,10 +122,11 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -166,6 +170,41 @@
     <ClInclude Include="src\adapters\platform\windows\Win32Factory.h" />
     <ClInclude Include="src\adapters\platform\windows\window\Win32Handle.h" />
     <ClInclude Include="src\adapters\platform\windows\window\Win32WindowHandle.h" />
+    <ClInclude Include="src\application\async\AsyncContext.h" />
+    <ClInclude Include="src\application\async\Awaitable.h" />
+    <ClInclude Include="src\application\async\Promise.h" />
+    <ClInclude Include="src\application\async\Task.h" />
+    <ClInclude Include="src\application\async\TaskScheduler.h" />
+    <ClInclude Include="src\application\events\ErrorEvent.h" />
+    <ClInclude Include="src\application\events\InstallEvent.h" />
+    <ClInclude Include="src\application\events\LogEvent.h" />
+    <ClInclude Include="src\application\events\ProgressEvent.h" />
+    <ClInclude Include="src\application\messaging\Dispatcher.h" />
+    <ClInclude Include="src\application\messaging\EventBus.h" />
+    <ClInclude Include="src\application\messaging\MessageQueue.h" />
+    <ClInclude Include="src\application\reactive\Observable.h" />
+    <ClInclude Include="src\application\reactive\Operators.h" />
+    <ClInclude Include="src\application\reactive\Property.h" />
+    <ClInclude Include="src\application\reactive\Subject.h" />
+    <ClInclude Include="src\domain\functional\Compose.h" />
+    <ClInclude Include="src\domain\functional\Monads.h" />
+    <ClInclude Include="src\domain\functional\Optional.h" />
+    <ClInclude Include="src\domain\functional\Pipeline.h" />
+    <ClInclude Include="src\domain\memory\PoolAllocator.h" />
+    <ClInclude Include="src\domain\memory\SharedResource.h" />
+    <ClInclude Include="src\domain\memory\SmartPtr.h" />
+    <ClInclude Include="src\domain\memory\UniqueResource.h" />
+    <ClInclude Include="src\domain\primitives\Error.h" />
+    <ClInclude Include="src\domain\primitives\Expected.h" />
+    <ClInclude Include="src\domain\primitives\Result.h" />
+    <ClInclude Include="src\domain\validation\PathValidator.h" />
+    <ClInclude Include="src\domain\validation\ValidationResult.h" />
+    <ClInclude Include="src\domain\validation\ValidationRules.h" />
+    <ClInclude Include="src\infrastructure\composition\DependencyContainer.h" />
+    <ClInclude Include="src\infrastructure\composition\ServiceLocator.h" />
+    <ClInclude Include="src\infrastructure\config\ConfigLoader.h" />
+    <ClInclude Include="src\infrastructure\diagnostics\PerformanceMonitor.h" />
+    <ClInclude Include="src\infrastructure\logging\WindowsLogger.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\adapters\platform\windows\encoding\Win32TextEncoder.cpp" />
@@ -175,6 +214,16 @@
     <ClCompile Include="src\adapters\platform\windows\threading\Win32ThreadPool.cpp" />
     <ClCompile Include="src\adapters\platform\windows\window\Win32Handle.cpp" />
     <ClCompile Include="src\adapters\platform\windows\window\Win32WindowHandle.cpp" />
+    <ClCompile Include="src\application\async\AsyncContext.cpp" />
+    <ClCompile Include="src\application\async\TaskScheduler.cpp" />
+    <ClCompile Include="src\application\messaging\Dispatcher.cpp" />
+    <ClCompile Include="src\application\messaging\EventBus.cpp" />
+    <ClCompile Include="src\domain\validation\PathValidator.cpp" />
+    <ClCompile Include="src\infrastructure\composition\DependencyContainer.cpp" />
+    <ClCompile Include="src\infrastructure\config\ConfigLoader.cpp" />
+    <ClCompile Include="src\infrastructure\diagnostics\PerformanceMonitor.cpp" />
+    <ClCompile Include="src\infrastructure\logging\WindowsLogger.cpp" />
+    <ClCompile Include="src\infrastructure\Main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
