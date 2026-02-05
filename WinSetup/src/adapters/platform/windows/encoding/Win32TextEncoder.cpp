@@ -1,10 +1,9 @@
-// src/adapters/platform/windows/encoding/Win32TextEncoder.cpp 
 #include "Win32TextEncoder.h"
 #include <algorithm>
 
 namespace winsetup::adapters {
 
-    constexpr DWORD Win32TextEncoder::GetCodePage(
+    constexpr UINT Win32TextEncoder::GetCodePage(
         abstractions::TextEncoding encoding
     ) noexcept {
         switch (encoding) {
@@ -38,6 +37,19 @@ namespace winsetup::adapters {
         }
     }
 
+    template<typename StringView>
+    domain::Expected<int> Win32TextEncoder::ValidateAndGetSize(StringView input) const noexcept {
+        if (input.empty()) [[unlikely]] {
+            return domain::Expected<int>::Success(0);
+        }
+        if (input.size() > static_cast<size_t>(INT_MAX)) [[unlikely]] {
+            return domain::Expected<int>::Failure(
+                domain::Error("Input too large for conversion", ERROR_INVALID_PARAMETER)
+            );
+        }
+        return domain::Expected<int>::Success(static_cast<int>(input.size()));
+    }
+
     domain::Expected<std::wstring> Win32TextEncoder::ToWide(
         std::string_view utf8
     ) const noexcept {
@@ -65,7 +77,7 @@ namespace winsetup::adapters {
         if (encoding == abstractions::TextEncoding::UTF16LE ||
             encoding == abstractions::TextEncoding::UTF16BE) {
 
-            if (input.size() % 2 != 0) {
+            if (input.size() % 2 != 0) [[unlikely]] {
                 return domain::Expected<std::wstring>::Failure(
                     domain::Error("Invalid UTF-16 input: odd byte count", ERROR_INVALID_DATA)
                 );
@@ -140,25 +152,25 @@ namespace winsetup::adapters {
         abstractions::TextEncoding fromEncoding,
         abstractions::TextEncoding toEncoding
     ) const noexcept {
-        if (input.empty()) {
+        if (input.empty()) [[unlikely]] {
             return domain::Expected<size_t>::Success(0);
         }
 
         auto wideResult = Decode(input, fromEncoding);
-        if (wideResult.HasError()) {
-            return domain::Expected<size_t>::Failure(wideResult.GetError());
+        if (wideResult.HasError()) [[unlikely]] {
+            return domain::Expected<size_t>::Failure(std::move(wideResult).GetError());
         }
 
-        auto encodedResult = Encode(wideResult.Value(), toEncoding);
-        if (encodedResult.HasError()) {
-            return domain::Expected<size_t>::Failure(encodedResult.GetError());
+        auto encodedResult = Encode(std::move(wideResult).Value(), toEncoding);
+        if (encodedResult.HasError()) [[unlikely]] {
+            return domain::Expected<size_t>::Failure(std::move(encodedResult).GetError());
         }
 
-        return domain::Expected<size_t>::Success(encodedResult.Value().size());
+        return domain::Expected<size_t>::Success(std::move(encodedResult).Value().size());
     }
 
     bool Win32TextEncoder::IsValidUtf8(std::string_view input) const noexcept {
-        if (input.empty()) {
+        if (input.empty()) [[unlikely]] {
             return true;
         }
 
@@ -175,7 +187,7 @@ namespace winsetup::adapters {
     }
 
     bool Win32TextEncoder::IsValidUtf16(std::wstring_view input) const noexcept {
-        if (input.empty()) {
+        if (input.empty()) [[unlikely]] {
             return true;
         }
 
@@ -198,17 +210,15 @@ namespace winsetup::adapters {
         UINT codePage,
         DWORD flags
     ) const noexcept {
-        if (input.empty()) {
+        auto sizeResult = ValidateAndGetSize(input);
+        if (sizeResult.HasError()) [[unlikely]] {
+            return domain::Expected<std::wstring>::Failure(std::move(sizeResult).GetError());
+        }
+
+        const int inputSize = sizeResult.Value();
+        if (inputSize == 0) [[unlikely]] {
             return domain::Expected<std::wstring>::Success(std::wstring{});
         }
-
-        if (input.size() > static_cast<size_t>(INT_MAX)) {
-            return domain::Expected<std::wstring>::Failure(
-                domain::Error("Input too large for conversion", ERROR_INVALID_PARAMETER)
-            );
-        }
-
-        const int inputSize = static_cast<int>(input.size());
 
         const int requiredSize = ::MultiByteToWideChar(
             codePage,
@@ -219,7 +229,7 @@ namespace winsetup::adapters {
             0
         );
 
-        if (requiredSize <= 0) {
+        if (requiredSize <= 0) [[unlikely]] {
             return domain::Expected<std::wstring>::Failure(
                 CreateErrorFromLastError("MultiByteToWideChar size calculation")
             );
@@ -236,7 +246,7 @@ namespace winsetup::adapters {
             requiredSize
         );
 
-        if (convertedSize <= 0) {
+        if (convertedSize <= 0) [[unlikely]] {
             return domain::Expected<std::wstring>::Failure(
                 CreateErrorFromLastError("MultiByteToWideChar conversion")
             );
@@ -250,17 +260,15 @@ namespace winsetup::adapters {
         UINT codePage,
         DWORD flags
     ) const noexcept {
-        if (input.empty()) {
+        auto sizeResult = ValidateAndGetSize(input);
+        if (sizeResult.HasError()) [[unlikely]] {
+            return domain::Expected<std::string>::Failure(std::move(sizeResult).GetError());
+        }
+
+        const int inputSize = sizeResult.Value();
+        if (inputSize == 0) [[unlikely]] {
             return domain::Expected<std::string>::Success(std::string{});
         }
-
-        if (input.size() > static_cast<size_t>(INT_MAX)) {
-            return domain::Expected<std::string>::Failure(
-                domain::Error("Input too large for conversion", ERROR_INVALID_PARAMETER)
-            );
-        }
-
-        const int inputSize = static_cast<int>(input.size());
 
         const int requiredSize = ::WideCharToMultiByte(
             codePage,
@@ -273,7 +281,7 @@ namespace winsetup::adapters {
             nullptr
         );
 
-        if (requiredSize <= 0) {
+        if (requiredSize <= 0) [[unlikely]] {
             return domain::Expected<std::string>::Failure(
                 CreateErrorFromLastError("WideCharToMultiByte size calculation")
             );
@@ -292,7 +300,7 @@ namespace winsetup::adapters {
             nullptr
         );
 
-        if (convertedSize <= 0) {
+        if (convertedSize <= 0) [[unlikely]] {
             return domain::Expected<std::string>::Failure(
                 CreateErrorFromLastError("WideCharToMultiByte conversion")
             );

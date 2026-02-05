@@ -11,9 +11,10 @@
 namespace winsetup::application {
 
     template<typename T = void>
-    class Task;
+    class [[nodiscard]] Task;
 
     namespace detail {
+
         template<typename T>
         class TaskPromise {
         public:
@@ -50,19 +51,20 @@ namespace winsetup::application {
                 }
             }
 
-            winsetup::domain::Expected<T>& result() noexcept {
+            [[nodiscard]] winsetup::domain::Expected<T> result() noexcept {
                 return result_;
             }
 
-            const winsetup::domain::Expected<T>& result() const noexcept {
+            [[nodiscard]] const winsetup::domain::Expected<T>& result() const noexcept {
                 return result_;
             }
 
         private:
-            winsetup::domain::Expected<T> result_ =
+            winsetup::domain::Expected<T> result_{
                 winsetup::domain::Expected<T>::Failure(
                     winsetup::domain::Error("Task not completed")
-                );
+                )
+            };
         };
 
         template<>
@@ -101,20 +103,22 @@ namespace winsetup::application {
                 }
             }
 
-            winsetup::domain::Result<>& result() noexcept {
+            [[nodiscard]] winsetup::domain::Result<> result() noexcept {
                 return result_;
             }
 
-            const winsetup::domain::Result<>& result() const noexcept {
+            [[nodiscard]] const winsetup::domain::Result<>& result() const noexcept {
                 return result_;
             }
 
         private:
-            winsetup::domain::Result<> result_ =
+            winsetup::domain::Result<> result_{
                 winsetup::domain::Result<>::Failure(
                     winsetup::domain::Error("Task not completed")
-                );
+                )
+            };
         };
+
     }
 
     template<typename T>
@@ -133,7 +137,7 @@ namespace winsetup::application {
         }
 
         Task& operator=(Task&& other) noexcept {
-            if (this != &other) {
+            if (this != &other) [[likely]] {
                 if (handle_) {
                     handle_.destroy();
                 }
@@ -151,30 +155,34 @@ namespace winsetup::application {
         Task(const Task&) = delete;
         Task& operator=(const Task&) = delete;
 
-        bool Resume() {
-            if (!handle_ || handle_.done()) {
+        [[nodiscard]] bool Resume() {
+            if (!handle_ || handle_.done()) [[unlikely]] {
                 return false;
             }
             handle_.resume();
             return !handle_.done();
         }
 
-        bool IsDone() const noexcept {
+        [[nodiscard]] bool IsDone() const noexcept {
             return !handle_ || handle_.done();
         }
 
-        winsetup::domain::Expected<T> GetResult() const {
-            if (!handle_) {
+        [[nodiscard]] winsetup::domain::Expected<T> GetResult() const noexcept {
+            if (!handle_) [[unlikely]] {
                 return winsetup::domain::Expected<T>::Failure(
                     winsetup::domain::Error("Invalid task handle")
                 );
             }
-            if (!handle_.done()) {
+            if (!handle_.done()) [[unlikely]] {
                 return winsetup::domain::Expected<T>::Failure(
                     winsetup::domain::Error("Task not completed")
                 );
             }
             return handle_.promise().result();
+        }
+
+        [[nodiscard]] T GetResultUnchecked() const noexcept {
+            return handle_.promise().result().Value();
         }
 
         void RunToCompletion() {
@@ -186,7 +194,7 @@ namespace winsetup::application {
             struct Awaiter {
                 handle_type handle;
 
-                bool await_ready() const noexcept {
+                [[nodiscard]] bool await_ready() const noexcept {
                     return !handle || handle.done();
                 }
 
@@ -196,8 +204,8 @@ namespace winsetup::application {
                     return handle;
                 }
 
-                winsetup::domain::Expected<T> await_resume() const {
-                    if (!handle) {
+                [[nodiscard]] winsetup::domain::Expected<T> await_resume() const noexcept {
+                    if (!handle) [[unlikely]] {
                         return winsetup::domain::Expected<T>::Failure(
                             winsetup::domain::Error("Invalid task handle")
                         );
@@ -205,15 +213,14 @@ namespace winsetup::application {
                     return handle.promise().result();
                 }
             };
-
             return Awaiter{ handle_ };
         }
 
-        handle_type Handle() const noexcept {
+        [[nodiscard]] handle_type Handle() const noexcept {
             return handle_;
         }
 
-        explicit operator bool() const noexcept {
+        [[nodiscard]] explicit operator bool() const noexcept {
             return handle_ != nullptr;
         }
 
@@ -237,7 +244,7 @@ namespace winsetup::application {
         }
 
         Task& operator=(Task&& other) noexcept {
-            if (this != &other) {
+            if (this != &other) [[likely]] {
                 if (handle_) {
                     handle_.destroy();
                 }
@@ -255,30 +262,33 @@ namespace winsetup::application {
         Task(const Task&) = delete;
         Task& operator=(const Task&) = delete;
 
-        bool Resume() {
-            if (!handle_ || handle_.done()) {
+        [[nodiscard]] bool Resume() {
+            if (!handle_ || handle_.done()) [[unlikely]] {
                 return false;
             }
             handle_.resume();
             return !handle_.done();
         }
 
-        bool IsDone() const noexcept {
+        [[nodiscard]] bool IsDone() const noexcept {
             return !handle_ || handle_.done();
         }
 
-        winsetup::domain::Result<> GetResult() const {
-            if (!handle_) {
+        [[nodiscard]] winsetup::domain::Result<> GetResult() const noexcept {
+            if (!handle_) [[unlikely]] {
                 return winsetup::domain::Result<>::Failure(
                     winsetup::domain::Error("Invalid task handle")
                 );
             }
-            if (!handle_.done()) {
+            if (!handle_.done()) [[unlikely]] {
                 return winsetup::domain::Result<>::Failure(
                     winsetup::domain::Error("Task not completed")
                 );
             }
             return handle_.promise().result();
+        }
+
+        void GetResultUnchecked() const noexcept {
         }
 
         void RunToCompletion() {
@@ -290,7 +300,7 @@ namespace winsetup::application {
             struct Awaiter {
                 handle_type handle;
 
-                bool await_ready() const noexcept {
+                [[nodiscard]] bool await_ready() const noexcept {
                     return !handle || handle.done();
                 }
 
@@ -300,8 +310,8 @@ namespace winsetup::application {
                     return handle;
                 }
 
-                winsetup::domain::Result<> await_resume() const {
-                    if (!handle) {
+                [[nodiscard]] winsetup::domain::Result<> await_resume() const noexcept {
+                    if (!handle) [[unlikely]] {
                         return winsetup::domain::Result<>::Failure(
                             winsetup::domain::Error("Invalid task handle")
                         );
@@ -309,15 +319,14 @@ namespace winsetup::application {
                     return handle.promise().result();
                 }
             };
-
             return Awaiter{ handle_ };
         }
 
-        handle_type Handle() const noexcept {
+        [[nodiscard]] handle_type Handle() const noexcept {
             return handle_;
         }
 
-        explicit operator bool() const noexcept {
+        [[nodiscard]] explicit operator bool() const noexcept {
             return handle_ != nullptr;
         }
 
@@ -328,11 +337,11 @@ namespace winsetup::application {
     namespace detail {
         template<typename T>
         Task<T> TaskPromise<T>::get_return_object() noexcept {
-            return Task<T>{ handle_type::from_promise(*this) };
+            return Task<T>(handle_type::from_promise(*this));
         }
 
         inline Task<void> TaskPromise<void>::get_return_object() noexcept {
-            return Task<void>{ handle_type::from_promise(*this) };
+            return Task<void>(handle_type::from_promise(*this));
         }
     }
 

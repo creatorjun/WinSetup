@@ -13,25 +13,25 @@ namespace winsetup::application {
     class CancellationSource {
     public:
         CancellationSource()
-            : cancelled_(std::make_shared<std::atomic<bool>>(false))
-            , callbacks_(std::make_shared<CallbackList>()) {
+            : control_(std::make_shared<ControlBlock>()) {
         }
 
         void Cancel() {
             bool expected = false;
-            if (cancelled_->compare_exchange_strong(expected, true)) {
+            if (control_->cancelled.compare_exchange_strong(expected, true)) [[likely]] {
                 InvokeCallbacks();
             }
         }
 
-        bool IsCancelled() const noexcept {
-            return cancelled_->load(std::memory_order_acquire);
+        [[nodiscard]] bool IsCancelled() const noexcept {
+            return control_->cancelled.load(std::memory_order_acquire);
         }
 
-        CancellationToken GetToken() const noexcept;
+        [[nodiscard]] CancellationToken GetToken() const noexcept;
 
     private:
-        struct CallbackList {
+        struct ControlBlock {
+            std::atomic<bool> cancelled{ false };
             std::mutex mutex;
             std::vector<std::function<void()>> callbacks;
         };
@@ -39,18 +39,17 @@ namespace winsetup::application {
         void InvokeCallbacks() {
             std::vector<std::function<void()>> localCallbacks;
             {
-                std::lock_guard<std::mutex> lock(callbacks_->mutex);
-                localCallbacks = std::move(callbacks_->callbacks);
+                std::lock_guard<std::mutex> lock(control_->mutex);
+                localCallbacks = std::move(control_->callbacks);
             }
             for (auto& callback : localCallbacks) {
-                if (callback) {
+                if (callback) [[likely]] {
                     callback();
                 }
             }
         }
 
-        std::shared_ptr<std::atomic<bool>> cancelled_;
-        std::shared_ptr<CallbackList> callbacks_;
+        std::shared_ptr<ControlBlock> control_;
 
         friend class CancellationToken;
     };
@@ -59,54 +58,51 @@ namespace winsetup::application {
     public:
         CancellationToken() = default;
 
-        bool IsCancelled() const noexcept {
-            return cancelled_ && cancelled_->load(std::memory_order_acquire);
+        [[nodiscard]] bool IsCancelled() const noexcept {
+            return control_ && control_->cancelled.load(std::memory_order_acquire);
         }
 
         void ThrowIfCancelled() const {
-            if (IsCancelled()) {
+            if (IsCancelled()) [[unlikely]] {
                 throw std::runtime_error("Operation was cancelled");
             }
         }
 
         void Register(std::function<void()> callback) {
-            if (!callbacks_) return;
+            if (!control_) [[unlikely]] return;
 
             bool shouldExecute = false;
             {
-                std::lock_guard<std::mutex> lock(callbacks_->mutex);
+                std::lock_guard<std::mutex> lock(control_->mutex);
                 if (IsCancelled()) {
                     shouldExecute = true;
                 }
                 else {
-                    callbacks_->callbacks.push_back(std::move(callback));
+                    control_->callbacks.push_back(std::move(callback));
                 }
             }
 
-            if (shouldExecute && callback) {
+            if (shouldExecute && callback) [[unlikely]] {
                 callback();
             }
         }
 
-        explicit operator bool() const noexcept {
-            return cancelled_ != nullptr;
+        [[nodiscard]] explicit operator bool() const noexcept {
+            return control_ != nullptr;
         }
 
     private:
-        CancellationToken(
-            std::shared_ptr<std::atomic<bool>> cancelled,
-            std::shared_ptr<CancellationSource::CallbackList> callbacks
-        ) : cancelled_(cancelled), callbacks_(callbacks) {
+        explicit CancellationToken(std::shared_ptr<CancellationSource::ControlBlock> control)
+            : control_(std::move(control)) {
         }
 
-        std::shared_ptr<std::atomic<bool>> cancelled_;
-        std::shared_ptr<CancellationSource::CallbackList> callbacks_;
+        std::shared_ptr<CancellationSource::ControlBlock> control_;
 
         friend class CancellationSource;
     };
 
     inline CancellationToken CancellationSource::GetToken() const noexcept {
-        return CancellationToken(cancelled_, callbacks_);
+        return CancellationToken(control_);
     }
 
 }

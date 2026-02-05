@@ -6,6 +6,8 @@
   <Folder Name="/솔루션 항목/">
     <File Path=".gitignore" />
     <File Path="README.MD" />
+  </Folder>
+  <Folder Name="/솔루션 항목/scripts/">
     <File Path="scripts/build.bat" />
     <File Path="scripts/check_layer_isolation.ps1" />
     <File Path="scripts/clean.bat" />

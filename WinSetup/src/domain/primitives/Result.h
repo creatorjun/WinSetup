@@ -29,61 +29,94 @@ namespace winsetup::domain {
             return result;
         }
 
-        bool IsSuccess() const noexcept {
+        [[nodiscard]] constexpr bool IsSuccess() const noexcept {
             return std::holds_alternative<SuccessTag>(data_);
         }
 
-        bool IsFailure() const noexcept {
+        [[nodiscard]] constexpr bool IsFailure() const noexcept {
             return std::holds_alternative<E>(data_);
         }
 
         const E& GetError() const& {
-            if (!IsFailure()) {
+            if (!IsFailure()) [[unlikely]] {
                 throw std::logic_error("Result does not contain an error");
             }
             return std::get<E>(data_);
         }
 
         E& GetError()& {
-            if (!IsFailure()) {
+            if (!IsFailure()) [[unlikely]] {
                 throw std::logic_error("Result does not contain an error");
             }
             return std::get<E>(data_);
         }
 
         E&& GetError()&& {
-            if (!IsFailure()) {
+            if (!IsFailure()) [[unlikely]] {
                 throw std::logic_error("Result does not contain an error");
             }
             return std::move(std::get<E>(data_));
         }
 
         template<typename F>
-        Result Then(F&& func) const {
-            if (IsSuccess()) {
-                return func();
+        Result Then(F&& func) const& {
+            if (IsSuccess()) [[likely]] {
+                return std::invoke(std::forward<F>(func));
             }
-            return Failure(GetError());
+            return Failure(std::get<E>(data_));
         }
 
         template<typename F>
-        const Result& OnError(F&& func) const {
-            if (IsFailure()) {
-                func(GetError());
+        Result Then(F&& func)&& {
+            if (IsSuccess()) [[likely]] {
+                return std::invoke(std::forward<F>(func));
+            }
+            return Failure(std::move(std::get<E>(data_)));
+        }
+
+        template<typename F>
+        const Result& OnError(F&& func) const& {
+            if (IsFailure()) [[unlikely]] {
+                std::invoke(std::forward<F>(func), std::get<E>(data_));
             }
             return *this;
         }
 
         template<typename F>
-        auto MapError(F&& func) const -> Result<decltype(func(std::declval<E>()))> {
-            using NewError = decltype(func(std::declval<E>()));
-            if (IsFailure()) {
-                return Result<NewError>::Failure(func(GetError()));
+        Result& OnError(F&& func)& {
+            if (IsFailure()) [[unlikely]] {
+                std::invoke(std::forward<F>(func), std::get<E>(data_));
+            }
+            return *this;
+        }
+
+        template<typename F>
+        Result&& OnError(F&& func)&& {
+            if (IsFailure()) [[unlikely]] {
+                std::invoke(std::forward<F>(func), std::move(std::get<E>(data_)));
+            }
+            return std::move(*this);
+        }
+
+        template<typename F>
+        constexpr auto MapError(F&& func) const& -> Result<std::invoke_result_t<F, const E&>> {
+            using NewError = std::invoke_result_t<F, const E&>;
+            if (IsFailure()) [[unlikely]] {
+                return Result<NewError>::Failure(std::invoke(std::forward<F>(func), std::get<E>(data_)));
             }
             return Result<NewError>::Success();
         }
 
-        explicit operator bool() const noexcept {
+        template<typename F>
+        constexpr auto MapError(F&& func) && -> Result<std::invoke_result_t<F, E&&>> {
+            using NewError = std::invoke_result_t<F, E&&>;
+            if (IsFailure()) [[unlikely]] {
+                return Result<NewError>::Failure(std::invoke(std::forward<F>(func), std::move(std::get<E>(data_))));
+            }
+            return Result<NewError>::Success();
+        }
+
+        [[nodiscard]] explicit constexpr operator bool() const noexcept {
             return IsSuccess();
         }
 

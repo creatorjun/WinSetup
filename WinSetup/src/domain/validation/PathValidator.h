@@ -8,24 +8,46 @@
 
 namespace winsetup::domain {
 
+    enum class ValidationMode {
+        AllErrors,
+        FastFail
+    };
+
     class PathValidator {
     public:
         PathValidator() = default;
 
-        ValidationResult Validate(const std::wstring& path) const {
+        [[nodiscard]] ValidationResult Validate(
+            const std::wstring& path,
+            ValidationMode mode = ValidationMode::AllErrors
+        ) const {
             ValidationResult result = ValidationResult::Valid();
 
             for (const auto& rule : rules_) {
-                if (!rule->Validate(path)) {
+                if (!rule->Validate(path)) [[unlikely]] {
                     result.AddError(rule->GetErrorMessage());
+                    if (mode == ValidationMode::FastFail) [[unlikely]] {
+                        break;
+                    }
                 }
             }
 
             return result;
         }
 
+        [[nodiscard]] bool IsValid(const std::wstring& path) const noexcept {
+            for (const auto& rule : rules_) {
+                if (!rule->Validate(path)) [[unlikely]] {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         void AddRule(std::unique_ptr<IValidationRule> rule) {
-            rules_.push_back(std::move(rule));
+            if (rule) [[likely]] {
+                rules_.push_back(std::move(rule));
+            }
         }
 
         void RemoveRule(const std::string& ruleName) {
@@ -36,15 +58,15 @@ namespace winsetup::domain {
             rules_.erase(it, rules_.end());
         }
 
-        void ClearRules() {
+        void ClearRules() noexcept {
             rules_.clear();
         }
 
-        size_t RuleCount() const noexcept {
+        [[nodiscard]] size_t RuleCount() const noexcept {
             return rules_.size();
         }
 
-        bool HasRule(const std::string& ruleName) const noexcept {
+        [[nodiscard]] bool HasRule(const std::string& ruleName) const noexcept {
             return std::any_of(rules_.begin(), rules_.end(),
                 [&ruleName](const std::unique_ptr<IValidationRule>& rule) {
                     return rule->GetName() == ruleName;

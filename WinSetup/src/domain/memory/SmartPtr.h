@@ -2,19 +2,20 @@
 
 #include <utility>
 #include <type_traits>
+#include <algorithm>
 
 namespace winsetup::domain {
 
     template<typename T>
     struct DefaultDeleter {
-        void operator()(T* ptr) const {
+        constexpr void operator()(T* ptr) const noexcept {
             delete ptr;
         }
     };
 
     template<typename T>
     struct DefaultDeleter<T[]> {
-        void operator()(T* ptr) const {
+        constexpr void operator()(T* ptr) const noexcept {
             delete[] ptr;
         }
     };
@@ -24,12 +25,13 @@ namespace winsetup::domain {
     public:
         using element_type = std::remove_extent_t<T>;
         using pointer = element_type*;
+        using deleter_type = Deleter;
 
-        explicit SmartPtr(pointer ptr = nullptr) noexcept
+        constexpr explicit SmartPtr(pointer ptr = nullptr) noexcept
             : ptr_(ptr), deleter_() {
         }
 
-        SmartPtr(pointer ptr, Deleter deleter) noexcept
+        constexpr SmartPtr(pointer ptr, Deleter deleter) noexcept
             : ptr_(ptr), deleter_(std::move(deleter)) {
         }
 
@@ -40,94 +42,86 @@ namespace winsetup::domain {
         SmartPtr(const SmartPtr&) = delete;
         SmartPtr& operator=(const SmartPtr&) = delete;
 
-        SmartPtr(SmartPtr&& other) noexcept
-            : ptr_(other.ptr_), deleter_(std::move(other.deleter_)) {
-            other.ptr_ = nullptr;
+        constexpr SmartPtr(SmartPtr&& other) noexcept
+            : ptr_(std::exchange(other.ptr_, nullptr))
+            , deleter_(std::move(other.deleter_)) {
         }
 
-        SmartPtr& operator=(SmartPtr&& other) noexcept {
-            if (this != &other) {
+        constexpr SmartPtr& operator=(SmartPtr&& other) noexcept {
+            if (this != &other) [[likely]] {
                 Reset();
-                ptr_ = other.ptr_;
+                ptr_ = std::exchange(other.ptr_, nullptr);
                 deleter_ = std::move(other.deleter_);
-                other.ptr_ = nullptr;
             }
             return *this;
         }
 
-        pointer Get() const noexcept {
+        [[nodiscard]] constexpr pointer Get() const noexcept {
             return ptr_;
         }
 
-        pointer Release() noexcept {
-            pointer temp = ptr_;
-            ptr_ = nullptr;
-            return temp;
+        [[nodiscard]] constexpr pointer Release() noexcept {
+            return std::exchange(ptr_, nullptr);
         }
 
-        void Reset(pointer ptr = nullptr) {
-            if (ptr_) {
+        constexpr void Reset(pointer ptr = nullptr) {
+            if (ptr_) [[likely]] {
                 deleter_(ptr_);
             }
             ptr_ = ptr;
         }
 
         template<typename U = T>
-        std::enable_if_t<!std::is_array_v<U>, element_type&>
+        [[nodiscard]] constexpr std::enable_if_t<!std::is_array_v<U>, element_type&>
             operator*() const {
             return *ptr_;
         }
 
-        pointer operator->() const noexcept {
+        [[nodiscard]] constexpr pointer operator->() const noexcept {
             return ptr_;
         }
 
         template<typename U = T>
-        std::enable_if_t<std::is_array_v<U>, element_type&>
+        [[nodiscard]] constexpr std::enable_if_t<std::is_array_v<U>, element_type&>
             operator[](size_t index) const {
             return ptr_[index];
         }
 
-        explicit operator bool() const noexcept {
+        [[nodiscard]] explicit constexpr operator bool() const noexcept {
             return ptr_ != nullptr;
         }
 
-        void Swap(SmartPtr& other) noexcept {
-            pointer tempPtr = ptr_;
-            ptr_ = other.ptr_;
-            other.ptr_ = tempPtr;
-
-            Deleter tempDeleter = std::move(deleter_);
-            deleter_ = std::move(other.deleter_);
-            other.deleter_ = std::move(tempDeleter);
+        constexpr void Swap(SmartPtr& other) noexcept {
+            std::swap(ptr_, other.ptr_);
+            std::swap(deleter_, other.deleter_);
         }
 
-        Deleter& GetDeleter() noexcept {
+        [[nodiscard]] constexpr Deleter& GetDeleter() noexcept {
             return deleter_;
         }
 
-        const Deleter& GetDeleter() const noexcept {
+        [[nodiscard]] constexpr const Deleter& GetDeleter() const noexcept {
             return deleter_;
         }
 
     private:
         pointer ptr_;
-        Deleter deleter_;
+        [[no_unique_address]] Deleter deleter_;
     };
 
     template<typename T, typename Deleter>
-    void swap(SmartPtr<T, Deleter>& lhs, SmartPtr<T, Deleter>& rhs) noexcept {
+    constexpr void swap(SmartPtr<T, Deleter>& lhs, SmartPtr<T, Deleter>& rhs) noexcept {
         lhs.Swap(rhs);
     }
 
     template<typename T, typename... Args>
-    std::enable_if_t<!std::is_array_v<T>, SmartPtr<T>>
+    [[nodiscard]] constexpr std::enable_if_t<!std::is_array_v<T>, SmartPtr<T>>
         MakeSmartPtr(Args&&... args) {
         return SmartPtr<T>(new T(std::forward<Args>(args)...));
     }
 
     template<typename T>
-    std::enable_if_t<std::is_array_v<T>&& std::extent_v<T> == 0, SmartPtr<T>>
+    [[nodiscard]] constexpr std::enable_if_t<std::is_array_v<T>&& std::extent_v<T> == 0, SmartPtr<T>>
         MakeSmartPtr(size_t size) {
         using ElementType = std::remove_extent_t<T>;
         return SmartPtr<T>(new ElementType[size]());

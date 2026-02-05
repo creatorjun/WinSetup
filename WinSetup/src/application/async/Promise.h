@@ -20,13 +20,13 @@ namespace winsetup::application {
     public:
         Future() = default;
 
-        bool IsReady() const noexcept {
-            if (!state_) return false;
+        [[nodiscard]] bool IsReady() const noexcept {
+            if (!state_) [[unlikely]] return false;
             return state_->ready.load(std::memory_order_acquire);
         }
 
         void Wait() const {
-            if (!state_) return;
+            if (!state_) [[unlikely]] return;
             std::unique_lock<std::mutex> lock(state_->mutex);
             state_->cv.wait(lock, [this]() {
                 return state_->ready.load(std::memory_order_acquire);
@@ -34,23 +34,23 @@ namespace winsetup::application {
         }
 
         template<typename Rep, typename Period>
-        bool WaitFor(const std::chrono::duration<Rep, Period>& duration) const {
-            if (!state_) return false;
+        [[nodiscard]] bool WaitFor(const std::chrono::duration<Rep, Period>& duration) const {
+            if (!state_) [[unlikely]] return false;
             std::unique_lock<std::mutex> lock(state_->mutex);
             return state_->cv.wait_for(lock, duration, [this]() {
                 return state_->ready.load(std::memory_order_acquire);
                 });
         }
 
-        winsetup::domain::Expected<T> Get() const {
-            if (!state_) {
+        [[nodiscard]] winsetup::domain::Expected<T> Get() const {
+            if (!state_) [[unlikely]] {
                 return winsetup::domain::Expected<T>::Failure(
                     winsetup::domain::Error("Invalid future")
                 );
             }
             Wait();
             std::lock_guard<std::mutex> lock(state_->mutex);
-            if (!state_->result.has_value()) {
+            if (!state_->result.has_value()) [[unlikely]] {
                 return winsetup::domain::Expected<T>::Failure(
                     winsetup::domain::Error("Result not set")
                 );
@@ -59,28 +59,21 @@ namespace winsetup::application {
         }
 
         void Then(std::function<void(const winsetup::domain::Expected<T>&)> callback) {
-            if (!state_) return;
+            if (!state_) [[unlikely]] return;
 
-            bool execute = false;
-            std::optional<winsetup::domain::Expected<T>> result;
-            {
-                std::lock_guard<std::mutex> lock(state_->mutex);
-                if (state_->ready.load(std::memory_order_acquire)) {
-                    execute = true;
-                    result = state_->result;
-                }
-                else {
-                    state_->callbacks.push_back(std::move(callback));
-                    return;
+            std::lock_guard<std::mutex> lock(state_->mutex);
+            if (state_->ready.load(std::memory_order_acquire)) [[likely]] {
+                if (callback && state_->result.has_value()) {
+                    lock.~lock_guard();
+                    callback(state_->result.value());
                 }
             }
-
-            if (execute && callback && result.has_value()) {
-                callback(result.value());
+            else {
+                state_->callbacks.push_back(std::move(callback));
             }
         }
 
-        explicit operator bool() const noexcept {
+        [[nodiscard]] explicit operator bool() const noexcept {
             return state_ != nullptr;
         }
 
@@ -108,7 +101,7 @@ namespace winsetup::application {
         Promise() : state_(std::make_shared<typename Future<T>::SharedState>()) {
         }
 
-        Future<T> GetFuture() const {
+        [[nodiscard]] Future<T> GetFuture() const {
             return Future<T>(state_);
         }
 
@@ -118,7 +111,7 @@ namespace winsetup::application {
                 winsetup::domain::Expected<T>::Success(std::move(value));
             {
                 std::lock_guard<std::mutex> lock(state_->mutex);
-                if (state_->ready.load(std::memory_order_acquire)) {
+                if (state_->ready.load(std::memory_order_acquire)) [[unlikely]] {
                     return;
                 }
                 state_->result = result;
@@ -127,7 +120,7 @@ namespace winsetup::application {
             }
             state_->cv.notify_all();
             for (auto& callback : callbacks) {
-                if (callback) {
+                if (callback) [[likely]] {
                     callback(result);
                 }
             }
@@ -139,7 +132,7 @@ namespace winsetup::application {
                 winsetup::domain::Expected<T>::Failure(std::move(error));
             {
                 std::lock_guard<std::mutex> lock(state_->mutex);
-                if (state_->ready.load(std::memory_order_acquire)) {
+                if (state_->ready.load(std::memory_order_acquire)) [[unlikely]] {
                     return;
                 }
                 state_->result = result;
@@ -148,7 +141,7 @@ namespace winsetup::application {
             }
             state_->cv.notify_all();
             for (auto& callback : callbacks) {
-                if (callback) {
+                if (callback) [[likely]] {
                     callback(result);
                 }
             }
@@ -156,7 +149,7 @@ namespace winsetup::application {
 
         void SetException(std::exception_ptr exception) {
             try {
-                if (exception) {
+                if (exception) [[likely]] {
                     std::rethrow_exception(exception);
                 }
             }
@@ -168,7 +161,7 @@ namespace winsetup::application {
             }
         }
 
-        bool IsSet() const noexcept {
+        [[nodiscard]] bool IsSet() const noexcept {
             return state_->ready.load(std::memory_order_acquire);
         }
 
@@ -181,13 +174,13 @@ namespace winsetup::application {
     public:
         Future() = default;
 
-        bool IsReady() const noexcept {
-            if (!state_) return false;
+        [[nodiscard]] bool IsReady() const noexcept {
+            if (!state_) [[unlikely]] return false;
             return state_->ready.load(std::memory_order_acquire);
         }
 
         void Wait() const {
-            if (!state_) return;
+            if (!state_) [[unlikely]] return;
             std::unique_lock<std::mutex> lock(state_->mutex);
             state_->cv.wait(lock, [this]() {
                 return state_->ready.load(std::memory_order_acquire);
@@ -195,23 +188,23 @@ namespace winsetup::application {
         }
 
         template<typename Rep, typename Period>
-        bool WaitFor(const std::chrono::duration<Rep, Period>& duration) const {
-            if (!state_) return false;
+        [[nodiscard]] bool WaitFor(const std::chrono::duration<Rep, Period>& duration) const {
+            if (!state_) [[unlikely]] return false;
             std::unique_lock<std::mutex> lock(state_->mutex);
             return state_->cv.wait_for(lock, duration, [this]() {
                 return state_->ready.load(std::memory_order_acquire);
                 });
         }
 
-        winsetup::domain::Result<> Get() const {
-            if (!state_) {
+        [[nodiscard]] winsetup::domain::Result<> Get() const {
+            if (!state_) [[unlikely]] {
                 return winsetup::domain::Result<>::Failure(
                     winsetup::domain::Error("Invalid future")
                 );
             }
             Wait();
             std::lock_guard<std::mutex> lock(state_->mutex);
-            if (!state_->result.has_value()) {
+            if (!state_->result.has_value()) [[unlikely]] {
                 return winsetup::domain::Result<>::Failure(
                     winsetup::domain::Error("Result not set")
                 );
@@ -220,28 +213,21 @@ namespace winsetup::application {
         }
 
         void Then(std::function<void(const winsetup::domain::Result<>&)> callback) {
-            if (!state_) return;
+            if (!state_) [[unlikely]] return;
 
-            bool execute = false;
-            std::optional<winsetup::domain::Result<>> result;
-            {
-                std::lock_guard<std::mutex> lock(state_->mutex);
-                if (state_->ready.load(std::memory_order_acquire)) {
-                    execute = true;
-                    result = state_->result;
-                }
-                else {
-                    state_->callbacks.push_back(std::move(callback));
-                    return;
+            std::lock_guard<std::mutex> lock(state_->mutex);
+            if (state_->ready.load(std::memory_order_acquire)) [[likely]] {
+                if (callback && state_->result.has_value()) {
+                    lock.~lock_guard();
+                    callback(state_->result.value());
                 }
             }
-
-            if (execute && callback && result.has_value()) {
-                callback(result.value());
+            else {
+                state_->callbacks.push_back(std::move(callback));
             }
         }
 
-        explicit operator bool() const noexcept {
+        [[nodiscard]] explicit operator bool() const noexcept {
             return state_ != nullptr;
         }
 
@@ -269,7 +255,7 @@ namespace winsetup::application {
         Promise() : state_(std::make_shared<Future<void>::SharedState>()) {
         }
 
-        Future<void> GetFuture() const {
+        [[nodiscard]] Future<void> GetFuture() const {
             return Future<void>(state_);
         }
 
@@ -279,7 +265,7 @@ namespace winsetup::application {
                 winsetup::domain::Result<>::Success();
             {
                 std::lock_guard<std::mutex> lock(state_->mutex);
-                if (state_->ready.load(std::memory_order_acquire)) {
+                if (state_->ready.load(std::memory_order_acquire)) [[unlikely]] {
                     return;
                 }
                 state_->result = result;
@@ -288,7 +274,7 @@ namespace winsetup::application {
             }
             state_->cv.notify_all();
             for (auto& callback : callbacks) {
-                if (callback) {
+                if (callback) [[likely]] {
                     callback(result);
                 }
             }
@@ -300,7 +286,7 @@ namespace winsetup::application {
                 winsetup::domain::Result<>::Failure(std::move(error));
             {
                 std::lock_guard<std::mutex> lock(state_->mutex);
-                if (state_->ready.load(std::memory_order_acquire)) {
+                if (state_->ready.load(std::memory_order_acquire)) [[unlikely]] {
                     return;
                 }
                 state_->result = result;
@@ -309,7 +295,7 @@ namespace winsetup::application {
             }
             state_->cv.notify_all();
             for (auto& callback : callbacks) {
-                if (callback) {
+                if (callback) [[likely]] {
                     callback(result);
                 }
             }
@@ -317,7 +303,7 @@ namespace winsetup::application {
 
         void SetException(std::exception_ptr exception) {
             try {
-                if (exception) {
+                if (exception) [[likely]] {
                     std::rethrow_exception(exception);
                 }
             }
@@ -329,7 +315,7 @@ namespace winsetup::application {
             }
         }
 
-        bool IsSet() const noexcept {
+        [[nodiscard]] bool IsSet() const noexcept {
             return state_->ready.load(std::memory_order_acquire);
         }
 

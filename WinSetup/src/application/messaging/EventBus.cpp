@@ -22,7 +22,18 @@ namespace winsetup::application {
         sub.token = token;
         sub.handler = std::move(handler);
 
-        subscribers_[eventType].push_back(std::move(sub));
+        auto it = subscribers_.find(eventType);
+        if (it == subscribers_.end()) {
+            auto newList = std::make_shared<std::vector<Subscription>>();
+            newList->push_back(std::move(sub));
+            subscribers_[eventType] = newList;
+        }
+        else {
+            auto newList = std::make_shared<std::vector<Subscription>>(*it->second);
+            newList->push_back(std::move(sub));
+            it->second = newList;
+        }
+
         tokenToType_.insert({ token, eventType });
 
         return token;
@@ -32,25 +43,24 @@ namespace winsetup::application {
         std::type_index eventType,
         const void* event
     ) {
-        std::vector<std::function<void(const void*)>> handlers;
+        HandlerList handlers;
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
             auto it = subscribers_.find(eventType);
-            if (it != subscribers_.end()) {
-                handlers.reserve(it->second.size());
-                for (const auto& sub : it->second) {
-                    handlers.push_back(sub.handler);
-                }
+            if (it != subscribers_.end()) [[likely]] {
+                handlers = it->second;
             }
         }
 
-        for (const auto& handler : handlers) {
-            if (handler) {
-                try {
-                    handler(event);
-                }
-                catch (...) {
+        if (handlers) [[likely]] {
+            for (const auto& sub : *handlers) {
+                if (sub.handler) [[likely]] {
+                    try {
+                        sub.handler(event);
+                    }
+                    catch (...) {
+                    }
                 }
             }
         }
@@ -60,24 +70,27 @@ namespace winsetup::application {
         std::lock_guard<std::mutex> lock(mutex_);
 
         auto typeIt = tokenToType_.find(token);
-        if (typeIt == tokenToType_.end()) {
+        if (typeIt == tokenToType_.end()) [[unlikely]] {
             return;
         }
 
         auto eventType = typeIt->second;
         auto subsIt = subscribers_.find(eventType);
-        if (subsIt != subscribers_.end()) {
-            auto& subs = subsIt->second;
-            subs.erase(
-                std::remove_if(subs.begin(), subs.end(),
-                    [token](const Subscription& sub) {
-                        return sub.token == token;
-                    }),
-                subs.end()
-            );
+        if (subsIt != subscribers_.end()) [[likely]] {
+            auto newList = std::make_shared<std::vector<Subscription>>();
+            newList->reserve(subsIt->second->size());
 
-            if (subs.empty()) {
+            for (const auto& sub : *subsIt->second) {
+                if (sub.token != token) {
+                    newList->push_back(sub);
+                }
+            }
+
+            if (newList->empty()) {
                 subscribers_.erase(subsIt);
+            }
+            else {
+                subsIt->second = newList;
             }
         }
 
@@ -94,7 +107,7 @@ namespace winsetup::application {
         std::lock_guard<std::mutex> lock(mutex_);
         size_t count = 0;
         for (const auto& pair : subscribers_) {
-            count += pair.second.size();
+            count += pair.second->size();
         }
         return count;
     }

@@ -44,8 +44,11 @@ namespace winsetup::adapters {
         bool IsValidUtf16(std::wstring_view input) const noexcept override;
 
     private:
-        static constexpr DWORD GetCodePage(abstractions::TextEncoding encoding) noexcept;
+        static constexpr UINT GetCodePage(abstractions::TextEncoding encoding) noexcept;
         static constexpr DWORD GetConversionFlags(abstractions::TextEncoding encoding) noexcept;
+
+        template<typename StringView>
+        [[nodiscard]] domain::Expected<int> ValidateAndGetSize(StringView input) const noexcept;
 
         domain::Expected<std::wstring> MultiByteToWideImpl(
             std::string_view input,
