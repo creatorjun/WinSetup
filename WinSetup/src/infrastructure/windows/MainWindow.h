@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <string>
 #include <memory>
+#include "StatusTextWidget.h"
 
 namespace winsetup::infrastructure {
 
@@ -32,6 +33,9 @@ namespace winsetup::infrastructure {
 
         [[nodiscard]] int RunMessageLoop();
 
+        void SetStatusText(const std::wstring& text);
+        [[nodiscard]] std::wstring GetStatusText() const;
+
     private:
         static LRESULT CALLBACK WindowProc(
             HWND hwnd,
@@ -49,6 +53,8 @@ namespace winsetup::infrastructure {
 
         [[nodiscard]] static bool RegisterWindowClass(HINSTANCE hInstance);
         [[nodiscard]] bool LoadAndSetIcon();
+        void CreateChildWidgets();
+        void UpdateChildWidgetPositions();
 
         HWND hwnd_{ nullptr };
         HINSTANCE hInstance_{ nullptr };
@@ -57,7 +63,11 @@ namespace winsetup::infrastructure {
         int width_{ 640 };
         int height_{ 480 };
 
+        std::unique_ptr<StatusTextWidget> statusText_;
+
         static constexpr const wchar_t* CLASS_NAME = L"WinSetupMainWindow";
+        static constexpr int PADDING = 10;
+        static constexpr int WIDGET_SPACING = 10;
     };
 
 }

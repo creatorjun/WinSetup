@@ -233,6 +233,7 @@ validate_dependencies.bat</Command>
     <ClInclude Include="src\infrastructure\diagnostics\PerformanceMonitor.h" />
     <ClInclude Include="src\infrastructure\logging\WindowsLogger.h" />
     <ClInclude Include="src\infrastructure\windows\MainWindow.h" />
+    <ClInclude Include="src\infrastructure\windows\StatusTextWidget.h" />
     <ClInclude Include="src\resources\resource.h" />
   </ItemGroup>
   <ItemGroup>
@@ -260,6 +261,7 @@ validate_dependencies.bat</Command>
     <ClCompile Include="src\infrastructure\diagnostics\PerformanceMonitor.cpp" />
     <ClCompile Include="src\infrastructure\logging\WindowsLogger.cpp" />
     <ClCompile Include="src\infrastructure\windows\MainWindow.cpp" />
+    <ClCompile Include="src\infrastructure\windows\StatusTextWidget.cpp" />
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="tests\TestMain.cpp" />
   </ItemGroup>

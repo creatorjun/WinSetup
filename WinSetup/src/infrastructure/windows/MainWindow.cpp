@@ -62,7 +62,9 @@ namespace winsetup::infrastructure {
             return false;
         }
 
-        LoadAndSetIcon();
+        [[maybe_unused]] bool iconLoaded = LoadAndSetIcon();
+
+        CreateChildWidgets();
 
         return true;
     }
@@ -93,6 +95,19 @@ namespace winsetup::infrastructure {
             DispatchMessage(&msg);
         }
         return static_cast<int>(msg.wParam);
+    }
+
+    void MainWindow::SetStatusText(const std::wstring& text) {
+        if (statusText_) {
+            statusText_->SetText(text);
+        }
+    }
+
+    std::wstring MainWindow::GetStatusText() const {
+        if (statusText_) {
+            return statusText_->GetText();
+        }
+        return L"";
     }
 
     LRESULT CALLBACK MainWindow::WindowProc(
@@ -163,18 +178,13 @@ namespace winsetup::infrastructure {
         FillRect(hdc, &clientRect, hBrush);
         DeleteObject(hBrush);
 
-        SetBkMode(hdc, TRANSPARENT);
-        SetTextColor(hdc, RGB(0, 0, 0));
-
-        const wchar_t* text = L"WinSetup";
-        DrawTextW(hdc, text, -1, &clientRect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
         EndPaint(hwnd_, &ps);
     }
 
     void MainWindow::OnSize(UINT width, UINT height) {
         width_ = width;
         height_ = height;
+        UpdateChildWidgetPositions();
     }
 
     bool MainWindow::RegisterWindowClass(HINSTANCE hInstance) {
@@ -258,6 +268,30 @@ namespace winsetup::infrastructure {
         }
 
         return hIcon_ != nullptr || hIconSmall_ != nullptr;
+    }
+
+    void MainWindow::CreateChildWidgets() {
+        if (!hwnd_ || !hInstance_) {
+            return;
+        }
+
+        statusText_ = std::make_unique<StatusTextWidget>();
+        if (!statusText_->Create(hwnd_, hInstance_, L"시스템 분석중입니다.")) {
+            statusText_.reset();
+        }
+
+        UpdateChildWidgetPositions();
+    }
+
+    void MainWindow::UpdateChildWidgetPositions() {
+        if (!statusText_) {
+            return;
+        }
+
+        const int contentWidth = width_ - (PADDING * 2);
+        const int contentHeight = height_ - (PADDING * 2);
+
+        statusText_->UpdatePosition(contentWidth, contentHeight, PADDING, PADDING);
     }
 
 }
