@@ -3,10 +3,10 @@
 #include <memory>
 #include <optional>
 #include <Windows.h>
-#include "../../../../abstractions/storage/IVolumeService.h"
-#include "../../../../abstractions/platform/ITextEncoder.h"
-#include "../../../../abstractions/logging/ILogger.h"
-#include "../../../../abstractions/logging/LogLevel.h" 
+#include <abstractions/logging/ILogger.h>
+#include <abstractions/logging/LogLevel.h>
+#include <abstractions/platform/ITextEncoder.h>
+#include <abstractions/storage/IVolumeService.h>
 
 namespace winsetup::adapters {
 

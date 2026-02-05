@@ -1,13 +1,13 @@
 #pragma once
 
+#include <string>
 #include <memory>
 #include <vector>
-#include <string>
-#include "../../../../abstractions/storage/IStorageScanner.h"
-#include "../../../../abstractions/storage/IVolumeService.h"
-#include "../../../../abstractions/platform/ITextEncoder.h"
-#include "../../../../abstractions/logging/ILogger.h"
-#include "../../../../abstractions/logging/LogLevel.h" 
+#include <abstractions/logging/ILogger.h>
+#include <abstractions/logging/LogLevel.h>
+#include <abstractions/platform/ITextEncoder.h>
+#include <abstractions/storage/IVolumeService.h>
+#include <abstractions/storage/IStorageScanner.h>
 
 namespace winsetup::adapters {
 
