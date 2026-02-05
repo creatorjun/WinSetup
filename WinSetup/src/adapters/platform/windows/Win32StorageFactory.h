@@ -7,13 +7,15 @@
 #include "../../../abstractions/storage/IStorageScanner.h"
 #include "../../../abstractions/platform/ISystemInfoService.h"
 #include "../../../abstractions/platform/ITextEncoder.h"
+#include "../../../abstractions/logging/ILogger.h"
 
 namespace winsetup::adapters {
 
     class Win32StorageFactory {
     public:
         explicit Win32StorageFactory(
-            std::shared_ptr<abstractions::ITextEncoder> textEncoder
+            std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+            std::shared_ptr<abstractions::ILogger> logger
         );
 
         [[nodiscard]] std::shared_ptr<abstractions::IDiskService>
@@ -35,6 +37,7 @@ namespace winsetup::adapters {
 
     private:
         std::shared_ptr<abstractions::ITextEncoder> textEncoder_;
+        std::shared_ptr<abstractions::ILogger> logger_;
     };
 
 }

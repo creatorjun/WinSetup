@@ -8,14 +8,16 @@
 namespace winsetup::adapters {
 
     Win32StorageFactory::Win32StorageFactory(
-        std::shared_ptr<abstractions::ITextEncoder> textEncoder
+        std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+        std::shared_ptr<abstractions::ILogger> logger
     )
-        : textEncoder_(std::move(textEncoder)) {
+        : textEncoder_(std::move(textEncoder))
+        , logger_(std::move(logger)) {
     }
 
     std::shared_ptr<abstractions::IDiskService>
         Win32StorageFactory::CreateDiskService() const {
-        return std::make_shared<Win32DiskService>(textEncoder_);
+        return std::make_shared<Win32DiskService>(textEncoder_, logger_);
     }
 
     std::shared_ptr<abstractions::IVolumeService>

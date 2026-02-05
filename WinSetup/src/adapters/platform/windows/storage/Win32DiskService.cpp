@@ -8,13 +8,32 @@
 namespace winsetup::adapters {
 
     Win32DiskService::Win32DiskService(
-        std::shared_ptr<abstractions::ITextEncoder> textEncoder
+        std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+        std::shared_ptr<abstractions::ILogger> logger
     )
-        : textEncoder_(std::move(textEncoder)) {
+        : textEncoder_(std::move(textEncoder))
+        , logger_(std::move(logger)) {
+
+        if (logger_) {
+            logger_->Log(
+                abstractions::LogLevel::Info,
+                L"Win32DiskService initialized",
+                L"DiskService"
+            );
+        }
     }
 
     domain::Expected<std::vector<domain::DiskInfo>>
         Win32DiskService::EnumeratePhysicalDisks() const noexcept {
+
+        if (logger_) {
+            logger_->Log(
+                abstractions::LogLevel::Info,
+                L"Starting physical disk enumeration",
+                L"DiskService"
+            );
+        }
+
         std::vector<domain::DiskInfo> disks;
         disks.reserve(16);
 
@@ -28,8 +47,24 @@ namespace winsetup::adapters {
         }
 
         if (disks.empty()) [[unlikely]] {
+            if (logger_) {
+                logger_->Log(
+                    abstractions::LogLevel::Error,
+                    L"No physical disks found in system",
+                    L"DiskService"
+                );
+            }
             return domain::Expected<std::vector<domain::DiskInfo>>::Failure(
                 domain::Error("No physical disks found")
+            );
+        }
+
+        if (logger_) {
+            std::wstring message = L"Found " + std::to_wstring(disks.size()) + L" physical disk(s)";
+            logger_->Log(
+                abstractions::LogLevel::Info,
+                message,
+                L"DiskService"
             );
         }
 
@@ -40,6 +75,16 @@ namespace winsetup::adapters {
 
     domain::Expected<domain::DiskInfo>
         Win32DiskService::GetDiskInfo(domain::PhysicalDiskId diskId) const noexcept {
+
+        if (logger_) {
+            std::wstring message = L"Querying disk info for PhysicalDrive" + std::to_wstring(diskId.index);
+            logger_->Log(
+                abstractions::LogLevel::Debug,
+                message,
+                L"DiskService"
+            );
+        }
+
         auto handleResult = OpenDiskHandle(diskId, GENERIC_READ);
         if (handleResult.HasError()) [[unlikely]] {
             return domain::Expected<domain::DiskInfo>::Failure(
@@ -84,11 +129,34 @@ namespace winsetup::adapters {
         }
 
         closeGuard();
+
+        if (logger_) {
+            std::wstring message = L"PhysicalDrive" + std::to_wstring(diskId.index) +
+                L": " + diskInfo.GetModel() +
+                L" (" + std::to_wstring(diskInfo.GetSizeInGB()) + L" GB, " +
+                domain::BusTypeToString(diskInfo.GetBusType()) + L")";
+            logger_->Log(
+                abstractions::LogLevel::Debug,
+                message,
+                L"DiskService"
+            );
+        }
+
         return domain::Expected<domain::DiskInfo>::Success(std::move(diskInfo));
     }
 
     domain::Expected<std::vector<domain::PartitionInfo>>
         Win32DiskService::GetPartitions(domain::PhysicalDiskId diskId) const noexcept {
+
+        if (logger_) {
+            std::wstring message = L"Querying partitions for PhysicalDrive" + std::to_wstring(diskId.index);
+            logger_->Log(
+                abstractions::LogLevel::Debug,
+                message,
+                L"DiskService"
+            );
+        }
+
         auto handleResult = OpenDiskHandle(diskId, GENERIC_READ);
         if (handleResult.HasError()) [[unlikely]] {
             return domain::Expected<std::vector<domain::PartitionInfo>>::Failure(
@@ -114,6 +182,13 @@ namespace winsetup::adapters {
 
         if (!success) [[unlikely]] {
             CloseHandle(diskHandle);
+            if (logger_) {
+                logger_->Log(
+                    abstractions::LogLevel::Error,
+                    L"Failed to get drive layout",
+                    L"DiskService"
+                );
+            }
             return domain::Expected<std::vector<domain::PartitionInfo>>::Failure(
                 CreateErrorFromLastError("IOCTL_DISK_GET_DRIVE_LAYOUT_EX")
             );
@@ -142,14 +217,41 @@ namespace winsetup::adapters {
         }
 
         CloseHandle(diskHandle);
+
+        if (logger_) {
+            std::wstring message = L"Found " + std::to_wstring(partitions.size()) +
+                L" partition(s) on PhysicalDrive" + std::to_wstring(diskId.index);
+            logger_->Log(
+                abstractions::LogLevel::Debug,
+                message,
+                L"DiskService"
+            );
+        }
+
         return domain::Expected<std::vector<domain::PartitionInfo>>::Success(
             std::move(partitions)
         );
     }
 
     domain::Result<> Win32DiskService::CleanDisk(domain::PhysicalDiskId diskId) noexcept {
+        if (logger_) {
+            std::wstring message = L"[CRITICAL] Cleaning PhysicalDrive" + std::to_wstring(diskId.index);
+            logger_->Log(
+                abstractions::LogLevel::Warning,
+                message,
+                L"DiskService"
+            );
+        }
+
         auto handleResult = OpenDiskHandle(diskId, GENERIC_READ | GENERIC_WRITE);
         if (handleResult.HasError()) [[unlikely]] {
+            if (logger_) {
+                logger_->Log(
+                    abstractions::LogLevel::Error,
+                    L"Failed to open disk for cleaning",
+                    L"DiskService"
+                );
+            }
             return domain::Result<>::Failure(std::move(handleResult).GetError());
         }
 
@@ -173,8 +275,24 @@ namespace winsetup::adapters {
         CloseHandle(diskHandle);
 
         if (!success) [[unlikely]] {
+            if (logger_) {
+                logger_->Log(
+                    abstractions::LogLevel::Error,
+                    L"Disk clean operation failed",
+                    L"DiskService"
+                );
+            }
             return domain::Result<>::Failure(
                 CreateErrorFromLastError("IOCTL_DISK_CREATE_DISK")
+            );
+        }
+
+        if (logger_) {
+            std::wstring message = L"Successfully cleaned PhysicalDrive" + std::to_wstring(diskId.index);
+            logger_->Log(
+                abstractions::LogLevel::Info,
+                message,
+                L"DiskService"
             );
         }
 
@@ -185,8 +303,26 @@ namespace winsetup::adapters {
         domain::PhysicalDiskId diskId,
         domain::PartitionStyle style
     ) noexcept {
+        if (logger_) {
+            std::wstring styleStr = (style == domain::PartitionStyle::GPT) ? L"GPT" : L"MBR";
+            std::wstring message = L"[CRITICAL] Initializing PhysicalDrive" +
+                std::to_wstring(diskId.index) + L" as " + styleStr;
+            logger_->Log(
+                abstractions::LogLevel::Warning,
+                message,
+                L"DiskService"
+            );
+        }
+
         auto handleResult = OpenDiskHandle(diskId, GENERIC_READ | GENERIC_WRITE);
         if (handleResult.HasError()) [[unlikely]] {
+            if (logger_) {
+                logger_->Log(
+                    abstractions::LogLevel::Error,
+                    L"Failed to open disk for initialization",
+                    L"DiskService"
+                );
+            }
             return domain::Result<>::Failure(std::move(handleResult).GetError());
         }
 
@@ -223,8 +359,24 @@ namespace winsetup::adapters {
         CloseHandle(diskHandle);
 
         if (!success) [[unlikely]] {
+            if (logger_) {
+                logger_->Log(
+                    abstractions::LogLevel::Error,
+                    L"Disk initialization failed",
+                    L"DiskService"
+                );
+            }
             return domain::Result<>::Failure(
                 CreateErrorFromLastError("IOCTL_DISK_CREATE_DISK")
+            );
+        }
+
+        if (logger_) {
+            std::wstring message = L"Successfully initialized PhysicalDrive" + std::to_wstring(diskId.index);
+            logger_->Log(
+                abstractions::LogLevel::Info,
+                message,
+                L"DiskService"
             );
         }
 
@@ -234,6 +386,15 @@ namespace winsetup::adapters {
     domain::Result<> Win32DiskService::SetDiskOnline(
         domain::PhysicalDiskId diskId
     ) noexcept {
+        if (logger_) {
+            std::wstring message = L"Setting PhysicalDrive" + std::to_wstring(diskId.index) + L" online";
+            logger_->Log(
+                abstractions::LogLevel::Info,
+                message,
+                L"DiskService"
+            );
+        }
+
         auto handleResult = OpenDiskHandle(diskId, GENERIC_READ | GENERIC_WRITE);
         if (handleResult.HasError()) [[unlikely]] {
             return domain::Result<>::Failure(std::move(handleResult).GetError());
@@ -262,8 +423,23 @@ namespace winsetup::adapters {
         CloseHandle(diskHandle);
 
         if (!success) [[unlikely]] {
+            if (logger_) {
+                logger_->Log(
+                    abstractions::LogLevel::Error,
+                    L"Failed to set disk online",
+                    L"DiskService"
+                );
+            }
             return domain::Result<>::Failure(
                 CreateErrorFromLastError("IOCTL_DISK_SET_DISK_ATTRIBUTES")
+            );
+        }
+
+        if (logger_) {
+            logger_->Log(
+                abstractions::LogLevel::Info,
+                L"Disk successfully set online",
+                L"DiskService"
             );
         }
 
@@ -273,6 +449,15 @@ namespace winsetup::adapters {
     domain::Result<> Win32DiskService::SetDiskOffline(
         domain::PhysicalDiskId diskId
     ) noexcept {
+        if (logger_) {
+            std::wstring message = L"Setting PhysicalDrive" + std::to_wstring(diskId.index) + L" offline";
+            logger_->Log(
+                abstractions::LogLevel::Info,
+                message,
+                L"DiskService"
+            );
+        }
+
         auto handleResult = OpenDiskHandle(diskId, GENERIC_READ | GENERIC_WRITE);
         if (handleResult.HasError()) [[unlikely]] {
             return domain::Result<>::Failure(std::move(handleResult).GetError());
@@ -301,8 +486,23 @@ namespace winsetup::adapters {
         CloseHandle(diskHandle);
 
         if (!success) [[unlikely]] {
+            if (logger_) {
+                logger_->Log(
+                    abstractions::LogLevel::Error,
+                    L"Failed to set disk offline",
+                    L"DiskService"
+                );
+            }
             return domain::Result<>::Failure(
                 CreateErrorFromLastError("IOCTL_DISK_SET_DISK_ATTRIBUTES")
+            );
+        }
+
+        if (logger_) {
+            logger_->Log(
+                abstractions::LogLevel::Info,
+                L"Disk successfully set offline",
+                L"DiskService"
             );
         }
 
@@ -364,6 +564,14 @@ namespace winsetup::adapters {
         );
 
         if (handle == INVALID_HANDLE_VALUE) [[unlikely]] {
+            if (logger_) {
+                std::wstring message = L"Failed to open " + diskPath;
+                logger_->Log(
+                    abstractions::LogLevel::Error,
+                    message,
+                    L"DiskService"
+                );
+            }
             return domain::Expected<HANDLE>::Failure(
                 CreateErrorFromLastError("CreateFileW")
             );
@@ -529,9 +737,10 @@ namespace winsetup::adapters {
     }
 
     std::unique_ptr<abstractions::IDiskService> CreateDiskService(
-        std::shared_ptr<abstractions::ITextEncoder> textEncoder
+        std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+        std::shared_ptr<abstractions::ILogger> logger
     ) {
-        return std::make_unique<Win32DiskService>(std::move(textEncoder));
+        return std::make_unique<Win32DiskService>(std::move(textEncoder), std::move(logger));
     }
 
 }

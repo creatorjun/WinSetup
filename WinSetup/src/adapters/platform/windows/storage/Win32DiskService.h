@@ -3,6 +3,7 @@
 #include <memory>
 #include "../../../../abstractions/storage/IDiskService.h"
 #include "../../../../abstractions/platform/ITextEncoder.h"
+#include "../../../../abstractions/logging/ILogger.h"
 #include <Windows.h>
 
 namespace winsetup::adapters {
@@ -10,7 +11,8 @@ namespace winsetup::adapters {
     class Win32DiskService : public abstractions::IDiskService {
     public:
         explicit Win32DiskService(
-            std::shared_ptr<abstractions::ITextEncoder> textEncoder
+            std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+            std::shared_ptr<abstractions::ILogger> logger
         );
         ~Win32DiskService() override = default;
 
@@ -66,10 +68,12 @@ namespace winsetup::adapters {
             CreateErrorFromLastError(std::string_view operation) const noexcept;
 
         std::shared_ptr<abstractions::ITextEncoder> textEncoder_;
+        std::shared_ptr<abstractions::ILogger> logger_;
     };
 
     std::unique_ptr<abstractions::IDiskService> CreateDiskService(
-        std::shared_ptr<abstractions::ITextEncoder> textEncoder
+        std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+        std::shared_ptr<abstractions::ILogger> logger
     );
 
 }
