@@ -209,6 +209,45 @@
     <ClInclude Include="src\application\async\CancellationToken.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="src\domain\entities\DiskInfo.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\entities\VolumeInfo.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\entities\PartitionInfo.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\storage\IDiskService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\storage\IVolumeService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\storage\IPartitionService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\storage\IStorageScanner.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\windows\storage\Win32DiskService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\windows\storage\Win32VolumeService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\windows\storage\Win32PartitionService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\windows\storage\Win32StorageScanner.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\DiskAnalyzer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\windows\Win32StorageFactory.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\adapters\platform\windows\encoding\Win32TextEncoder.cpp">
@@ -263,6 +302,27 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\application\async\CancellationToken.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\windows\storage\Win32DiskService.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\windows\storage\Win32VolumeService.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\windows\storage\Win32PartitionService.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\windows\storage\Win32StorageScanner.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\DiskAnalyzer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="tests\TestMain.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\windows\Win32StorageFactory.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
