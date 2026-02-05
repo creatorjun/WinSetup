@@ -1,8 +1,6 @@
 #include "Win32PartitionService.h"
 #include <winioctl.h>
 #include <ntdddisk.h>
-#include "../../../../abstractions/logging/ILogger.h"
-#include "../../../../infrastructure/composition/ServiceLocator.h"
 
 #ifndef PARTITION_BASIC_DATA_GUID
 static const GUID PARTITION_BASIC_DATA_GUID =
@@ -18,7 +16,7 @@ namespace winsetup::adapters {
         : textEncoder_(std::move(textEncoder))
         , logger_(std::move(logger)) {
         if (logger_) {
-            logger_->Info(L"Win32PartitionService initialized");
+            logger_->Log(domain::LogLevel::Info, L"Win32PartitionService initialized");
         }
     }
 
@@ -28,14 +26,20 @@ namespace winsetup::adapters {
             const abstractions::PartitionLayout& layout
         ) noexcept {
         if (logger_) {
-            logger_->Info(L"Creating partition on disk " + std::to_wstring(diskId.index) +
-                L" with size " + std::to_wstring(layout.sizeInBytes / (1024 * 1024)) + L" MB");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Creating partition on disk " + std::to_wstring(diskId.index) +
+                L" with size " + std::to_wstring(layout.sizeInBytes / (1024 * 1024)) + L" MB"
+            );
         }
 
         auto handleResult = OpenDiskHandle(diskId, GENERIC_READ | GENERIC_WRITE);
         if (handleResult.HasError()) [[unlikely]] {
             if (logger_) {
-                logger_->Error(L"Failed to open disk handle for disk " + std::to_wstring(diskId.index));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Failed to open disk handle for disk " + std::to_wstring(diskId.index)
+                );
             }
             return domain::Expected<domain::PartitionInfo>::Failure(
                 std::move(handleResult).GetError()
@@ -45,7 +49,10 @@ namespace winsetup::adapters {
         HANDLE diskHandle = handleResult.Value();
 
         if (logger_) {
-            logger_->Debug(L"Retrieving current partition layout for disk " + std::to_wstring(diskId.index));
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Retrieving current partition layout for disk " + std::to_wstring(diskId.index)
+            );
         }
 
         DRIVE_LAYOUT_INFORMATION_EX currentLayout{};
@@ -65,7 +72,10 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed with error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed with error " + std::to_wstring(errorCode)
+                );
             }
             CloseHandle(diskHandle);
             return domain::Expected<domain::PartitionInfo>::Failure(
@@ -74,8 +84,11 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Debug(L"Current partition count: " + std::to_wstring(currentLayout.PartitionCount) +
-                L", Style: " + (currentLayout.PartitionStyle == PARTITION_STYLE_GPT ? L"GPT" : L"MBR"));
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Current partition count: " + std::to_wstring(currentLayout.PartitionCount) +
+                L", Style: " + (currentLayout.PartitionStyle == PARTITION_STYLE_GPT ? L"GPT" : L"MBR")
+            );
         }
 
         DRIVE_LAYOUT_INFORMATION_EX newLayout = currentLayout;
@@ -93,19 +106,28 @@ namespace winsetup::adapters {
             newPartition.Gpt.PartitionType = PARTITION_BASIC_DATA_GUID;
             wcscpy_s(newPartition.Gpt.Name, layout.label.c_str());
             if (logger_) {
-                logger_->Debug(L"Creating GPT partition with label: " + layout.label);
+                logger_->Log(
+                    domain::LogLevel::Debug,
+                    L"Creating GPT partition with label: " + layout.label
+                );
             }
         }
         else {
             newPartition.Mbr.PartitionType = PARTITION_IFS;
             newPartition.Mbr.BootIndicator = layout.isBootable;
             if (logger_) {
-                logger_->Debug(L"Creating MBR partition, bootable: " + std::wstring(layout.isBootable ? L"Yes" : L"No"));
+                logger_->Log(
+                    domain::LogLevel::Debug,
+                    L"Creating MBR partition, bootable: " + std::wstring(layout.isBootable ? L"Yes" : L"No")
+                );
             }
         }
 
         if (logger_) {
-            logger_->Debug(L"Applying new partition layout to disk " + std::to_wstring(diskId.index));
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Applying new partition layout to disk " + std::to_wstring(diskId.index)
+            );
         }
 
         success = DeviceIoControl(
@@ -124,7 +146,10 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"IOCTL_DISK_SET_DRIVE_LAYOUT_EX failed with error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"IOCTL_DISK_SET_DRIVE_LAYOUT_EX failed with error " + std::to_wstring(errorCode)
+                );
             }
             return domain::Expected<domain::PartitionInfo>::Failure(
                 CreateErrorFromLastError("IOCTL_DISK_SET_DRIVE_LAYOUT_EX")
@@ -142,8 +167,11 @@ namespace winsetup::adapters {
         partInfo.SetBootable(layout.isBootable);
 
         if (logger_) {
-            logger_->Info(L"Partition created successfully: Disk " + std::to_wstring(diskId.index) +
-                L", Partition " + std::to_wstring(newLayout.PartitionCount));
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Partition created successfully: Disk " + std::to_wstring(diskId.index) +
+                L", Partition " + std::to_wstring(newLayout.PartitionCount)
+            );
         }
 
         return domain::Expected<domain::PartitionInfo>::Success(std::move(partInfo));
@@ -153,8 +181,11 @@ namespace winsetup::adapters {
         domain::PartitionId partitionId
     ) noexcept {
         if (logger_) {
-            logger_->Info(L"Deleting partition: Disk " + std::to_wstring(partitionId.diskIndex) +
-                L", Partition " + std::to_wstring(partitionId.partitionNumber));
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Deleting partition: Disk " + std::to_wstring(partitionId.diskIndex) +
+                L", Partition " + std::to_wstring(partitionId.partitionNumber)
+            );
         }
 
         domain::PhysicalDiskId diskId{ partitionId.diskIndex };
@@ -162,7 +193,10 @@ namespace winsetup::adapters {
 
         if (handleResult.HasError()) [[unlikely]] {
             if (logger_) {
-                logger_->Error(L"Failed to open disk handle for partition deletion");
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Failed to open disk handle for partition deletion"
+                );
             }
             return domain::Result<>::Failure(std::move(handleResult).GetError());
         }
@@ -170,7 +204,10 @@ namespace winsetup::adapters {
         HANDLE diskHandle = handleResult.Value();
 
         if (logger_) {
-            logger_->Debug(L"Retrieving partition layout for deletion");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Retrieving partition layout for deletion"
+            );
         }
 
         DRIVE_LAYOUT_INFORMATION_EX layout{};
@@ -190,7 +227,10 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed with error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed with error " + std::to_wstring(errorCode)
+                );
             }
             CloseHandle(diskHandle);
             return domain::Result<>::Failure(
@@ -205,7 +245,10 @@ namespace winsetup::adapters {
                 layout.PartitionEntry[i].PartitionLength.QuadPart = 0;
                 found = true;
                 if (logger_) {
-                    logger_->Debug(L"Target partition found at index " + std::to_wstring(i));
+                    logger_->Log(
+                        domain::LogLevel::Debug,
+                        L"Target partition found at index " + std::to_wstring(i)
+                    );
                 }
                 break;
             }
@@ -213,7 +256,10 @@ namespace winsetup::adapters {
 
         if (!found) [[unlikely]] {
             if (logger_) {
-                logger_->Warning(L"Partition " + std::to_wstring(partitionId.partitionNumber) + L" not found on disk");
+                logger_->Log(
+                    domain::LogLevel::Warning,
+                    L"Partition " + std::to_wstring(partitionId.partitionNumber) + L" not found on disk"
+                );
             }
             CloseHandle(diskHandle);
             return domain::Result<>::Failure(
@@ -222,7 +268,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Debug(L"Applying partition deletion to disk");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Applying partition deletion to disk"
+            );
         }
 
         success = DeviceIoControl(
@@ -241,7 +290,10 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"Failed to apply partition deletion, error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Failed to apply partition deletion, error " + std::to_wstring(errorCode)
+                );
             }
             return domain::Result<>::Failure(
                 CreateErrorFromLastError("IOCTL_DISK_SET_DRIVE_LAYOUT_EX")
@@ -249,7 +301,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Info(L"Partition deleted successfully");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Partition deleted successfully"
+            );
         }
 
         return domain::Result<>::Success();
@@ -263,24 +318,33 @@ namespace winsetup::adapters {
     ) noexcept {
         const wchar_t* fsName = GetFileSystemName(fileSystem);
         if (logger_) {
-            logger_->Info(L"Formatting partition " + std::to_wstring(partitionId.partitionNumber) +
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Formatting partition " + std::to_wstring(partitionId.partitionNumber) +
                 L" on disk " + std::to_wstring(partitionId.diskIndex) +
                 L" as " + std::wstring(fsName) +
                 L", label: " + label +
-                L", quick: " + std::wstring(quickFormat ? L"Yes" : L"No"));
+                L", quick: " + std::wstring(quickFormat ? L"Yes" : L"No")
+            );
         }
 
         auto pathResult = GetPartitionPath(partitionId);
         if (pathResult.HasError()) [[unlikely]] {
             if (logger_) {
-                logger_->Error(L"Failed to get partition path");
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Failed to get partition path"
+                );
             }
             return domain::Result<>::Failure(std::move(pathResult).GetError());
         }
 
         std::wstring partitionPath = std::move(pathResult).Value();
         if (logger_) {
-            logger_->Debug(L"Partition path: " + partitionPath);
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Partition path: " + partitionPath
+            );
         }
 
         HANDLE volumeHandle = CreateFileW(
@@ -296,7 +360,10 @@ namespace winsetup::adapters {
         if (volumeHandle == INVALID_HANDLE_VALUE) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"Failed to open volume handle, error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Failed to open volume handle, error " + std::to_wstring(errorCode)
+                );
             }
             return domain::Result<>::Failure(
                 CreateErrorFromLastError("CreateFileW")
@@ -304,7 +371,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Debug(L"Locking volume for format operation");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Locking volume for format operation"
+            );
         }
 
         DWORD bytesReturned = 0;
@@ -322,7 +392,10 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"FSCTL_LOCK_VOLUME failed with error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"FSCTL_LOCK_VOLUME failed with error " + std::to_wstring(errorCode)
+                );
             }
             CloseHandle(volumeHandle);
             return domain::Result<>::Failure(
@@ -333,7 +406,10 @@ namespace winsetup::adapters {
         CloseHandle(volumeHandle);
 
         if (logger_) {
-            logger_->Info(L"Volume locked successfully, format operation ready");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Volume locked successfully, format operation ready"
+            );
         }
 
         return domain::Result<>::Success();
@@ -343,8 +419,11 @@ namespace winsetup::adapters {
         domain::PartitionId partitionId
     ) noexcept {
         if (logger_) {
-            logger_->Info(L"Setting partition " + std::to_wstring(partitionId.partitionNumber) +
-                L" on disk " + std::to_wstring(partitionId.diskIndex) + L" as active");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Setting partition " + std::to_wstring(partitionId.partitionNumber) +
+                L" on disk " + std::to_wstring(partitionId.diskIndex) + L" as active"
+            );
         }
 
         domain::PhysicalDiskId diskId{ partitionId.diskIndex };
@@ -352,7 +431,10 @@ namespace winsetup::adapters {
 
         if (handleResult.HasError()) [[unlikely]] {
             if (logger_) {
-                logger_->Error(L"Failed to open disk handle for setting active partition");
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Failed to open disk handle for setting active partition"
+                );
             }
             return domain::Result<>::Failure(std::move(handleResult).GetError());
         }
@@ -360,7 +442,10 @@ namespace winsetup::adapters {
         HANDLE diskHandle = handleResult.Value();
 
         if (logger_) {
-            logger_->Debug(L"Retrieving current partition layout");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Retrieving current partition layout"
+            );
         }
 
         DRIVE_LAYOUT_INFORMATION_EX layout{};
@@ -380,7 +465,10 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed with error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed with error " + std::to_wstring(errorCode)
+                );
             }
             CloseHandle(diskHandle);
             return domain::Result<>::Failure(
@@ -390,7 +478,10 @@ namespace winsetup::adapters {
 
         if (layout.PartitionStyle == PARTITION_STYLE_GPT) {
             if (logger_) {
-                logger_->Warning(L"Cannot set active partition on GPT disk (boot flag not applicable)");
+                logger_->Log(
+                    domain::LogLevel::Warning,
+                    L"Cannot set active partition on GPT disk (boot flag not applicable)"
+                );
             }
         }
 
@@ -399,7 +490,10 @@ namespace winsetup::adapters {
                 if (layout.PartitionStyle == PARTITION_STYLE_MBR) {
                     layout.PartitionEntry[i].Mbr.BootIndicator = TRUE;
                     if (logger_) {
-                        logger_->Debug(L"Setting boot indicator for partition " + std::to_wstring(i));
+                        logger_->Log(
+                            domain::LogLevel::Debug,
+                            L"Setting boot indicator for partition " + std::to_wstring(i)
+                        );
                     }
                 }
                 layout.PartitionEntry[i].RewritePartition = TRUE;
@@ -412,7 +506,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Debug(L"Applying active partition changes");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Applying active partition changes"
+            );
         }
 
         success = DeviceIoControl(
@@ -431,7 +528,10 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"Failed to set active partition, error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Failed to set active partition, error " + std::to_wstring(errorCode)
+                );
             }
             return domain::Result<>::Failure(
                 CreateErrorFromLastError("IOCTL_DISK_SET_DRIVE_LAYOUT_EX")
@@ -439,7 +539,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Info(L"Partition set as active successfully");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Partition set as active successfully"
+            );
         }
 
         return domain::Result<>::Success();
@@ -449,13 +552,19 @@ namespace winsetup::adapters {
         domain::PhysicalDiskId diskId
     ) const noexcept {
         if (logger_) {
-            logger_->Debug(L"Calculating maximum partition size for disk " + std::to_wstring(diskId.index));
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Calculating maximum partition size for disk " + std::to_wstring(diskId.index)
+            );
         }
 
         auto handleResult = OpenDiskHandle(diskId, GENERIC_READ);
         if (handleResult.HasError()) [[unlikely]] {
             if (logger_) {
-                logger_->Error(L"Failed to open disk handle for size calculation");
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Failed to open disk handle for size calculation"
+                );
             }
             return domain::Expected<uint64_t>::Failure(
                 std::move(handleResult).GetError()
@@ -481,7 +590,10 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"IOCTL_DISK_GET_LENGTH_INFO failed with error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"IOCTL_DISK_GET_LENGTH_INFO failed with error " + std::to_wstring(errorCode)
+                );
             }
             CloseHandle(diskHandle);
             return domain::Expected<uint64_t>::Failure(
@@ -491,7 +603,10 @@ namespace winsetup::adapters {
 
         uint64_t totalSize = static_cast<uint64_t>(lengthInfo.Length.QuadPart);
         if (logger_) {
-            logger_->Debug(L"Total disk size: " + std::to_wstring(totalSize / (1024 * 1024 * 1024)) + L" GB");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Total disk size: " + std::to_wstring(totalSize / (1024 * 1024 * 1024)) + L" GB"
+            );
         }
 
         DRIVE_LAYOUT_INFORMATION_EX layout{};
@@ -515,13 +630,19 @@ namespace winsetup::adapters {
                 usedSize += layout.PartitionEntry[i].PartitionLength.QuadPart;
             }
             if (logger_) {
-                logger_->Debug(L"Used space: " + std::to_wstring(usedSize / (1024 * 1024 * 1024)) + L" GB");
+                logger_->Log(
+                    domain::LogLevel::Debug,
+                    L"Used space: " + std::to_wstring(usedSize / (1024 * 1024 * 1024)) + L" GB"
+                );
             }
         }
 
         uint64_t maxSize = totalSize > usedSize ? totalSize - usedSize : 0;
         if (logger_) {
-            logger_->Info(L"Maximum available partition size: " + std::to_wstring(maxSize / (1024 * 1024 * 1024)) + L" GB");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Maximum available partition size: " + std::to_wstring(maxSize / (1024 * 1024 * 1024)) + L" GB"
+            );
         }
 
         return domain::Expected<uint64_t>::Success(maxSize);
@@ -534,7 +655,10 @@ namespace winsetup::adapters {
         std::wstring diskPath = diskId.ToString();
 
         if (logger_) {
-            logger_->Debug(L"Opening disk handle: " + diskPath);
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Opening disk handle: " + diskPath
+            );
         }
 
         HANDLE handle = CreateFileW(
@@ -550,7 +674,10 @@ namespace winsetup::adapters {
         if (handle == INVALID_HANDLE_VALUE) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"Failed to open disk handle: " + diskPath + L", error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Failed to open disk handle: " + diskPath + L", error " + std::to_wstring(errorCode)
+                );
             }
             return domain::Expected<HANDLE>::Failure(
                 CreateErrorFromLastError("CreateFileW")
@@ -558,7 +685,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Debug(L"Disk handle opened successfully");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Disk handle opened successfully"
+            );
         }
 
         return domain::Expected<HANDLE>::Success(handle);
@@ -567,7 +697,7 @@ namespace winsetup::adapters {
     domain::Expected<std::wstring> Win32PartitionService::GetPartitionPath(
         domain::PartitionId partitionId
     ) const noexcept {
-        std::wstring path = L"\\\\\\\\.\\\\PhysicalDrive";
+        std::wstring path = L"\\\\.\\PhysicalDrive";
         path.append(std::to_wstring(partitionId.diskIndex));
         path.append(L"Partition");
         path.append(std::to_wstring(partitionId.partitionNumber));

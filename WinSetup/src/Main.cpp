@@ -10,6 +10,7 @@
 #include "infrastructure/composition/ServiceRegistration.h"
 #include "abstractions/logging/ILogger.h"
 #include "infrastructure/logging/WindowsLogger.h"
+#include "domain/primitives/LogLevel.h"
 
 using namespace winsetup;
 using namespace winsetup::infrastructure;
@@ -47,7 +48,7 @@ namespace {
                 return false;
             }
 
-            logger->SetMinimumLevel(LogLevel::Debug);
+            logger->SetMinimumLevel(domain::LogLevel::Debug);
 
             container.RegisterInstance<ILogger>(logger);
 
@@ -64,7 +65,7 @@ namespace {
 
     [[nodiscard]] bool InitializeDependencies(
         DependencyContainer& container,
-        std::shared_ptr<ILogger>& logger
+        std::shared_ptr<WindowsLogger>& logger
     ) noexcept {
         try {
             if (logger) {
@@ -95,7 +96,7 @@ namespace {
 
     [[nodiscard]] bool ValidateServices(
         DependencyContainer& container,
-        std::shared_ptr<ILogger>& logger
+        std::shared_ptr<WindowsLogger>& logger
     ) noexcept {
         if (!logger) {
             ShowErrorMessage(L"Logger is not initialized");
@@ -119,7 +120,7 @@ namespace {
         return true;
     }
 
-    void LogSystemInformation(ILogger& logger) noexcept {
+    void LogSystemInformation(WindowsLogger& logger) noexcept {
         try {
             SYSTEM_INFO sysInfo;
             ::GetSystemInfo(&sysInfo);
@@ -151,7 +152,7 @@ namespace {
 
     void Cleanup(
         DependencyContainer* container,
-        std::shared_ptr<ILogger>& logger
+        std::shared_ptr<WindowsLogger>& logger
     ) noexcept {
         if (logger) {
             logger->Info(L"=================================================");
@@ -181,7 +182,7 @@ int WINAPI wWinMain(
 
     int exitCode = 0;
     std::shared_ptr<DependencyContainer> container;
-    std::shared_ptr<ILogger> logger;
+    std::shared_ptr<WindowsLogger> logger;
 
     try {
         container = std::make_shared<DependencyContainer>();
@@ -191,9 +192,15 @@ int WINAPI wWinMain(
             return 1;
         }
 
-        logger = container->Resolve<ILogger>();
-        if (!logger) {
+        auto loggerInterface = container->Resolve<ILogger>();
+        if (!loggerInterface) {
             ShowErrorMessage(L"Failed to resolve logger from container");
+            return 1;
+        }
+
+        logger = std::dynamic_pointer_cast<WindowsLogger>(loggerInterface);
+        if (!logger) {
+            ShowErrorMessage(L"Logger is not of expected type");
             return 1;
         }
 

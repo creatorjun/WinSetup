@@ -1,6 +1,7 @@
 #include "Win32VolumeService.h"
 #include <algorithm>
 #include "../../../../abstractions/logging/ILogger.h"
+#include "../../../../domain/primitives/LogLevel.h"
 
 namespace winsetup::adapters {
 
@@ -11,14 +12,14 @@ namespace winsetup::adapters {
         : textEncoder_(std::move(textEncoder))
         , logger_(std::move(logger)) {
         if (logger_) {
-            logger_->Info(L"Win32VolumeService initialized");
+            logger_->Log(domain::LogLevel::Info, L"Win32VolumeService initialized");
         }
     }
 
     domain::Expected<std::vector<domain::VolumeInfo>>
         Win32VolumeService::EnumerateVolumes() const noexcept {
         if (logger_) {
-            logger_->Info(L"Starting volume enumeration");
+            logger_->Log(domain::LogLevel::Info, L"Starting volume enumeration");
         }
 
         std::vector<domain::VolumeInfo> volumes;
@@ -30,7 +31,10 @@ namespace winsetup::adapters {
         if (findHandle == INVALID_HANDLE_VALUE) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"FindFirstVolumeW failed with error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"FindFirstVolumeW failed with error " + std::to_wstring(errorCode)
+                );
             }
             return domain::Expected<std::vector<domain::VolumeInfo>>::Failure(
                 CreateErrorFromLastError("FindFirstVolumeW")
@@ -40,7 +44,10 @@ namespace winsetup::adapters {
         int volumeCount = 0;
         do {
             if (logger_) {
-                logger_->Debug(L"Processing volume: " + std::wstring(volumeName));
+                logger_->Log(
+                    domain::LogLevel::Debug,
+                    L"Processing volume: " + std::wstring(volumeName)
+                );
             }
 
             auto volumeInfoResult = GetVolumeInfo(volumeName);
@@ -50,7 +57,10 @@ namespace winsetup::adapters {
             }
             else {
                 if (logger_) {
-                    logger_->Warning(L"Failed to get info for volume: " + std::wstring(volumeName));
+                    logger_->Log(
+                        domain::LogLevel::Warning,
+                        L"Failed to get info for volume: " + std::wstring(volumeName)
+                    );
                 }
             }
         } while (FindNextVolumeW(findHandle, volumeName, ARRAYSIZE(volumeName)));
@@ -58,7 +68,10 @@ namespace winsetup::adapters {
         FindVolumeClose(findHandle);
 
         if (logger_) {
-            logger_->Info(L"Volume enumeration completed: " + std::to_wstring(volumeCount) + L" volumes found");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Volume enumeration completed: " + std::to_wstring(volumeCount) + L" volumes found"
+            );
         }
 
         return domain::Expected<std::vector<domain::VolumeInfo>>::Success(
@@ -69,7 +82,10 @@ namespace winsetup::adapters {
     domain::Expected<domain::VolumeInfo>
         Win32VolumeService::GetVolumeInfo(const std::wstring& volumePath) const noexcept {
         if (logger_) {
-            logger_->Debug(L"Getting volume information for: " + volumePath);
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Getting volume information for: " + volumePath
+            );
         }
 
         wchar_t fsName[MAX_PATH];
@@ -92,8 +108,11 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Warning(L"GetVolumeInformationW failed for " + volumePath +
-                    L", error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Warning,
+                    L"GetVolumeInformationW failed for " + volumePath +
+                    L", error " + std::to_wstring(errorCode)
+                );
             }
             return domain::Expected<domain::VolumeInfo>::Failure(
                 CreateErrorFromLastError("GetVolumeInformationW")
@@ -101,8 +120,11 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Debug(L"Volume label: " + std::wstring(volumeLabel) +
-                L", File system: " + std::wstring(fsName));
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Volume label: " + std::wstring(volumeLabel) +
+                L", File system: " + std::wstring(fsName)
+            );
         }
 
         auto fsTypeResult = ParseFileSystemType(fsName);
@@ -125,8 +147,11 @@ namespace winsetup::adapters {
         uint64_t freeSize = success ? totalNumberOfFreeBytes.QuadPart : 0;
 
         if (success && logger_) {
-            logger_->Debug(L"Total size: " + std::to_wstring(totalSize / (1024 * 1024 * 1024)) +
-                L" GB, Free: " + std::to_wstring(freeSize / (1024 * 1024 * 1024)) + L" GB");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Total size: " + std::to_wstring(totalSize / (1024 * 1024 * 1024)) +
+                L" GB, Free: " + std::to_wstring(freeSize / (1024 * 1024 * 1024)) + L" GB"
+            );
         }
 
         auto driveLetterResult = GetVolumeDriveLetter(volumePath);
@@ -135,7 +160,10 @@ namespace winsetup::adapters {
             : std::nullopt;
 
         if (driveLetter.has_value() && logger_) {
-            logger_->Debug(L"Drive letter: " + std::wstring(1, driveLetter.value()) + L":");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Drive letter: " + std::wstring(1, driveLetter.value()) + L":"
+            );
         }
 
         domain::VolumeInfo volumeInfo(
@@ -154,12 +182,15 @@ namespace winsetup::adapters {
     domain::Expected<domain::VolumeInfo>
         Win32VolumeService::GetVolumeInfoByDriveLetter(wchar_t driveLetter) const noexcept {
         if (logger_) {
-            logger_->Info(L"Getting volume info for drive letter: " + std::wstring(1, driveLetter) + L":");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Getting volume info for drive letter: " + std::wstring(1, driveLetter) + L":"
+            );
         }
 
         std::wstring drivePath;
         drivePath.push_back(driveLetter);
-        drivePath.append(L":\\\\");
+        drivePath.append(L":\\");
 
         wchar_t volumeName[MAX_PATH];
         BOOL success = GetVolumeNameForVolumeMountPointW(
@@ -171,8 +202,11 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"GetVolumeNameForVolumeMountPointW failed for " + drivePath +
-                    L", error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"GetVolumeNameForVolumeMountPointW failed for " + drivePath +
+                    L", error " + std::to_wstring(errorCode)
+                );
             }
             return domain::Expected<domain::VolumeInfo>::Failure(
                 CreateErrorFromLastError("GetVolumeNameForVolumeMountPointW")
@@ -180,7 +214,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Debug(L"Volume path resolved: " + std::wstring(volumeName));
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Volume path resolved: " + std::wstring(volumeName)
+            );
         }
 
         return GetVolumeInfo(volumeName);
@@ -191,20 +228,26 @@ namespace winsetup::adapters {
         wchar_t driveLetter
     ) noexcept {
         if (logger_) {
-            logger_->Info(L"Assigning drive letter " + std::wstring(1, driveLetter) +
-                L": to volume " + volumePath);
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Assigning drive letter " + std::wstring(1, driveLetter) +
+                L": to volume " + volumePath
+            );
         }
 
         std::wstring mountPoint;
         mountPoint.push_back(driveLetter);
-        mountPoint.append(L":\\\\");
+        mountPoint.append(L":\\");
 
         BOOL success = SetVolumeMountPointW(mountPoint.c_str(), volumePath.c_str());
 
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"SetVolumeMountPointW failed, error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"SetVolumeMountPointW failed, error " + std::to_wstring(errorCode)
+                );
             }
             return domain::Result<>::Failure(
                 CreateErrorFromLastError("SetVolumeMountPointW")
@@ -212,7 +255,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Info(L"Drive letter assigned successfully");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Drive letter assigned successfully"
+            );
         }
 
         return domain::Result<>::Success();
@@ -222,20 +268,26 @@ namespace winsetup::adapters {
         wchar_t driveLetter
     ) noexcept {
         if (logger_) {
-            logger_->Info(L"Removing drive letter: " + std::wstring(1, driveLetter) + L":");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Removing drive letter: " + std::wstring(1, driveLetter) + L":"
+            );
         }
 
         std::wstring mountPoint;
         mountPoint.push_back(driveLetter);
-        mountPoint.append(L":\\\\");
+        mountPoint.append(L":\\");
 
         BOOL success = DeleteVolumeMountPointW(mountPoint.c_str());
 
         if (!success) [[unlikely]] {
             const DWORD errorCode = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"DeleteVolumeMountPointW failed for " + mountPoint +
-                    L", error " + std::to_wstring(errorCode));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"DeleteVolumeMountPointW failed for " + mountPoint +
+                    L", error " + std::to_wstring(errorCode)
+                );
             }
             return domain::Result<>::Failure(
                 CreateErrorFromLastError("DeleteVolumeMountPointW")
@@ -243,7 +295,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Info(L"Drive letter removed successfully");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Drive letter removed successfully"
+            );
         }
 
         return domain::Result<>::Success();
@@ -253,14 +308,20 @@ namespace winsetup::adapters {
         const std::wstring& path
     ) const noexcept {
         if (logger_) {
-            logger_->Debug(L"Checking path existence: " + path);
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Checking path existence: " + path
+            );
         }
 
         DWORD attributes = GetFileAttributesW(path.c_str());
         bool exists = attributes != INVALID_FILE_ATTRIBUTES;
 
         if (logger_) {
-            logger_->Debug(path + (exists ? L" exists" : L" does not exist"));
+            logger_->Log(
+                domain::LogLevel::Debug,
+                path + (exists ? L" exists" : L" does not exist")
+            );
         }
 
         return domain::Expected<bool>::Success(exists);
@@ -270,14 +331,20 @@ namespace winsetup::adapters {
         const std::wstring& dirPath
     ) const noexcept {
         if (logger_) {
-            logger_->Debug(L"Checking directory existence: " + dirPath);
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Checking directory existence: " + dirPath
+            );
         }
 
         DWORD attributes = GetFileAttributesW(dirPath.c_str());
 
         if (attributes == INVALID_FILE_ATTRIBUTES) [[unlikely]] {
             if (logger_) {
-                logger_->Debug(dirPath + L" does not exist");
+                logger_->Log(
+                    domain::LogLevel::Debug,
+                    dirPath + L" does not exist"
+                );
             }
             return domain::Expected<bool>::Success(false);
         }
@@ -285,7 +352,10 @@ namespace winsetup::adapters {
         bool isDirectory = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
         if (logger_) {
-            logger_->Debug(dirPath + (isDirectory ? L" is a directory" : L" is not a directory"));
+            logger_->Log(
+                domain::LogLevel::Debug,
+                dirPath + (isDirectory ? L" is a directory" : L" is not a directory")
+            );
         }
 
         return domain::Expected<bool>::Success(isDirectory);
@@ -295,14 +365,20 @@ namespace winsetup::adapters {
         const std::wstring& filePath
     ) const noexcept {
         if (logger_) {
-            logger_->Debug(L"Checking file existence: " + filePath);
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Checking file existence: " + filePath
+            );
         }
 
         DWORD attributes = GetFileAttributesW(filePath.c_str());
 
         if (attributes == INVALID_FILE_ATTRIBUTES) [[unlikely]] {
             if (logger_) {
-                logger_->Debug(filePath + L" does not exist");
+                logger_->Log(
+                    domain::LogLevel::Debug,
+                    filePath + L" does not exist"
+                );
             }
             return domain::Expected<bool>::Success(false);
         }
@@ -310,7 +386,10 @@ namespace winsetup::adapters {
         bool isFile = (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
 
         if (logger_) {
-            logger_->Debug(filePath + (isFile ? L" is a file" : L" is not a file"));
+            logger_->Log(
+                domain::LogLevel::Debug,
+                filePath + (isFile ? L" is a file" : L" is not a file")
+            );
         }
 
         return domain::Expected<bool>::Success(isFile);
@@ -340,7 +419,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Warning(L"Unknown file system type: " + fsName);
+            logger_->Log(
+                domain::LogLevel::Warning,
+                L"Unknown file system type: " + fsName
+            );
         }
 
         return domain::Expected<domain::FileSystemType>::Success(
@@ -355,7 +437,10 @@ namespace winsetup::adapters {
 
         if (length == 0 || length > ARRAYSIZE(driveStrings)) [[unlikely]] {
             if (logger_) {
-                logger_->Warning(L"GetLogicalDriveStringsW failed or buffer too small");
+                logger_->Log(
+                    domain::LogLevel::Warning,
+                    L"GetLogicalDriveStringsW failed or buffer too small"
+                );
             }
             return domain::Expected<std::optional<wchar_t>>::Success(std::nullopt);
         }
@@ -371,8 +456,11 @@ namespace winsetup::adapters {
 
             if (success && volumePath == volumeName) [[unlikely]] {
                 if (logger_) {
-                    logger_->Debug(L"Found drive letter " + std::wstring(1, drive[0]) +
-                        L": for volume " + volumePath);
+                    logger_->Log(
+                        domain::LogLevel::Debug,
+                        L"Found drive letter " + std::wstring(1, drive[0]) +
+                        L": for volume " + volumePath
+                    );
                 }
                 return domain::Expected<std::optional<wchar_t>>::Success(
                     std::make_optional(drive[0])

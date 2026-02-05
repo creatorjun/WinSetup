@@ -10,20 +10,20 @@ namespace winsetup::adapters {
         : textEncoder_(std::move(textEncoder))
         , logger_(std::move(logger)) {
         if (logger_) {
-            logger_->Info(L"Win32SystemInfoService initialized");
+            logger_->Log(domain::LogLevel::Info, L"Win32SystemInfoService initialized");
         }
     }
 
     domain::Expected<abstractions::SystemInfo>
         Win32SystemInfoService::GetSystemInfo() const noexcept {
         if (logger_) {
-            logger_->Info(L"Retrieving system information from SMBIOS");
+            logger_->Log(domain::LogLevel::Info, L"Retrieving system information from SMBIOS");
         }
 
         auto smbiosData = GetRawSMBIOSData();
         if (smbiosData.HasError()) [[unlikely]] {
             if (logger_) {
-                logger_->Error(L"Failed to retrieve SMBIOS data");
+                logger_->Log(domain::LogLevel::Error, L"Failed to retrieve SMBIOS data");
             }
             return domain::Expected<abstractions::SystemInfo>::Failure(
                 std::move(smbiosData).GetError()
@@ -32,12 +32,18 @@ namespace winsetup::adapters {
 
         const auto& data = smbiosData.Value();
         if (logger_) {
-            logger_->Debug(L"SMBIOS data size: " + std::to_wstring(data.size()) + L" bytes");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"SMBIOS data size: " + std::to_wstring(data.size()) + L" bytes"
+            );
         }
 
         if (data.size() < sizeof(SMBIOSHeader) + 8) [[unlikely]] {
             if (logger_) {
-                logger_->Error(L"SMBIOS data too small: " + std::to_wstring(data.size()) + L" bytes");
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"SMBIOS data too small: " + std::to_wstring(data.size()) + L" bytes"
+                );
             }
             return domain::Expected<abstractions::SystemInfo>::Failure(
                 domain::Error("SMBIOS data too small", ERROR_INVALID_DATA)
@@ -54,7 +60,7 @@ namespace winsetup::adapters {
         bool foundBaseboard = false;
 
         if (logger_) {
-            logger_->Debug(L"Parsing SMBIOS structures");
+            logger_->Log(domain::LogLevel::Debug, L"Parsing SMBIOS structures");
         }
 
         int structureCount = 0;
@@ -68,7 +74,10 @@ namespace winsetup::adapters {
 
             if (header->type == 1 && !foundSystemInfo) {
                 if (logger_) {
-                    logger_->Debug(L"Found SMBIOS Type 1 (System Information) structure");
+                    logger_->Log(
+                        domain::LogLevel::Debug,
+                        L"Found SMBIOS Type 1 (System Information) structure"
+                    );
                 }
 
                 if (current + sizeof(SystemInformation) <= end) {
@@ -86,9 +95,18 @@ namespace winsetup::adapters {
                     );
 
                     if (logger_) {
-                        logger_->Debug(L"System Manufacturer: " + systemInfo.manufacturer);
-                        logger_->Debug(L"System Product: " + systemInfo.productName);
-                        logger_->Debug(L"System Version: " + systemInfo.version);
+                        logger_->Log(
+                            domain::LogLevel::Debug,
+                            L"System Manufacturer: " + systemInfo.manufacturer
+                        );
+                        logger_->Log(
+                            domain::LogLevel::Debug,
+                            L"System Product: " + systemInfo.productName
+                        );
+                        logger_->Log(
+                            domain::LogLevel::Debug,
+                            L"System Version: " + systemInfo.version
+                        );
                     }
 
                     foundSystemInfo = true;
@@ -96,7 +114,10 @@ namespace winsetup::adapters {
             }
             else if (header->type == 2 && !foundBaseboard) {
                 if (logger_) {
-                    logger_->Debug(L"Found SMBIOS Type 2 (Baseboard Information) structure");
+                    logger_->Log(
+                        domain::LogLevel::Debug,
+                        L"Found SMBIOS Type 2 (Baseboard Information) structure"
+                    );
                 }
 
                 if (current + sizeof(BaseboardInformation) <= end) {
@@ -117,9 +138,18 @@ namespace winsetup::adapters {
                     );
 
                     if (logger_) {
-                        logger_->Debug(L"Baseboard Manufacturer: " + baseboardInfo.manufacturer);
-                        logger_->Debug(L"Baseboard Product: " + baseboardInfo.product);
-                        logger_->Debug(L"Baseboard Version: " + baseboardInfo.version);
+                        logger_->Log(
+                            domain::LogLevel::Debug,
+                            L"Baseboard Manufacturer: " + baseboardInfo.manufacturer
+                        );
+                        logger_->Log(
+                            domain::LogLevel::Debug,
+                            L"Baseboard Product: " + baseboardInfo.product
+                        );
+                        logger_->Log(
+                            domain::LogLevel::Debug,
+                            L"Baseboard Version: " + baseboardInfo.version
+                        );
                     }
 
                     foundBaseboard = true;
@@ -127,7 +157,10 @@ namespace winsetup::adapters {
             }
             else if (header->type == 127) {
                 if (logger_) {
-                    logger_->Debug(L"Reached SMBIOS End-of-Table marker");
+                    logger_->Log(
+                        domain::LogLevel::Debug,
+                        L"Reached SMBIOS End-of-Table marker"
+                    );
                 }
                 break;
             }
@@ -135,15 +168,24 @@ namespace winsetup::adapters {
             current = FindNextStructure(current, end);
             if (!current) [[unlikely]] {
                 if (logger_) {
-                    logger_->Warning(L"SMBIOS structure parsing ended prematurely");
+                    logger_->Log(
+                        domain::LogLevel::Warning,
+                        L"SMBIOS structure parsing ended prematurely"
+                    );
                 }
                 break;
             }
         }
 
         if (logger_) {
-            logger_->Debug(L"Parsed " + std::to_wstring(structureCount) + L" SMBIOS structures");
-            logger_->Info(L"System information retrieved successfully");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Parsed " + std::to_wstring(structureCount) + L" SMBIOS structures"
+            );
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"System information retrieved successfully"
+            );
         }
 
         systemInfo.baseboard = baseboardInfo;
@@ -156,13 +198,16 @@ namespace winsetup::adapters {
     domain::Expected<abstractions::SystemBoardInfo>
         Win32SystemInfoService::GetBaseboardInfo() const noexcept {
         if (logger_) {
-            logger_->Info(L"Retrieving baseboard information");
+            logger_->Log(domain::LogLevel::Info, L"Retrieving baseboard information");
         }
 
         auto systemInfo = GetSystemInfo();
         if (systemInfo.HasError()) [[unlikely]] {
             if (logger_) {
-                logger_->Error(L"Failed to retrieve baseboard info from system info");
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Failed to retrieve baseboard info from system info"
+                );
             }
             return domain::Expected<abstractions::SystemBoardInfo>::Failure(
                 std::move(systemInfo).GetError()
@@ -170,7 +215,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Info(L"Baseboard information retrieved successfully");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Baseboard information retrieved successfully"
+            );
         }
 
         return domain::Expected<abstractions::SystemBoardInfo>::Success(
@@ -181,13 +229,13 @@ namespace winsetup::adapters {
     domain::Expected<std::wstring>
         Win32SystemInfoService::GetMotherboardModel() const noexcept {
         if (logger_) {
-            logger_->Info(L"Retrieving motherboard model");
+            logger_->Log(domain::LogLevel::Info, L"Retrieving motherboard model");
         }
 
         auto baseboardInfo = GetBaseboardInfo();
         if (baseboardInfo.HasError()) [[unlikely]] {
             if (logger_) {
-                logger_->Error(L"Failed to retrieve motherboard model");
+                logger_->Log(domain::LogLevel::Error, L"Failed to retrieve motherboard model");
             }
             return domain::Expected<std::wstring>::Failure(
                 std::move(baseboardInfo).GetError()
@@ -197,7 +245,7 @@ namespace winsetup::adapters {
         std::wstring model = baseboardInfo.Value().GetDisplayName();
 
         if (logger_) {
-            logger_->Info(L"Motherboard model: " + model);
+            logger_->Log(domain::LogLevel::Info, L"Motherboard model: " + model);
         }
 
         return domain::Expected<std::wstring>::Success(std::move(model));
@@ -206,7 +254,7 @@ namespace winsetup::adapters {
     domain::Expected<std::vector<BYTE>>
         Win32SystemInfoService::GetRawSMBIOSData() const noexcept {
         if (logger_) {
-            logger_->Debug(L"Querying SMBIOS firmware table size");
+            logger_->Log(domain::LogLevel::Debug, L"Querying SMBIOS firmware table size");
         }
 
         const DWORD signature = 'RSMB';
@@ -215,7 +263,10 @@ namespace winsetup::adapters {
         if (bufferSize == 0) [[unlikely]] {
             const DWORD error = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"GetSystemFirmwareTable size query failed with error " + std::to_wstring(error));
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"GetSystemFirmwareTable size query failed with error " + std::to_wstring(error)
+                );
             }
             return domain::Expected<std::vector<BYTE>>::Failure(
                 CreateWindowsError("GetSystemFirmwareTable size query", error)
@@ -223,13 +274,16 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Debug(L"SMBIOS buffer size: " + std::to_wstring(bufferSize) + L" bytes");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"SMBIOS buffer size: " + std::to_wstring(bufferSize) + L" bytes"
+            );
         }
 
         std::vector<BYTE> buffer(bufferSize);
 
         if (logger_) {
-            logger_->Debug(L"Reading SMBIOS firmware table data");
+            logger_->Log(domain::LogLevel::Debug, L"Reading SMBIOS firmware table data");
         }
 
         const DWORD bytesWritten = ::GetSystemFirmwareTable(
@@ -242,9 +296,12 @@ namespace winsetup::adapters {
         if (bytesWritten == 0 || bytesWritten != bufferSize) [[unlikely]] {
             const DWORD error = ::GetLastError();
             if (logger_) {
-                logger_->Error(L"GetSystemFirmwareTable data read failed, expected " +
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"GetSystemFirmwareTable data read failed, expected " +
                     std::to_wstring(bufferSize) + L" bytes, got " + std::to_wstring(bytesWritten) +
-                    L" bytes, error " + std::to_wstring(error));
+                    L" bytes, error " + std::to_wstring(error)
+                );
             }
             return domain::Expected<std::vector<BYTE>>::Failure(
                 CreateWindowsError("GetSystemFirmwareTable data read", error)
@@ -252,7 +309,10 @@ namespace winsetup::adapters {
         }
 
         if (logger_) {
-            logger_->Debug(L"SMBIOS data read successfully: " + std::to_wstring(bytesWritten) + L" bytes");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"SMBIOS data read successfully: " + std::to_wstring(bytesWritten) + L" bytes"
+            );
         }
 
         return domain::Expected<std::vector<BYTE>>::Success(std::move(buffer));
@@ -292,7 +352,10 @@ namespace winsetup::adapters {
                     auto wideResult = textEncoder_->ToWide(sv);
                     if (wideResult.HasError()) [[unlikely]] {
                         if (logger_) {
-                            logger_->Warning(L"Failed to convert SMBIOS string to wide character");
+                            logger_->Log(
+                                domain::LogLevel::Warning,
+                                L"Failed to convert SMBIOS string to wide character"
+                            );
                         }
                         return L"";
                     }

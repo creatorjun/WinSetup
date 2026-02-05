@@ -1,31 +1,38 @@
 #pragma once
 
 #include <string>
-#include "../../domain/entities/LogEntry.h"
+#include <string_view>
+#include <chrono>
+#include "../../domain/primitives/LogLevel.h"
 
 namespace winsetup::infrastructure {
 
     class LogFormatter {
     public:
-        LogFormatter() = default;
-        ~LogFormatter() = default;
+        LogFormatter() = delete;
 
-        LogFormatter(const LogFormatter&) = delete;
-        LogFormatter& operator=(const LogFormatter&) = delete;
-        LogFormatter(LogFormatter&&) noexcept = default;
-        LogFormatter& operator=(LogFormatter&&) noexcept = default;
+        [[nodiscard]] static std::wstring Format(
+            domain::LogLevel level,
+            std::wstring_view message,
+            std::wstring_view category = L""
+        ) noexcept;
 
-        [[nodiscard]] std::wstring Format(const domain::LogEntry& entry) const noexcept;
+        [[nodiscard]] static std::wstring Format(
+            domain::LogLevel level,
+            std::wstring_view message,
+            std::wstring_view category,
+            const std::chrono::system_clock::time_point& timestamp
+        ) noexcept;
 
-        [[nodiscard]] std::wstring FormatTimestamp(
-            std::chrono::system_clock::time_point timestamp
-        ) const noexcept;
+        [[nodiscard]] static std::wstring FormatTimestamp(
+            const std::chrono::system_clock::time_point& timePoint
+        ) noexcept;
 
-    private:
-        [[nodiscard]] std::wstring PadRight(
-            const std::wstring& str,
-            size_t width
-        ) const noexcept;
+        [[nodiscard]] static std::wstring FormatWithThreadId(
+            domain::LogLevel level,
+            std::wstring_view message,
+            std::wstring_view category = L""
+        ) noexcept;
     };
 
 }

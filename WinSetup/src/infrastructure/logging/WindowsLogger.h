@@ -3,52 +3,69 @@
 #include <string>
 #include <fstream>
 #include <mutex>
-#include <memory>
+#include <chrono>
 #include "../../abstractions/logging/ILogger.h"
+#include "../../domain/primitives/LogLevel.h"
 
 namespace winsetup::infrastructure {
 
     class WindowsLogger : public abstractions::ILogger {
     public:
-        WindowsLogger();
+        WindowsLogger() noexcept;
         ~WindowsLogger() override;
 
-        [[nodiscard]] bool Initialize(const std::wstring& logFilePath);
+        WindowsLogger(const WindowsLogger&) = delete;
+        WindowsLogger& operator=(const WindowsLogger&) = delete;
+        WindowsLogger(WindowsLogger&&) noexcept = default;
+        WindowsLogger& operator=(WindowsLogger&&) noexcept = default;
+
+        [[nodiscard]] bool Initialize(const std::wstring& logFilePath) noexcept;
 
         void Log(
-            abstractions::LogLevel level,
+            domain::LogLevel level,
             std::wstring_view message
         ) noexcept override;
 
         void Log(
-            abstractions::LogLevel level,
+            domain::LogLevel level,
             std::wstring_view message,
             std::wstring_view category
         ) noexcept override;
 
-        void SetMinimumLevel(abstractions::LogLevel level) noexcept override;
-        [[nodiscard]] abstractions::LogLevel GetMinimumLevel() const noexcept override;
+        void Trace(std::wstring_view message) noexcept;
+        void Debug(std::wstring_view message) noexcept;
+        void Info(std::wstring_view message) noexcept;
+        void Warning(std::wstring_view message) noexcept;
+        void Error(std::wstring_view message) noexcept;
+        void Fatal(std::wstring_view message) noexcept;
+
+        void SetMinimumLevel(domain::LogLevel level) noexcept override;
+        [[nodiscard]] domain::LogLevel GetMinimumLevel() const noexcept override;
 
         void Flush() noexcept override;
         void Close() noexcept override;
 
+        [[nodiscard]] bool IsInitialized() const noexcept;
+        [[nodiscard]] std::wstring GetLogFilePath() const noexcept;
+
     private:
-        [[nodiscard]] std::wstring FormatLogMessage(
-            abstractions::LogLevel level,
+        void WriteLogEntry(
+            domain::LogLevel level,
             std::wstring_view message,
             std::wstring_view category
+        ) noexcept;
+
+        [[nodiscard]] std::wstring FormatTimestamp(
+            const std::chrono::system_clock::time_point& timePoint
         ) const noexcept;
 
-        [[nodiscard]] std::wstring GetCurrentTimestamp() const noexcept;
-
-        void WriteToFile(const std::wstring& message) noexcept;
-        void WriteToDebugOutput(const std::wstring& message) noexcept;
+        [[nodiscard]] bool ShouldLog(domain::LogLevel level) const noexcept;
 
         mutable std::mutex mutex_;
         std::wofstream fileStream_;
         std::wstring logFilePath_;
-        abstractions::LogLevel minimumLevel_{ abstractions::LogLevel::Info };
-        bool isInitialized_{ false };
+        domain::LogLevel minimumLevel_;
+        bool isInitialized_;
     };
 
 }

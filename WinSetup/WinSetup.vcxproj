@@ -228,6 +228,7 @@ validate_dependencies.bat</Command>
     <ClInclude Include="src\domain\memory\UniqueResource.h" />
     <ClInclude Include="src\domain\primitives\Error.h" />
     <ClInclude Include="src\domain\primitives\Expected.h" />
+    <ClInclude Include="src\domain\primitives\LogLevel.h" />
     <ClInclude Include="src\domain\primitives\Result.h" />
     <ClInclude Include="src\domain\validation\PathValidator.h" />
     <ClInclude Include="src\domain\validation\ValidationResult.h" />

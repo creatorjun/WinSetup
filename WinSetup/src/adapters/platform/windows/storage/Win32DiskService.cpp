@@ -16,7 +16,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                abstractions::LogLevel::Info,
+                domain::LogLevel::Info,
                 L"Win32DiskService initialized",
                 L"DiskService"
             );
@@ -28,7 +28,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                abstractions::LogLevel::Info,
+                domain::LogLevel::Info,
                 L"Starting physical disk enumeration",
                 L"DiskService"
             );
@@ -49,7 +49,7 @@ namespace winsetup::adapters {
         if (disks.empty()) [[unlikely]] {
             if (logger_) {
                 logger_->Log(
-                    abstractions::LogLevel::Error,
+                    domain::LogLevel::Error,
                     L"No physical disks found in system",
                     L"DiskService"
                 );
@@ -62,7 +62,7 @@ namespace winsetup::adapters {
         if (logger_) {
             std::wstring message = L"Found " + std::to_wstring(disks.size()) + L" physical disk(s)";
             logger_->Log(
-                abstractions::LogLevel::Info,
+                domain::LogLevel::Info,
                 message,
                 L"DiskService"
             );
@@ -79,7 +79,7 @@ namespace winsetup::adapters {
         if (logger_) {
             std::wstring message = L"Querying disk info for PhysicalDrive" + std::to_wstring(diskId.index);
             logger_->Log(
-                abstractions::LogLevel::Debug,
+                domain::LogLevel::Debug,
                 message,
                 L"DiskService"
             );
@@ -136,7 +136,7 @@ namespace winsetup::adapters {
                 L" (" + std::to_wstring(diskInfo.GetSizeInGB()) + L" GB, " +
                 domain::BusTypeToString(diskInfo.GetBusType()) + L")";
             logger_->Log(
-                abstractions::LogLevel::Debug,
+                domain::LogLevel::Debug,
                 message,
                 L"DiskService"
             );
@@ -151,7 +151,7 @@ namespace winsetup::adapters {
         if (logger_) {
             std::wstring message = L"Querying partitions for PhysicalDrive" + std::to_wstring(diskId.index);
             logger_->Log(
-                abstractions::LogLevel::Debug,
+                domain::LogLevel::Debug,
                 message,
                 L"DiskService"
             );
@@ -184,7 +184,7 @@ namespace winsetup::adapters {
             CloseHandle(diskHandle);
             if (logger_) {
                 logger_->Log(
-                    abstractions::LogLevel::Error,
+                    domain::LogLevel::Error,
                     L"Failed to get drive layout",
                     L"DiskService"
                 );
@@ -222,7 +222,7 @@ namespace winsetup::adapters {
             std::wstring message = L"Found " + std::to_wstring(partitions.size()) +
                 L" partition(s) on PhysicalDrive" + std::to_wstring(diskId.index);
             logger_->Log(
-                abstractions::LogLevel::Debug,
+                domain::LogLevel::Debug,
                 message,
                 L"DiskService"
             );
@@ -237,7 +237,7 @@ namespace winsetup::adapters {
         if (logger_) {
             std::wstring message = L"[CRITICAL] Cleaning PhysicalDrive" + std::to_wstring(diskId.index);
             logger_->Log(
-                abstractions::LogLevel::Warning,
+                domain::LogLevel::Warning,
                 message,
                 L"DiskService"
             );
@@ -247,7 +247,7 @@ namespace winsetup::adapters {
         if (handleResult.HasError()) [[unlikely]] {
             if (logger_) {
                 logger_->Log(
-                    abstractions::LogLevel::Error,
+                    domain::LogLevel::Error,
                     L"Failed to open disk for cleaning",
                     L"DiskService"
                 );
@@ -277,7 +277,7 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             if (logger_) {
                 logger_->Log(
-                    abstractions::LogLevel::Error,
+                    domain::LogLevel::Error,
                     L"Disk clean operation failed",
                     L"DiskService"
                 );
@@ -290,7 +290,7 @@ namespace winsetup::adapters {
         if (logger_) {
             std::wstring message = L"Successfully cleaned PhysicalDrive" + std::to_wstring(diskId.index);
             logger_->Log(
-                abstractions::LogLevel::Info,
+                domain::LogLevel::Info,
                 message,
                 L"DiskService"
             );
@@ -308,7 +308,7 @@ namespace winsetup::adapters {
             std::wstring message = L"[CRITICAL] Initializing PhysicalDrive" +
                 std::to_wstring(diskId.index) + L" as " + styleStr;
             logger_->Log(
-                abstractions::LogLevel::Warning,
+                domain::LogLevel::Warning,
                 message,
                 L"DiskService"
             );
@@ -318,7 +318,7 @@ namespace winsetup::adapters {
         if (handleResult.HasError()) [[unlikely]] {
             if (logger_) {
                 logger_->Log(
-                    abstractions::LogLevel::Error,
+                    domain::LogLevel::Error,
                     L"Failed to open disk for initialization",
                     L"DiskService"
                 );
@@ -361,7 +361,7 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             if (logger_) {
                 logger_->Log(
-                    abstractions::LogLevel::Error,
+                    domain::LogLevel::Error,
                     L"Disk initialization failed",
                     L"DiskService"
                 );
@@ -374,7 +374,7 @@ namespace winsetup::adapters {
         if (logger_) {
             std::wstring message = L"Successfully initialized PhysicalDrive" + std::to_wstring(diskId.index);
             logger_->Log(
-                abstractions::LogLevel::Info,
+                domain::LogLevel::Info,
                 message,
                 L"DiskService"
             );
@@ -389,7 +389,7 @@ namespace winsetup::adapters {
         if (logger_) {
             std::wstring message = L"Setting PhysicalDrive" + std::to_wstring(diskId.index) + L" online";
             logger_->Log(
-                abstractions::LogLevel::Info,
+                domain::LogLevel::Info,
                 message,
                 L"DiskService"
             );
@@ -425,7 +425,7 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             if (logger_) {
                 logger_->Log(
-                    abstractions::LogLevel::Error,
+                    domain::LogLevel::Error,
                     L"Failed to set disk online",
                     L"DiskService"
                 );
@@ -437,7 +437,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                abstractions::LogLevel::Info,
+                domain::LogLevel::Info,
                 L"Disk successfully set online",
                 L"DiskService"
             );
@@ -452,7 +452,7 @@ namespace winsetup::adapters {
         if (logger_) {
             std::wstring message = L"Setting PhysicalDrive" + std::to_wstring(diskId.index) + L" offline";
             logger_->Log(
-                abstractions::LogLevel::Info,
+                domain::LogLevel::Info,
                 message,
                 L"DiskService"
             );
@@ -488,7 +488,7 @@ namespace winsetup::adapters {
         if (!success) [[unlikely]] {
             if (logger_) {
                 logger_->Log(
-                    abstractions::LogLevel::Error,
+                    domain::LogLevel::Error,
                     L"Failed to set disk offline",
                     L"DiskService"
                 );
@@ -500,7 +500,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                abstractions::LogLevel::Info,
+                domain::LogLevel::Info,
                 L"Disk successfully set offline",
                 L"DiskService"
             );
@@ -567,7 +567,7 @@ namespace winsetup::adapters {
             if (logger_) {
                 std::wstring message = L"Failed to open " + diskPath;
                 logger_->Log(
-                    abstractions::LogLevel::Error,
+                    domain::LogLevel::Error,
                     message,
                     L"DiskService"
                 );

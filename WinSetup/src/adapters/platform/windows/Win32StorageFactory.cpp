@@ -14,14 +14,14 @@ namespace winsetup::adapters {
         : textEncoder_(std::move(textEncoder))
         , logger_(std::move(logger)) {
         if (logger_) {
-            logger_->Info(L"Win32StorageFactory initialized");
+            logger_->Log(domain::LogLevel::Info, L"Win32StorageFactory initialized");
         }
     }
 
     std::shared_ptr<abstractions::IDiskService>
         Win32StorageFactory::CreateDiskService() const {
         if (logger_) {
-            logger_->Debug(L"Creating Win32DiskService instance");
+            logger_->Log(domain::LogLevel::Debug, L"Creating Win32DiskService instance");
         }
         return std::make_shared<Win32DiskService>(textEncoder_, logger_);
     }
@@ -29,7 +29,7 @@ namespace winsetup::adapters {
     std::shared_ptr<abstractions::IVolumeService>
         Win32StorageFactory::CreateVolumeService() const {
         if (logger_) {
-            logger_->Debug(L"Creating Win32VolumeService instance");
+            logger_->Log(domain::LogLevel::Debug, L"Creating Win32VolumeService instance");
         }
         return std::make_shared<Win32VolumeService>(textEncoder_, logger_);
     }
@@ -37,7 +37,7 @@ namespace winsetup::adapters {
     std::shared_ptr<abstractions::IPartitionService>
         Win32StorageFactory::CreatePartitionService() const {
         if (logger_) {
-            logger_->Debug(L"Creating Win32PartitionService instance");
+            logger_->Log(domain::LogLevel::Debug, L"Creating Win32PartitionService instance");
         }
         return std::make_shared<Win32PartitionService>(textEncoder_, logger_);
     }
@@ -47,7 +47,7 @@ namespace winsetup::adapters {
             std::shared_ptr<abstractions::IVolumeService> volumeService
         ) const {
         if (logger_) {
-            logger_->Debug(L"Creating Win32StorageScanner instance");
+            logger_->Log(domain::LogLevel::Debug, L"Creating Win32StorageScanner instance");
         }
         return std::make_shared<Win32StorageScanner>(
             std::move(volumeService),
@@ -59,7 +59,7 @@ namespace winsetup::adapters {
     std::shared_ptr<abstractions::ISystemInfoService>
         Win32StorageFactory::CreateSystemInfoService() const {
         if (logger_) {
-            logger_->Debug(L"Creating Win32SystemInfoService instance");
+            logger_->Log(domain::LogLevel::Debug, L"Creating Win32SystemInfoService instance");
         }
         return std::make_shared<Win32SystemInfoService>(textEncoder_, logger_);
     }

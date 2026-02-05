@@ -1,63 +1,86 @@
 #include "LogFormatter.h"
 #include <sstream>
 #include <iomanip>
-#include <Windows.h>
+#include <thread>
 
 namespace winsetup::infrastructure {
 
-    std::wstring LogFormatter::Format(const domain::LogEntry& entry) const noexcept {
-        std::wostringstream oss;
+    std::wstring LogFormatter::Format(
+        domain::LogLevel level,
+        std::wstring_view message,
+        std::wstring_view category
+    ) noexcept {
+        const auto now = std::chrono::system_clock::now();
+        return Format(level, message, category, now);
+    }
 
-        oss << L"[" << FormatTimestamp(entry.GetTimestamp()) << L"] ";
+    std::wstring LogFormatter::Format(
+        domain::LogLevel level,
+        std::wstring_view message,
+        std::wstring_view category,
+        const std::chrono::system_clock::time_point& timestamp
+    ) noexcept {
+        try {
+            std::wostringstream oss;
 
-        oss << L"[" << PadRight(abstractions::LogLevelToString(entry.GetLevel()), 5) << L"] ";
+            oss << L"[" << FormatTimestamp(timestamp) << L"] ";
+            oss << L"[" << domain::LogLevelToWideString(level) << L"] ";
 
-        oss << L"[" << std::setw(5) << std::setfill(L'0') << entry.GetThreadId() << L"] ";
+            if (!category.empty()) {
+                oss << L"[" << category << L"] ";
+            }
 
-        if (entry.HasCategory()) {
-            oss << L"[" << entry.GetCategory() << L"] ";
+            oss << message;
+
+            return oss.str();
         }
-
-        oss << entry.GetLogMessage();
-
-        return oss.str();
+        catch (...) {
+            return L"[ERROR] Failed to format log message";
+        }
     }
 
     std::wstring LogFormatter::FormatTimestamp(
-        std::chrono::system_clock::time_point timestamp
-    ) const noexcept {
-        auto timeT = std::chrono::system_clock::to_time_t(timestamp);
+        const std::chrono::system_clock::time_point& timePoint
+    ) noexcept {
+        try {
+            const auto timeT = std::chrono::system_clock::to_time_t(timePoint);
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                timePoint.time_since_epoch()
+            ) % 1000;
 
-        SYSTEMTIME st;
-        FILETIME ft;
+            tm localTime;
+            if (localtime_s(&localTime, &timeT) != 0) {
+                return L"INVALID_TIME";
+            }
 
-        auto duration = timestamp.time_since_epoch();
-        auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration - seconds);
+            std::wostringstream oss;
+            oss << std::put_time(&localTime, L"%Y-%m-%d %H:%M:%S");
+            oss << L"." << std::setfill(L'0') << std::setw(3) << ms.count();
 
-        tm localTime;
-        if (localtime_s(&localTime, &timeT) != 0) {
-            return L"0000-00-00 00:00:00.000";
+            return oss.str();
         }
-
-        std::wostringstream oss;
-        oss << std::setfill(L'0')
-            << std::setw(4) << (localTime.tm_year + 1900) << L"-"
-            << std::setw(2) << (localTime.tm_mon + 1) << L"-"
-            << std::setw(2) << localTime.tm_mday << L" "
-            << std::setw(2) << localTime.tm_hour << L":"
-            << std::setw(2) << localTime.tm_min << L":"
-            << std::setw(2) << localTime.tm_sec << L"."
-            << std::setw(3) << millis.count();
-
-        return oss.str();
+        catch (...) {
+            return L"TIMESTAMP_ERROR";
+        }
     }
 
-    std::wstring LogFormatter::PadRight(const std::wstring& str, size_t width) const noexcept {
-        if (str.length() >= width) {
-            return str;
+    std::wstring LogFormatter::FormatWithThreadId(
+        domain::LogLevel level,
+        std::wstring_view message,
+        std::wstring_view category
+    ) noexcept {
+        try {
+            const auto threadId = std::this_thread::get_id();
+            std::wostringstream oss;
+
+            oss << L"[TID:" << threadId << L"] ";
+            oss << Format(level, message, category);
+
+            return oss.str();
         }
-        return str + std::wstring(width - str.length(), L' ');
+        catch (...) {
+            return L"[ERROR] Failed to format log message with thread ID";
+        }
     }
 
 }

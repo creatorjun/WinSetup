@@ -257,6 +257,33 @@
     <ClInclude Include="src\infrastructure\windows\StatusTextWidget.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="src\abstractions\logging\ILogger.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\platform\ISystemInfoService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\windows\system\Win32SystemInfoService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\entities\ConfigData.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\entities\LogEntry.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\infrastructure\composition\ServiceRegistration.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\infrastructure\config\IniParser.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\infrastructure\logging\LogFormatter.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\primitives\LogLevel.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\adapters\platform\windows\encoding\Win32TextEncoder.cpp">
@@ -338,6 +365,18 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\infrastructure\windows\StatusTextWidget.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\windows\system\Win32SystemInfoService.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\infrastructure\composition\ServiceRegistration.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\infrastructure\config\IniParser.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\infrastructure\logging\LogFormatter.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

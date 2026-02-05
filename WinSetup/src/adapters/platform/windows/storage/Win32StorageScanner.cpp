@@ -1,6 +1,7 @@
 #include "Win32StorageScanner.h"
 #include <algorithm>
 #include "../../../../abstractions/logging/ILogger.h"
+#include "../../../../domain/primitives/LogLevel.h"
 
 namespace winsetup::adapters {
 
@@ -13,7 +14,7 @@ namespace winsetup::adapters {
         , textEncoder_(std::move(textEncoder))
         , logger_(std::move(logger)) {
         if (logger_) {
-            logger_->Info(L"Win32StorageScanner initialized");
+            logger_->Log(domain::LogLevel::Info, L"Win32StorageScanner initialized");
         }
     }
 
@@ -23,12 +24,18 @@ namespace winsetup::adapters {
             const std::wstring& userProfile
         ) const noexcept {
         if (logger_) {
-            logger_->Info(L"Starting volume scan for user profile: " + userProfile);
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Starting volume scan for user profile: " + userProfile
+            );
         }
 
         if (!volume.HasDriveLetter()) [[unlikely]] {
             if (logger_) {
-                logger_->Warning(L"Volume has no drive letter, cannot scan");
+                logger_->Log(
+                    domain::LogLevel::Warning,
+                    L"Volume has no drive letter, cannot scan"
+                );
             }
             return domain::Expected<abstractions::ScanResult>::Failure(
                 domain::Error("Volume has no drive letter")
@@ -38,58 +45,85 @@ namespace winsetup::adapters {
         std::wstring basePath = volume.GetDriveLetterString();
         if (basePath.empty()) [[unlikely]] {
             if (logger_) {
-                logger_->Error(L"Invalid drive letter for volume");
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Invalid drive letter for volume"
+                );
             }
             return domain::Expected<abstractions::ScanResult>::Failure(
                 domain::Error("Invalid drive letter")
             );
         }
 
-        basePath.append(L"\\\\");
+        basePath.append(L"\\");
 
         if (logger_) {
-            logger_->Debug(L"Scanning volume at: " + basePath);
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Scanning volume at: " + basePath
+            );
         }
 
         abstractions::ScanResult result;
 
         if (logger_) {
-            logger_->Debug(L"Checking for Windows directory");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Checking for Windows directory"
+            );
         }
         auto windowsDirResult = volumeService_->DirectoryExists(basePath + L"Windows");
         if (windowsDirResult.HasValue() && windowsDirResult.Value()) [[likely]] {
             result.hasWindowsDirectory = true;
             if (logger_) {
-                logger_->Debug(L"Windows directory found");
+                logger_->Log(
+                    domain::LogLevel::Debug,
+                    L"Windows directory found"
+                );
             }
         }
 
         if (logger_) {
-            logger_->Debug(L"Checking for System32 directory");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Checking for System32 directory"
+            );
         }
         auto system32DirResult = volumeService_->DirectoryExists(
-            basePath + L"Windows\\\\System32"
+            basePath + L"Windows\\System32"
         );
         if (system32DirResult.HasValue() && system32DirResult.Value()) [[likely]] {
             result.hasSystem32Directory = true;
             if (logger_) {
-                logger_->Debug(L"System32 directory found");
+                logger_->Log(
+                    domain::LogLevel::Debug,
+                    L"System32 directory found"
+                );
             }
         }
 
         if (logger_) {
-            logger_->Debug(L"Checking for Users directory");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Checking for Users directory"
+            );
         }
         auto usersDirResult = volumeService_->DirectoryExists(basePath + L"Users");
         if (usersDirResult.HasValue() && usersDirResult.Value()) [[likely]] {
             result.hasUsersDirectory = true;
             if (logger_) {
-                logger_->Debug(L"Users directory found");
+                logger_->Log(
+                    domain::LogLevel::Debug,
+                    L"Users directory found"
+                );
             }
         }
 
         if (logger_) {
-            logger_->Debug(L"Checking for Program Files directory");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Checking for Program Files directory"
+            );
         }
         auto programFilesDirResult = volumeService_->DirectoryExists(
             basePath + L"Program Files"
@@ -97,7 +131,10 @@ namespace winsetup::adapters {
         if (programFilesDirResult.HasValue() && programFilesDirResult.Value()) [[likely]] {
             result.hasProgramFilesDirectory = true;
             if (logger_) {
-                logger_->Debug(L"Program Files directory found");
+                logger_->Log(
+                    domain::LogLevel::Debug,
+                    L"Program Files directory found"
+                );
             }
         }
 
@@ -109,19 +146,28 @@ namespace winsetup::adapters {
         );
 
         if (logger_) {
-            logger_->Debug(L"Initial system score: " + std::to_wstring(result.score));
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Initial system score: " + std::to_wstring(result.score)
+            );
         }
 
         if (result.score < 50) {
             if (logger_) {
-                logger_->Debug(L"System score below threshold, searching for user data directories");
+                logger_->Log(
+                    domain::LogLevel::Debug,
+                    L"System score below threshold, searching for user data directories"
+                );
             }
 
             auto userDirsResult = FindUserDataDirectories(volume, userProfile);
             if (userDirsResult.HasValue()) [[likely]] {
                 int dataScore = CalculateDataScore(userDirsResult.Value());
                 if (logger_) {
-                    logger_->Debug(L"User data score: " + std::to_wstring(dataScore));
+                    logger_->Log(
+                        domain::LogLevel::Debug,
+                        L"User data score: " + std::to_wstring(dataScore)
+                    );
                 }
                 result.score = std::max(result.score, dataScore);
             }
@@ -139,12 +185,15 @@ namespace winsetup::adapters {
                 volumeType = L"Unknown Volume Type";
             }
 
-            logger_->Info(L"Volume scan complete - " + volumeType +
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Volume scan complete - " + volumeType +
                 L", Final score: " + std::to_wstring(result.score) +
                 L" (Windows:" + (result.hasWindowsDirectory ? L"Yes" : L"No") +
                 L", System32:" + (result.hasSystem32Directory ? L"Yes" : L"No") +
                 L", Users:" + (result.hasUsersDirectory ? L"Yes" : L"No") +
-                L", ProgramFiles:" + (result.hasProgramFilesDirectory ? L"Yes" : L"No") + L")");
+                L", ProgramFiles:" + (result.hasProgramFilesDirectory ? L"Yes" : L"No") + L")"
+            );
         }
 
         return domain::Expected<abstractions::ScanResult>::Success(result);
@@ -156,12 +205,18 @@ namespace winsetup::adapters {
             const std::wstring& userProfile
         ) const noexcept {
         if (logger_) {
-            logger_->Debug(L"Finding user data directories for profile: " + userProfile);
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Finding user data directories for profile: " + userProfile
+            );
         }
 
         if (!volume.HasDriveLetter()) [[unlikely]] {
             if (logger_) {
-                logger_->Warning(L"Volume has no drive letter");
+                logger_->Log(
+                    domain::LogLevel::Warning,
+                    L"Volume has no drive letter"
+                );
             }
             return domain::Expected<std::vector<std::wstring>>::Failure(
                 domain::Error("Volume has no drive letter")
@@ -171,33 +226,39 @@ namespace winsetup::adapters {
         std::wstring basePath = volume.GetDriveLetterString();
         if (basePath.empty()) [[unlikely]] {
             if (logger_) {
-                logger_->Error(L"Invalid drive letter");
+                logger_->Log(
+                    domain::LogLevel::Error,
+                    L"Invalid drive letter"
+                );
             }
             return domain::Expected<std::vector<std::wstring>>::Failure(
                 domain::Error("Invalid drive letter")
             );
         }
 
-        basePath.append(L"\\\\");
+        basePath.append(L"\\");
 
         std::vector<std::wstring> userDirs;
         userDirs.reserve(10);
 
         const std::vector<std::wstring> commonUserDirs = {
-            userProfile + L"\\\\Desktop",
-            userProfile + L"\\\\Documents",
-            userProfile + L"\\\\Downloads",
-            userProfile + L"\\\\Pictures",
-            userProfile + L"\\\\Videos",
-            userProfile + L"\\\\Music",
-            userProfile + L"\\\\AppData",
-            L"Users\\\\" + userProfile + L"\\\\Desktop",
-            L"Users\\\\" + userProfile + L"\\\\Documents",
-            L"Users\\\\" + userProfile + L"\\\\Downloads"
+            userProfile + L"\\Desktop",
+            userProfile + L"\\Documents",
+            userProfile + L"\\Downloads",
+            userProfile + L"\\Pictures",
+            userProfile + L"\\Videos",
+            userProfile + L"\\Music",
+            userProfile + L"\\AppData",
+            L"Users\\" + userProfile + L"\\Desktop",
+            L"Users\\" + userProfile + L"\\Documents",
+            L"Users\\" + userProfile + L"\\Downloads"
         };
 
         if (logger_) {
-            logger_->Debug(L"Checking " + std::to_wstring(commonUserDirs.size()) + L" common user directories");
+            logger_->Log(
+                domain::LogLevel::Debug,
+                L"Checking " + std::to_wstring(commonUserDirs.size()) + L" common user directories"
+            );
         }
 
         int foundCount = 0;
@@ -209,13 +270,19 @@ namespace winsetup::adapters {
                 userDirs.push_back(dir);
                 foundCount++;
                 if (logger_) {
-                    logger_->Debug(L"Found user directory: " + dir);
+                    logger_->Log(
+                        domain::LogLevel::Debug,
+                        L"Found user directory: " + dir
+                    );
                 }
             }
         }
 
         if (logger_) {
-            logger_->Info(L"Found " + std::to_wstring(foundCount) + L" user data directories");
+            logger_->Log(
+                domain::LogLevel::Info,
+                L"Found " + std::to_wstring(foundCount) + L" user data directories"
+            );
         }
 
         return domain::Expected<std::vector<std::wstring>>::Success(
