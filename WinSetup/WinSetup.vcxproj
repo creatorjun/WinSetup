@@ -234,6 +234,7 @@ validate_dependencies.bat</Command>
     <ClInclude Include="src\domain\validation\ValidationRules.h" />
     <ClInclude Include="src\infrastructure\composition\DependencyContainer.h" />
     <ClInclude Include="src\infrastructure\composition\ServiceLocator.h" />
+    <ClInclude Include="src\infrastructure\composition\ServiceRegistration.h" />
     <ClInclude Include="src\infrastructure\config\ConfigLoader.h" />
     <ClInclude Include="src\infrastructure\config\IniParser.h" />
     <ClInclude Include="src\infrastructure\diagnostics\PerformanceMonitor.h" />
@@ -265,6 +266,7 @@ validate_dependencies.bat</Command>
     <ClCompile Include="src\application\usecases\DiskAnalyzer.cpp" />
     <ClCompile Include="src\domain\validation\PathValidator.cpp" />
     <ClCompile Include="src\infrastructure\composition\DependencyContainer.cpp" />
+    <ClCompile Include="src\infrastructure\composition\ServiceRegistration.cpp" />
     <ClCompile Include="src\infrastructure\config\ConfigLoader.cpp" />
     <ClCompile Include="src\infrastructure\config\IniParser.cpp" />
     <ClCompile Include="src\infrastructure\diagnostics\PerformanceMonitor.cpp" />

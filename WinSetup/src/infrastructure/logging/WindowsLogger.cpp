@@ -1,32 +1,51 @@
-// src/infrastructure/logging/WindowsLogger.cpp 
 #include "WindowsLogger.h"
 #include <Windows.h>
-#include <filesystem>
+#include <chrono>
 #include <sstream>
+#include <iomanip>
 
 namespace winsetup::infrastructure {
 
-    WindowsLogger::WindowsLogger(
-        const std::wstring& logFilePath,
-        LogTarget targets,
-        abstractions::LogLevel minLevel
-    )
-        : logFilePath_(logFilePath)
-        , targets_(targets)
-        , minLevel_(minLevel)
-        , formatter_()
-        , maxFileSize_(DEFAULT_MAX_FILE_SIZE)
-        , rotationEnabled_(true)
-        , rotationCount_(0) {
-
-        if (targets_ & LogTarget::File) {
-            logFile_.open(logFilePath_, std::ios::out | std::ios::app);
-            logFile_.imbue(std::locale(""));
-        }
-    }
+    WindowsLogger::WindowsLogger() = default;
 
     WindowsLogger::~WindowsLogger() {
         Close();
+    }
+
+    bool WindowsLogger::Initialize(const std::wstring& logFilePath) {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        if (isInitialized_) {
+            Close();
+        }
+
+        wchar_t exePath[MAX_PATH];
+        ::GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+        std::wstring fullExePath(exePath);
+        size_t pos = fullExePath.find_last_of(L"\\/");
+        std::wstring exeDir = (pos != std::wstring::npos) ? fullExePath.substr(0, pos) : L".";
+
+        std::wstring logDir = exeDir + L"\\log";
+
+        if (!::CreateDirectoryW(logDir.c_str(), nullptr)) {
+            DWORD error = ::GetLastError();
+            if (error != ERROR_ALREADY_EXISTS) {
+                return false;
+            }
+        }
+
+        logFilePath_ = logDir + L"\\" + logFilePath;
+
+        fileStream_.open(logFilePath_, std::ios::out | std::ios::trunc);
+        if (!fileStream_.is_open()) {
+            return false;
+        }
+
+        fileStream_.imbue(std::locale(""));
+
+        isInitialized_ = true;
+
+        return true;
     }
 
     void WindowsLogger::Log(
@@ -41,156 +60,87 @@ namespace winsetup::infrastructure {
         std::wstring_view message,
         std::wstring_view category
     ) noexcept {
-        if (level < minLevel_) {
+        if (level < minimumLevel_) {
             return;
         }
 
-        try {
-            domain::LogEntry entry(
-                level,
-                std::wstring(message),
-                std::wstring(category)
-            );
+        const auto formattedMessage = FormatLogMessage(level, message, category);
 
-            std::wstring formatted = formatter_.Format(entry);
-
-            std::lock_guard<std::mutex> lock(mutex_);
-
-            if (targets_ & LogTarget::File) {
-                WriteToFile(formatted);
-            }
-
-            if (targets_ & LogTarget::DebugOutput) {
-                WriteToDebugOutput(formatted);
-            }
-
-            if (targets_ & LogTarget::Console) {
-                WriteToConsole(formatted);
-            }
-        }
-        catch (...) {
-        }
+        WriteToFile(formattedMessage);
+        WriteToDebugOutput(formattedMessage);
     }
 
     void WindowsLogger::SetMinimumLevel(abstractions::LogLevel level) noexcept {
         std::lock_guard<std::mutex> lock(mutex_);
-        minLevel_ = level;
+        minimumLevel_ = level;
     }
 
     abstractions::LogLevel WindowsLogger::GetMinimumLevel() const noexcept {
         std::lock_guard<std::mutex> lock(mutex_);
-        return minLevel_;
+        return minimumLevel_;
     }
 
     void WindowsLogger::Flush() noexcept {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (logFile_.is_open()) {
-            logFile_.flush();
+        if (fileStream_.is_open()) {
+            fileStream_.flush();
         }
     }
 
     void WindowsLogger::Close() noexcept {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (logFile_.is_open()) {
-            logFile_.flush();
-            logFile_.close();
+        if (fileStream_.is_open()) {
+            fileStream_.flush();
+            fileStream_.close();
         }
+        isInitialized_ = false;
     }
 
-    void WindowsLogger::SetMaxFileSize(uint64_t bytes) noexcept {
+    std::wstring WindowsLogger::FormatLogMessage(
+        abstractions::LogLevel level,
+        std::wstring_view message,
+        std::wstring_view category
+    ) const noexcept {
+        std::wostringstream oss;
+
+        oss << L"[" << GetCurrentTimestamp() << L"] ";
+        oss << L"[" << abstractions::LogLevelToString(level) << L"] ";
+
+        if (!category.empty()) {
+            oss << L"[" << category << L"] ";
+        }
+
+        oss << message;
+
+        return oss.str();
+    }
+
+    std::wstring WindowsLogger::GetCurrentTimestamp() const noexcept {
+        SYSTEMTIME st;
+        ::GetLocalTime(&st);
+
+        std::wostringstream oss;
+        oss << std::setfill(L'0')
+            << std::setw(4) << st.wYear << L"-"
+            << std::setw(2) << st.wMonth << L"-"
+            << std::setw(2) << st.wDay << L" "
+            << std::setw(2) << st.wHour << L":"
+            << std::setw(2) << st.wMinute << L":"
+            << std::setw(2) << st.wSecond << L"."
+            << std::setw(3) << st.wMilliseconds;
+
+        return oss.str();
+    }
+
+    void WindowsLogger::WriteToFile(const std::wstring& message) noexcept {
         std::lock_guard<std::mutex> lock(mutex_);
-        maxFileSize_ = bytes;
+        if (fileStream_.is_open()) {
+            fileStream_ << message << std::endl;
+        }
     }
 
-    void WindowsLogger::EnableRotation(bool enable) noexcept {
-        std::lock_guard<std::mutex> lock(mutex_);
-        rotationEnabled_ = enable;
-    }
-
-    void WindowsLogger::WriteToFile(const std::wstring& formatted) noexcept {
-        if (!logFile_.is_open()) {
-            return;
-        }
-
-        if (rotationEnabled_ && ShouldRotate()) {
-            RotateLogFile();
-        }
-
-        logFile_ << formatted << L"\n";
-        logFile_.flush();
-    }
-
-    void WindowsLogger::WriteToDebugOutput(const std::wstring& formatted) noexcept {
-        OutputDebugStringW((formatted + L"\n").c_str());
-    }
-
-    void WindowsLogger::WriteToConsole(const std::wstring& formatted) noexcept {
-        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        if (hConsole == INVALID_HANDLE_VALUE) {
-            return;
-        }
-
-        std::wstring output = formatted + L"\n";
-        DWORD written = 0;
-        WriteConsoleW(hConsole, output.c_str(), static_cast<DWORD>(output.length()), &written, nullptr);
-    }
-
-    void WindowsLogger::RotateLogFile() noexcept {
-        if (!logFile_.is_open()) {
-            return;
-        }
-
-        logFile_.close();
-
-        try {
-            for (uint32_t i = MAX_ROTATION_COUNT; i > 0; --i) {
-                std::wstring oldPath = logFilePath_ + L"." + std::to_wstring(i);
-                std::wstring newPath = logFilePath_ + L"." + std::to_wstring(i + 1);
-
-                if (std::filesystem::exists(oldPath)) {
-                    if (i == MAX_ROTATION_COUNT) {
-                        std::filesystem::remove(oldPath);
-                    }
-                    else {
-                        std::filesystem::rename(oldPath, newPath);
-                    }
-                }
-            }
-
-            std::wstring firstRotation = logFilePath_ + L".1";
-            if (std::filesystem::exists(logFilePath_)) {
-                std::filesystem::rename(logFilePath_, firstRotation);
-            }
-        }
-        catch (...) {
-        }
-
-        logFile_.open(logFilePath_, std::ios::out | std::ios::app);
-        logFile_.imbue(std::locale(""));
-        rotationCount_ = 0;
-    }
-
-    bool WindowsLogger::ShouldRotate() const noexcept {
-        return GetCurrentFileSize() >= maxFileSize_;
-    }
-
-    uint64_t WindowsLogger::GetCurrentFileSize() const noexcept {
-        try {
-            if (std::filesystem::exists(logFilePath_)) {
-                return std::filesystem::file_size(logFilePath_);
-            }
-        }
-        catch (...) {
-        }
-        return 0;
-    }
-
-    std::unique_ptr<abstractions::ILogger> CreateLogger(
-        const std::wstring& logFilePath,
-        LogTarget targets,
-        abstractions::LogLevel minLevel
-    ) {
-        return std::make_unique<WindowsLogger>(logFilePath, targets, minLevel);
+    void WindowsLogger::WriteToDebugOutput(const std::wstring& message) noexcept {
+        ::OutputDebugStringW((message + L"\n").c_str());
     }
 
 }
