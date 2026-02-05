@@ -533,10 +533,8 @@ config.ini 예시:
 USERPROFILE=kdic
 
 [BACKUPS]
-USERLIBRARY=TRUE
-STICKYNOTE=TRUE
-S_MEMO=TURE
-NPKI=TRUE
+STICKYNOTES={USERPROFILEPATH}\AppData\Local\Packages\Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe\LocalState
+NPKI={USERPROFILEPATH}\AppData\LocalLow\NPKI
 
 [TYPES]
 TYPE_NAME_01=내부망
