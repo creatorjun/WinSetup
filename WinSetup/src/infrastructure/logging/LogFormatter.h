@@ -3,7 +3,8 @@
 #include <string>
 #include <string_view>
 #include <chrono>
-#include "../../domain/primitives/LogLevel.h"
+#include "../../abstractions/logging/LogLevel.h"
+#include "../../domain/entities/LogEntry.h"
 
 namespace winsetup::infrastructure {
 
@@ -12,27 +13,31 @@ namespace winsetup::infrastructure {
         LogFormatter() = delete;
 
         [[nodiscard]] static std::wstring Format(
-            domain::LogLevel level,
+            abstractions::LogLevel level,
             std::wstring_view message,
             std::wstring_view category = L""
-        ) noexcept;
+        );
 
         [[nodiscard]] static std::wstring Format(
-            domain::LogLevel level,
+            const domain::LogEntry& entry
+        );
+
+        [[nodiscard]] static std::wstring Format(
+            abstractions::LogLevel level,
             std::wstring_view message,
             std::wstring_view category,
             const std::chrono::system_clock::time_point& timestamp
-        ) noexcept;
+        );
 
         [[nodiscard]] static std::wstring FormatTimestamp(
             const std::chrono::system_clock::time_point& timePoint
-        ) noexcept;
+        );
 
         [[nodiscard]] static std::wstring FormatWithThreadId(
-            domain::LogLevel level,
+            abstractions::LogLevel level,
             std::wstring_view message,
             std::wstring_view category = L""
-        ) noexcept;
+        );
     };
 
 }

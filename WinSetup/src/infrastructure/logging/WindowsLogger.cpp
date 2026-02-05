@@ -1,55 +1,82 @@
 #include "WindowsLogger.h"
-#include <sstream>
 #include <iomanip>
-#include <Windows.h>
+#include <sstream>
+#include <filesystem>
 
 namespace winsetup::infrastructure {
 
+    struct WindowsLogger::Impl {
+        std::wofstream fileStream;
+        std::wstring logFilePath;
+        abstractions::LogLevel minimumLevel{ abstractions::LogLevel::Info };
+        mutable std::mutex mutex;
+        bool isInitialized{ false };
+        size_t logCount{ 0 };
+        HANDLE consoleHandle{ INVALID_HANDLE_VALUE };
+        WORD originalConsoleAttributes{ 0 };
+    };
+
     WindowsLogger::WindowsLogger() noexcept
-        : minimumLevel_(domain::LogLevel::Info)
-        , isInitialized_(false) {
+        : pImpl_(std::make_unique<Impl>()) {
+        pImpl_->consoleHandle = ::GetStdHandle(STD_OUTPUT_HANDLE);
+        if (pImpl_->consoleHandle != INVALID_HANDLE_VALUE) {
+            CONSOLE_SCREEN_BUFFER_INFO csbi;
+            if (::GetConsoleScreenBufferInfo(pImpl_->consoleHandle, &csbi)) {
+                pImpl_->originalConsoleAttributes = csbi.wAttributes;
+            }
+        }
     }
 
     WindowsLogger::~WindowsLogger() {
         Close();
     }
 
-    bool WindowsLogger::Initialize(const std::wstring& logFilePath) noexcept {
-        std::lock_guard<std::mutex> lock(mutex_);
+    bool WindowsLogger::Initialize(std::wstring_view logFilePath) noexcept {
+        std::lock_guard lock(pImpl_->mutex);
+
+        if (pImpl_->isInitialized) {
+            Close();
+        }
 
         try {
-            if (isInitialized_) {
-                Close();
+            pImpl_->logFilePath = logFilePath;
+
+            const std::filesystem::path logPath(logFilePath);
+            if (const auto parentPath = logPath.parent_path(); !parentPath.empty()) {
+                std::filesystem::create_directories(parentPath);
             }
 
-            logFilePath_ = logFilePath;
+            pImpl_->fileStream.open(
+                pImpl_->logFilePath,
+                std::ios::out | std::ios::app
+            );
 
-            fileStream_.open(logFilePath_, std::ios::out | std::ios::app);
-            if (!fileStream_.is_open()) {
+            if (!pImpl_->fileStream.is_open()) {
                 return false;
             }
 
-            fileStream_.imbue(std::locale(""));
+            pImpl_->fileStream.imbue(std::locale(""));
 
-            isInitialized_ = true;
+            pImpl_->isInitialized = true;
+            pImpl_->logCount = 0;
 
             return true;
         }
         catch (...) {
-            isInitialized_ = false;
+            pImpl_->isInitialized = false;
             return false;
         }
     }
 
     void WindowsLogger::Log(
-        domain::LogLevel level,
+        abstractions::LogLevel level,
         std::wstring_view message
     ) noexcept {
         Log(level, message, L"");
     }
 
     void WindowsLogger::Log(
-        domain::LogLevel level,
+        abstractions::LogLevel level,
         std::wstring_view message,
         std::wstring_view category
     ) noexcept {
@@ -57,136 +84,130 @@ namespace winsetup::infrastructure {
             return;
         }
 
-        WriteLogEntry(level, message, category);
-    }
-
-    void WindowsLogger::Trace(std::wstring_view message) noexcept {
-        Log(domain::LogLevel::Trace, message);
-    }
-
-    void WindowsLogger::Debug(std::wstring_view message) noexcept {
-        Log(domain::LogLevel::Debug, message);
-    }
-
-    void WindowsLogger::Info(std::wstring_view message) noexcept {
-        Log(domain::LogLevel::Info, message);
-    }
-
-    void WindowsLogger::Warning(std::wstring_view message) noexcept {
-        Log(domain::LogLevel::Warning, message);
-    }
-
-    void WindowsLogger::Error(std::wstring_view message) noexcept {
-        Log(domain::LogLevel::Error, message);
-    }
-
-    void WindowsLogger::Fatal(std::wstring_view message) noexcept {
-        Log(domain::LogLevel::Fatal, message);
-    }
-
-    void WindowsLogger::SetMinimumLevel(domain::LogLevel level) noexcept {
-        std::lock_guard<std::mutex> lock(mutex_);
-        minimumLevel_ = level;
-    }
-
-    domain::LogLevel WindowsLogger::GetMinimumLevel() const noexcept {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return minimumLevel_;
-    }
-
-    void WindowsLogger::Flush() noexcept {
-        std::lock_guard<std::mutex> lock(mutex_);
         try {
-            if (isInitialized_ && fileStream_.is_open()) {
-                fileStream_.flush();
+            const std::wstring logLine = FormatLogMessage(level, message, category);
+
+            {
+                std::lock_guard lock(pImpl_->mutex);
+                WriteToFile(logLine);
+                WriteToDebugOutput(logLine);
+                ++pImpl_->logCount;
             }
         }
         catch (...) {
+        }
+    }
+
+    void WindowsLogger::SetMinimumLevel(abstractions::LogLevel level) noexcept {
+        std::lock_guard lock(pImpl_->mutex);
+        pImpl_->minimumLevel = level;
+    }
+
+    abstractions::LogLevel WindowsLogger::GetMinimumLevel() const noexcept {
+        std::lock_guard lock(pImpl_->mutex);
+        return pImpl_->minimumLevel;
+    }
+
+    void WindowsLogger::Flush() noexcept {
+        std::lock_guard lock(pImpl_->mutex);
+        if (pImpl_->isInitialized && pImpl_->fileStream.is_open()) {
+            pImpl_->fileStream.flush();
         }
     }
 
     void WindowsLogger::Close() noexcept {
-        try {
-            if (fileStream_.is_open()) {
-                fileStream_.flush();
-                fileStream_.close();
+        std::lock_guard lock(pImpl_->mutex);
+        if (pImpl_->isInitialized) {
+            if (pImpl_->fileStream.is_open()) {
+                pImpl_->fileStream.flush();
+                pImpl_->fileStream.close();
             }
-            isInitialized_ = false;
-        }
-        catch (...) {
+            pImpl_->isInitialized = false;
         }
     }
 
     bool WindowsLogger::IsInitialized() const noexcept {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return isInitialized_;
+        std::lock_guard lock(pImpl_->mutex);
+        return pImpl_->isInitialized;
     }
 
     std::wstring WindowsLogger::GetLogFilePath() const noexcept {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return logFilePath_;
+        std::lock_guard lock(pImpl_->mutex);
+        return pImpl_->logFilePath;
     }
 
-    void WindowsLogger::WriteLogEntry(
-        domain::LogLevel level,
+    size_t WindowsLogger::GetLogCount() const noexcept {
+        std::lock_guard lock(pImpl_->mutex);
+        return pImpl_->logCount;
+    }
+
+    bool WindowsLogger::ShouldLog(abstractions::LogLevel level) const noexcept {
+        std::lock_guard lock(pImpl_->mutex);
+        return pImpl_->isInitialized && level >= pImpl_->minimumLevel;
+    }
+
+    void WindowsLogger::WriteToFile(std::wstring_view logLine) noexcept {
+        if (pImpl_->fileStream.is_open()) {
+            pImpl_->fileStream << logLine << L'\n';
+        }
+    }
+
+    void WindowsLogger::WriteToDebugOutput(std::wstring_view logLine) noexcept {
+        ::OutputDebugStringW((std::wstring(logLine) + L"\n").c_str());
+    }
+
+    std::wstring WindowsLogger::FormatLogMessage(
+        abstractions::LogLevel level,
         std::wstring_view message,
         std::wstring_view category
-    ) noexcept {
-        std::lock_guard<std::mutex> lock(mutex_);
-
-        try {
-            if (!isInitialized_ || !fileStream_.is_open()) {
-                return;
-            }
-
-            const auto now = std::chrono::system_clock::now();
-            const auto timestamp = FormatTimestamp(now);
-            const auto levelStr = domain::LogLevelToWideString(level);
-
-            fileStream_ << L"[" << timestamp << L"] ";
-            fileStream_ << L"[" << levelStr << L"] ";
-
-            if (!category.empty()) {
-                fileStream_ << L"[" << category << L"] ";
-            }
-
-            fileStream_ << message << L"\n";
-
-            if (level >= domain::LogLevel::Error) {
-                fileStream_.flush();
-            }
-        }
-        catch (...) {
-        }
-    }
-
-    std::wstring WindowsLogger::FormatTimestamp(
-        const std::chrono::system_clock::time_point& timePoint
     ) const noexcept {
-        try {
-            const auto timeT = std::chrono::system_clock::to_time_t(timePoint);
-            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                timePoint.time_since_epoch()
-            ) % 1000;
+        std::wostringstream oss;
+        oss << L"[" << GetCurrentTimestamp() << L"] ";
+        oss << L"[" << abstractions::LogLevelToString(level) << L"] ";
 
-            tm localTime;
-            if (localtime_s(&localTime, &timeT) != 0) {
-                return L"INVALID_TIME";
-            }
-
-            std::wostringstream oss;
-            oss << std::put_time(&localTime, L"%Y-%m-%d %H:%M:%S");
-            oss << L"." << std::setfill(L'0') << std::setw(3) << ms.count();
-
-            return oss.str();
+        if (!category.empty()) {
+            oss << L"[" << category << L"] ";
         }
-        catch (...) {
-            return L"TIMESTAMP_ERROR";
-        }
+
+        oss << message;
+        return oss.str();
     }
 
-    bool WindowsLogger::ShouldLog(domain::LogLevel level) const noexcept {
-        return domain::ShouldLog(level, minimumLevel_);
+    std::wstring WindowsLogger::GetCurrentTimestamp() const noexcept {
+        const auto now = std::chrono::system_clock::now();
+        const auto nowTime = std::chrono::system_clock::to_time_t(now);
+        const auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now.time_since_epoch()
+        ) % 1000;
+
+        std::tm timeInfo;
+        localtime_s(&timeInfo, &nowTime);
+
+        std::wostringstream oss;
+        oss << std::put_time(&timeInfo, L"%Y-%m-%d %H:%M:%S");
+        oss << L'.' << std::setfill(L'0') << std::setw(3) << nowMs.count();
+
+        return oss.str();
+    }
+
+    WORD WindowsLogger::GetConsoleColor(abstractions::LogLevel level) noexcept {
+        constexpr WORD DEFAULT_COLOR = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+        constexpr WORD TRACE_COLOR = FOREGROUND_INTENSITY;
+        constexpr WORD DEBUG_COLOR = FOREGROUND_GREEN | FOREGROUND_BLUE;
+        constexpr WORD INFO_COLOR = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+        constexpr WORD WARNING_COLOR = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
+        constexpr WORD ERROR_COLOR = FOREGROUND_RED | FOREGROUND_INTENSITY;
+        constexpr WORD FATAL_COLOR = FOREGROUND_RED | BACKGROUND_INTENSITY;
+
+        switch (level) {
+        case abstractions::LogLevel::Trace:   return TRACE_COLOR;
+        case abstractions::LogLevel::Debug:   return DEBUG_COLOR;
+        case abstractions::LogLevel::Info:    return INFO_COLOR;
+        case abstractions::LogLevel::Warning: return WARNING_COLOR;
+        case abstractions::LogLevel::Error:   return ERROR_COLOR;
+        case abstractions::LogLevel::Fatal:   return FATAL_COLOR;
+        default:                              return DEFAULT_COLOR;
+        }
     }
 
 }

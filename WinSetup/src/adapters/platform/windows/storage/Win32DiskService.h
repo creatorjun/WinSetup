@@ -5,7 +5,7 @@
 #include "../../../../abstractions/platform/ITextEncoder.h"
 #include "../../../../abstractions/storage/IDiskService.h"
 #include "../../../../abstractions/logging/ILogger.h"
-#include "../../../../domain/primitives/LogLevel.h" 
+#include "../../../../abstractions/logging/LogLevel.h" 
 
 namespace winsetup::adapters {
 

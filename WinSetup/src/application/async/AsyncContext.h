@@ -1,86 +1,68 @@
 #pragma once
 
 #include <memory>
+#include <thread>
+#include <atomic>
 #include <functional>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
 #include "../../abstractions/async/IAsyncContext.h"
-#include "TaskScheduler.h"
-#include "Promise.h"
-#include "Awaitable.h"
+#include "../../abstractions/async/IExecutor.h"
+#include "../../abstractions/async/IScheduler.h"
 
 namespace winsetup::application {
 
-    class AsyncContext {
+    class AsyncContext : public abstractions::IAsyncContext {
     public:
-        explicit AsyncContext(std::shared_ptr<TaskScheduler> scheduler)
-            : scheduler_(std::move(scheduler)) {
-        }
+        explicit AsyncContext(
+            std::shared_ptr<abstractions::IExecutor> executor,
+            std::shared_ptr<abstractions::IScheduler> scheduler
+        );
 
-        template<typename T>
-        Future<T> Run(std::function<T()> work) {
-            Promise<T> promise;
-            auto future = promise.GetFuture();
+        ~AsyncContext() override;
 
-            scheduler_->Schedule([promise = std::move(promise), work = std::move(work)]() mutable {
-                try {
-                    if constexpr (std::is_void_v<T>) {
-                        work();
-                        promise.SetValue();
-                    }
-                    else {
-                        promise.SetValue(work());
-                    }
-                }
-                catch (const std::exception& e) {
-                    promise.SetError(winsetup::domain::Error(e.what()));
-                }
-                catch (...) {
-                    promise.SetError(winsetup::domain::Error("Unknown exception"));
-                }
-                });
+        AsyncContext(const AsyncContext&) = delete;
+        AsyncContext& operator=(const AsyncContext&) = delete;
 
-            return future;
-        }
+        [[nodiscard]] std::shared_ptr<abstractions::IExecutor> GetExecutor() override;
+        [[nodiscard]] std::shared_ptr<abstractions::IScheduler> GetScheduler() override;
 
-        template<typename T>
-        Future<T> RunOn(
-            std::function<T()> work,
-            abstractions::TaskPriority priority,
-            abstractions::TaskType type
-        ) {
-            Promise<T> promise;
-            auto future = promise.GetFuture();
+        void Post(std::function<void()> work) override;
+        void Send(std::function<void()> work) override;
+        void Invoke(std::function<void()> work) override;
+        void InvokeAsync(std::function<void()> work) override;
 
-            scheduler_->Schedule(
-                [promise = std::move(promise), work = std::move(work)]() mutable {
-                    try {
-                        if constexpr (std::is_void_v<T>) {
-                            work();
-                            promise.SetValue();
-                        }
-                        else {
-                            promise.SetValue(work());
-                        }
-                    }
-                    catch (const std::exception& e) {
-                        promise.SetError(winsetup::domain::Error(e.what()));
-                    }
-                    catch (...) {
-                        promise.SetError(winsetup::domain::Error("Unknown exception"));
-                    }
-                },
-                priority,
-                type
-            );
+        [[nodiscard]] abstractions::SynchronizationContext GetSynchronizationContext() const override;
+        void SetSynchronizationContext(abstractions::SynchronizationContext context) override;
 
-            return future;
-        }
+        [[nodiscard]] bool IsOnContextThread() const override;
 
-        std::shared_ptr<TaskScheduler> GetScheduler() const {
-            return scheduler_;
-        }
+        void BeginInvoke(std::function<void()> work) override;
+        void RunOnContext(std::function<void()> work) override;
+
+        [[nodiscard]] size_t GetPendingOperations() const override;
+        void ProcessPendingOperations() override;
+
+        void Shutdown() override;
+        [[nodiscard]] bool IsShutdown() const override;
 
     private:
-        std::shared_ptr<TaskScheduler> scheduler_;
+        struct Operation {
+            std::function<void()> work;
+            bool isBlocking{ false };
+            std::shared_ptr<std::promise<void>> promise;
+        };
+
+        std::shared_ptr<abstractions::IExecutor> executor_;
+        std::shared_ptr<abstractions::IScheduler> scheduler_;
+        abstractions::SynchronizationContext syncContext_;
+        std::thread::id contextThreadId_;
+        std::atomic<bool> shutdown_{ false };
+
+        mutable std::mutex queueMutex_;
+        std::queue<Operation> operationQueue_;
+        std::condition_variable queueCv_;
     };
 
 }

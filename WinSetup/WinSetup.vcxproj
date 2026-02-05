@@ -78,6 +78,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -98,6 +99,7 @@ validate_dependencies.bat</Command>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -116,6 +118,7 @@ validate_dependencies.bat</Command>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -136,6 +139,7 @@ validate_dependencies.bat</Command>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -167,6 +171,7 @@ validate_dependencies.bat</Command>
     <ClInclude Include="src\abstractions\io\IStreamReader.h" />
     <ClInclude Include="src\abstractions\io\IStreamWriter.h" />
     <ClInclude Include="src\abstractions\logging\ILogger.h" />
+    <ClInclude Include="src\abstractions\logging\LogLevel.h" />
     <ClInclude Include="src\abstractions\messaging\IDispatcher.h" />
     <ClInclude Include="src\abstractions\messaging\IEventBus.h" />
     <ClInclude Include="src\abstractions\messaging\IMessageQueue.h" />
@@ -228,13 +233,11 @@ validate_dependencies.bat</Command>
     <ClInclude Include="src\domain\memory\UniqueResource.h" />
     <ClInclude Include="src\domain\primitives\Error.h" />
     <ClInclude Include="src\domain\primitives\Expected.h" />
-    <ClInclude Include="src\domain\primitives\LogLevel.h" />
     <ClInclude Include="src\domain\primitives\Result.h" />
     <ClInclude Include="src\domain\validation\PathValidator.h" />
     <ClInclude Include="src\domain\validation\ValidationResult.h" />
     <ClInclude Include="src\domain\validation\ValidationRules.h" />
     <ClInclude Include="src\infrastructure\composition\DependencyContainer.h" />
-    <ClInclude Include="src\infrastructure\composition\ServiceLocator.h" />
     <ClInclude Include="src\infrastructure\composition\ServiceRegistration.h" />
     <ClInclude Include="src\infrastructure\config\ConfigLoader.h" />
     <ClInclude Include="src\infrastructure\config\IniParser.h" />

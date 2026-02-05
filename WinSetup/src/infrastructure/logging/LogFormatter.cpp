@@ -6,32 +6,39 @@
 namespace winsetup::infrastructure {
 
     std::wstring LogFormatter::Format(
-        domain::LogLevel level,
+        abstractions::LogLevel level,
         std::wstring_view message,
         std::wstring_view category
-    ) noexcept {
+    ) {
         const auto now = std::chrono::system_clock::now();
         return Format(level, message, category, now);
     }
 
+    std::wstring LogFormatter::Format(const domain::LogEntry& entry) {
+        return Format(
+            entry.GetLevel(),
+            entry.GetLogMessage(),
+            entry.GetCategory(),
+            entry.GetTimestamp()
+        );
+    }
+
     std::wstring LogFormatter::Format(
-        domain::LogLevel level,
+        abstractions::LogLevel level,
         std::wstring_view message,
         std::wstring_view category,
         const std::chrono::system_clock::time_point& timestamp
-    ) noexcept {
+    ) {
         try {
             std::wostringstream oss;
-
             oss << L"[" << FormatTimestamp(timestamp) << L"] ";
-            oss << L"[" << domain::LogLevelToWideString(level) << L"] ";
+            oss << L"[" << abstractions::LogLevelToString(level) << L"] ";
 
             if (!category.empty()) {
                 oss << L"[" << category << L"] ";
             }
 
             oss << message;
-
             return oss.str();
         }
         catch (...) {
@@ -41,7 +48,7 @@ namespace winsetup::infrastructure {
 
     std::wstring LogFormatter::FormatTimestamp(
         const std::chrono::system_clock::time_point& timePoint
-    ) noexcept {
+    ) {
         try {
             const auto timeT = std::chrono::system_clock::to_time_t(timePoint);
             const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -55,7 +62,7 @@ namespace winsetup::infrastructure {
 
             std::wostringstream oss;
             oss << std::put_time(&localTime, L"%Y-%m-%d %H:%M:%S");
-            oss << L"." << std::setfill(L'0') << std::setw(3) << ms.count();
+            oss << L'.' << std::setfill(L'0') << std::setw(3) << ms.count();
 
             return oss.str();
         }
@@ -65,17 +72,15 @@ namespace winsetup::infrastructure {
     }
 
     std::wstring LogFormatter::FormatWithThreadId(
-        domain::LogLevel level,
+        abstractions::LogLevel level,
         std::wstring_view message,
         std::wstring_view category
-    ) noexcept {
+    ) {
         try {
             const auto threadId = std::this_thread::get_id();
             std::wostringstream oss;
-
             oss << L"[TID:" << threadId << L"] ";
             oss << Format(level, message, category);
-
             return oss.str();
         }
         catch (...) {

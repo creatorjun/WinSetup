@@ -3,14 +3,13 @@
 #include <memory>
 #include <string>
 #include <exception>
+#include <abstractions/logging/ILogger.h>
+#include <abstractions/logging/LogLevel.h>
+#include <infrastructure/windows/MainWindow.h>
+#include <infrastructure/logging/WindowsLogger.h>
+#include <infrastructure/composition/DependencyContainer.h>
+#include <infrastructure/composition/ServiceRegistration.h>
 
-#include "infrastructure/windows/MainWindow.h"
-#include "infrastructure/composition/DependencyContainer.h"
-#include "infrastructure/composition/ServiceLocator.h"
-#include "infrastructure/composition/ServiceRegistration.h"
-#include "abstractions/logging/ILogger.h"
-#include "infrastructure/logging/WindowsLogger.h"
-#include "domain/primitives/LogLevel.h"
 
 using namespace winsetup;
 using namespace winsetup::infrastructure;
@@ -43,18 +42,16 @@ namespace {
     [[nodiscard]] bool InitializeLogger(DependencyContainer& container) noexcept {
         try {
             auto logger = std::make_shared<WindowsLogger>();
-
             if (!logger->Initialize(LOG_FILE_PATH)) {
                 return false;
             }
 
-            logger->SetMinimumLevel(domain::LogLevel::Debug);
-
+            logger->SetMinimumLevel(LogLevel::Debug);
             container.RegisterInstance<ILogger>(logger);
 
-            logger->Info(L"=================================================");
+            logger->Info(L"");
             logger->Info(L"WinSetup Application Starting");
-            logger->Info(L"=================================================");
+            logger->Info(L"");
 
             return true;
         }
@@ -65,20 +62,14 @@ namespace {
 
     [[nodiscard]] bool InitializeDependencies(
         DependencyContainer& container,
-        std::shared_ptr<WindowsLogger>& logger
+        ILogger& logger
     ) noexcept {
         try {
-            if (logger) {
-                logger->Info(L"Initializing dependency container...");
-            }
-
+            logger.Info(L"Initializing dependency container...");
             ServiceRegistration::RegisterAll(container);
 
-            if (logger) {
-                logger->Info(L"Dependency container initialized successfully");
-                logger->Info(L"Registered services count: " +
-                    std::to_wstring(container.GetRegisteredCount()));
-            }
+            logger.Info(L"Dependency container initialized successfully");
+            logger.Info(L"Registered services count: " + std::to_wstring(container.GetRegisteredCount()));
 
             return true;
         }
@@ -96,14 +87,9 @@ namespace {
 
     [[nodiscard]] bool ValidateServices(
         DependencyContainer& container,
-        std::shared_ptr<WindowsLogger>& logger
+        ILogger& logger
     ) noexcept {
-        if (!logger) {
-            ShowErrorMessage(L"Logger is not initialized");
-            return false;
-        }
-
-        logger->Debug(L"Validating registered services...");
+        logger.Debug(L"Validating registered services...");
 
         const bool allValid =
             container.IsRegistered<ILogger>() &&
@@ -111,16 +97,16 @@ namespace {
             container.IsRegistered<ISystemInfoService>();
 
         if (!allValid) {
-            logger->Error(L"Service validation failed - missing required services");
+            logger.Error(L"Service validation failed - missing required services");
             ShowErrorMessage(L"Critical services are not registered properly");
             return false;
         }
 
-        logger->Info(L"All critical services validated successfully");
+        logger.Info(L"All critical services validated successfully");
         return true;
     }
 
-    void LogSystemInformation(WindowsLogger& logger) noexcept {
+    void LogSystemInformation(ILogger& logger) noexcept {
         try {
             SYSTEM_INFO sysInfo;
             ::GetSystemInfo(&sysInfo);
@@ -152,22 +138,18 @@ namespace {
 
     void Cleanup(
         DependencyContainer* container,
-        std::shared_ptr<WindowsLogger>& logger
+        ILogger* logger
     ) noexcept {
         if (logger) {
-            logger->Info(L"=================================================");
+            logger->Info(L"");
             logger->Info(L"WinSetup Application Shutting Down");
-            logger->Info(L"=================================================");
+            logger->Info(L"");
             logger->Flush();
         }
-
-        ServiceLocator::Reset();
 
         if (container) {
             container->Clear();
         }
-
-        logger.reset();
     }
 }
 
@@ -181,83 +163,61 @@ int WINAPI wWinMain(
     UNREFERENCED_PARAMETER(lpCmdLine);
 
     int exitCode = 0;
-    std::shared_ptr<DependencyContainer> container;
-    std::shared_ptr<WindowsLogger> logger;
+    std::unique_ptr<DependencyContainer> container;
+    std::shared_ptr<ILogger> logger;
 
     try {
-        container = std::make_shared<DependencyContainer>();
+        container = std::make_unique<DependencyContainer>();
 
         if (!InitializeLogger(*container)) {
             ShowErrorMessage(L"Failed to initialize logging system");
             return 1;
         }
 
-        auto loggerInterface = container->Resolve<ILogger>();
-        if (!loggerInterface) {
+        logger = container->Resolve<ILogger>();
+        if (!logger) {
             ShowErrorMessage(L"Failed to resolve logger from container");
             return 1;
         }
 
-        logger = std::dynamic_pointer_cast<WindowsLogger>(loggerInterface);
-        if (!logger) {
-            ShowErrorMessage(L"Logger is not of expected type");
-            return 1;
-        }
-
-        if (!InitializeDependencies(*container, logger)) {
-            if (logger) {
-                logger->Fatal(L"Failed to initialize dependencies");
-            }
-            Cleanup(container.get(), logger);
+        if (!InitializeDependencies(*container, *logger)) {
+            logger->Fatal(L"Failed to initialize dependencies");
+            Cleanup(container.get(), logger.get());
             return 2;
         }
 
-        if (!ValidateServices(*container, logger)) {
-            if (logger) {
-                logger->Fatal(L"Service validation failed");
-            }
-            Cleanup(container.get(), logger);
+        if (!ValidateServices(*container, *logger)) {
+            logger->Fatal(L"Service validation failed");
+            Cleanup(container.get(), logger.get());
             return 3;
         }
 
-        ServiceLocator::Initialize(container);
+        LogSystemInformation(*logger);
 
-        if (logger) {
-            LogSystemInformation(*logger);
-            logger->Info(L"Creating main window...");
-        }
-
+        logger->Info(L"Creating main window...");
         auto mainWindow = std::make_unique<MainWindow>();
 
         if (!mainWindow->Create(hInstance, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, APPLICATION_TITLE)) {
-            const std::wstring errorMsg = L"Failed to create main window (Error: " +
-                std::to_wstring(::GetLastError()) + L")";
-
-            if (logger) {
-                logger->Fatal(errorMsg);
-            }
-
+            const std::wstring errorMsg =
+                L"Failed to create main window. Error: " +
+                std::to_wstring(::GetLastError()) +
+                L".";
+            logger->Fatal(errorMsg);
             ShowErrorMessage(errorMsg);
-            Cleanup(container.get(), logger);
+            Cleanup(container.get(), logger.get());
             return 4;
         }
 
-        if (logger) {
-            logger->Info(L"Main window created successfully");
-            logger->Info(L"Starting message loop...");
-        }
+        logger->Info(L"Main window created successfully");
+        logger->Info(L"Starting message loop...");
 
         mainWindow->Show(nShowCmd);
-
         exitCode = mainWindow->RunMessageLoop();
 
-        if (logger) {
-            logger->Info(L"Message loop exited with code: " + std::to_wstring(exitCode));
-        }
+        logger->Info(L"Message loop exited with code: " + std::to_wstring(exitCode));
 
         mainWindow.reset();
-
-        Cleanup(container.get(), logger);
+        Cleanup(container.get(), logger.get());
     }
     catch (const std::exception& ex) {
         const std::string errorMsg = ex.what();
@@ -270,7 +230,7 @@ int WINAPI wWinMain(
         }
 
         ShowFatalError(fullMsg);
-        Cleanup(container.get(), logger);
+        Cleanup(container.get(), logger.get());
         return 99;
     }
     catch (...) {
@@ -282,7 +242,7 @@ int WINAPI wWinMain(
         }
 
         ShowFatalError(errorMsg);
-        Cleanup(container.get(), logger);
+        Cleanup(container.get(), logger.get());
         return 100;
     }
 

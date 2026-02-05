@@ -1,7 +1,5 @@
 #include "Win32StorageScanner.h"
 #include <algorithm>
-#include "../../../../abstractions/logging/ILogger.h"
-#include "../../../../domain/primitives/LogLevel.h"
 
 namespace winsetup::adapters {
 
@@ -14,7 +12,7 @@ namespace winsetup::adapters {
         , textEncoder_(std::move(textEncoder))
         , logger_(std::move(logger)) {
         if (logger_) {
-            logger_->Log(domain::LogLevel::Info, L"Win32StorageScanner initialized");
+            logger_->Log(abstractions::LogLevel::Info, L"Win32StorageScanner initialized");
         }
     }
 
@@ -25,7 +23,7 @@ namespace winsetup::adapters {
         ) const noexcept {
         if (logger_) {
             logger_->Log(
-                domain::LogLevel::Info,
+                abstractions::LogLevel::Info,
                 L"Starting volume scan for user profile: " + userProfile
             );
         }
@@ -33,7 +31,7 @@ namespace winsetup::adapters {
         if (!volume.HasDriveLetter()) [[unlikely]] {
             if (logger_) {
                 logger_->Log(
-                    domain::LogLevel::Warning,
+                    abstractions::LogLevel::Warning,
                     L"Volume has no drive letter, cannot scan"
                 );
             }
@@ -46,7 +44,7 @@ namespace winsetup::adapters {
         if (basePath.empty()) [[unlikely]] {
             if (logger_) {
                 logger_->Log(
-                    domain::LogLevel::Error,
+                    abstractions::LogLevel::Error,
                     L"Invalid drive letter for volume"
                 );
             }
@@ -59,7 +57,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                domain::LogLevel::Debug,
+                abstractions::LogLevel::Debug,
                 L"Scanning volume at: " + basePath
             );
         }
@@ -68,7 +66,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                domain::LogLevel::Debug,
+                abstractions::LogLevel::Debug,
                 L"Checking for Windows directory"
             );
         }
@@ -77,7 +75,7 @@ namespace winsetup::adapters {
             result.hasWindowsDirectory = true;
             if (logger_) {
                 logger_->Log(
-                    domain::LogLevel::Debug,
+                    abstractions::LogLevel::Debug,
                     L"Windows directory found"
                 );
             }
@@ -85,7 +83,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                domain::LogLevel::Debug,
+                abstractions::LogLevel::Debug,
                 L"Checking for System32 directory"
             );
         }
@@ -96,7 +94,7 @@ namespace winsetup::adapters {
             result.hasSystem32Directory = true;
             if (logger_) {
                 logger_->Log(
-                    domain::LogLevel::Debug,
+                    abstractions::LogLevel::Debug,
                     L"System32 directory found"
                 );
             }
@@ -104,7 +102,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                domain::LogLevel::Debug,
+                abstractions::LogLevel::Debug,
                 L"Checking for Users directory"
             );
         }
@@ -113,7 +111,7 @@ namespace winsetup::adapters {
             result.hasUsersDirectory = true;
             if (logger_) {
                 logger_->Log(
-                    domain::LogLevel::Debug,
+                    abstractions::LogLevel::Debug,
                     L"Users directory found"
                 );
             }
@@ -121,7 +119,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                domain::LogLevel::Debug,
+                abstractions::LogLevel::Debug,
                 L"Checking for Program Files directory"
             );
         }
@@ -132,7 +130,7 @@ namespace winsetup::adapters {
             result.hasProgramFilesDirectory = true;
             if (logger_) {
                 logger_->Log(
-                    domain::LogLevel::Debug,
+                    abstractions::LogLevel::Debug,
                     L"Program Files directory found"
                 );
             }
@@ -147,7 +145,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                domain::LogLevel::Debug,
+                abstractions::LogLevel::Debug,
                 L"Initial system score: " + std::to_wstring(result.score)
             );
         }
@@ -155,7 +153,7 @@ namespace winsetup::adapters {
         if (result.score < 50) {
             if (logger_) {
                 logger_->Log(
-                    domain::LogLevel::Debug,
+                    abstractions::LogLevel::Debug,
                     L"System score below threshold, searching for user data directories"
                 );
             }
@@ -165,7 +163,7 @@ namespace winsetup::adapters {
                 int dataScore = CalculateDataScore(userDirsResult.Value());
                 if (logger_) {
                     logger_->Log(
-                        domain::LogLevel::Debug,
+                        abstractions::LogLevel::Debug,
                         L"User data score: " + std::to_wstring(dataScore)
                     );
                 }
@@ -186,7 +184,7 @@ namespace winsetup::adapters {
             }
 
             logger_->Log(
-                domain::LogLevel::Info,
+                abstractions::LogLevel::Info,
                 L"Volume scan complete - " + volumeType +
                 L", Final score: " + std::to_wstring(result.score) +
                 L" (Windows:" + (result.hasWindowsDirectory ? L"Yes" : L"No") +
@@ -206,7 +204,7 @@ namespace winsetup::adapters {
         ) const noexcept {
         if (logger_) {
             logger_->Log(
-                domain::LogLevel::Debug,
+                abstractions::LogLevel::Debug,
                 L"Finding user data directories for profile: " + userProfile
             );
         }
@@ -214,7 +212,7 @@ namespace winsetup::adapters {
         if (!volume.HasDriveLetter()) [[unlikely]] {
             if (logger_) {
                 logger_->Log(
-                    domain::LogLevel::Warning,
+                    abstractions::LogLevel::Warning,
                     L"Volume has no drive letter"
                 );
             }
@@ -227,7 +225,7 @@ namespace winsetup::adapters {
         if (basePath.empty()) [[unlikely]] {
             if (logger_) {
                 logger_->Log(
-                    domain::LogLevel::Error,
+                    abstractions::LogLevel::Error,
                     L"Invalid drive letter"
                 );
             }
@@ -256,7 +254,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                domain::LogLevel::Debug,
+                abstractions::LogLevel::Debug,
                 L"Checking " + std::to_wstring(commonUserDirs.size()) + L" common user directories"
             );
         }
@@ -271,7 +269,7 @@ namespace winsetup::adapters {
                 foundCount++;
                 if (logger_) {
                     logger_->Log(
-                        domain::LogLevel::Debug,
+                        abstractions::LogLevel::Debug,
                         L"Found user directory: " + dir
                     );
                 }
@@ -280,7 +278,7 @@ namespace winsetup::adapters {
 
         if (logger_) {
             logger_->Log(
-                domain::LogLevel::Info,
+                abstractions::LogLevel::Info,
                 L"Found " + std::to_wstring(foundCount) + L" user data directories"
             );
         }

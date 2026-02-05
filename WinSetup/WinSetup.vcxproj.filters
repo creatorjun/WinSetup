@@ -146,9 +146,6 @@
     <ClInclude Include="src\infrastructure\composition\DependencyContainer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\infrastructure\composition\ServiceLocator.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="src\infrastructure\config\ConfigLoader.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -281,7 +278,7 @@
     <ClInclude Include="src\infrastructure\logging\LogFormatter.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\domain\primitives\LogLevel.h">
+    <ClInclude Include="src\abstractions\logging\LogLevel.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
