@@ -1,14 +1,15 @@
 #pragma once
 
 #include <memory>
-#include "../../../abstractions/storage/IDiskService.h"
-#include "../../../abstractions/storage/IVolumeService.h"
-#include "../../../abstractions/storage/IPartitionService.h"
-#include "../../../abstractions/storage/IStorageScanner.h"
-#include "../../../abstractions/platform/ISystemInfoService.h"
-#include "../../../abstractions/platform/ITextEncoder.h"
-#include "../../../abstractions/logging/ILogger.h"
-#include "../../../abstractions/logging/LogLevel.h"
+#include <abstractions/logging/ILogger.h>
+#include <abstractions/logging/LogLevel.h>
+#include <abstractions/storage/IDiskService.h>
+#include <abstractions/platform/ITextEncoder.h>
+#include <abstractions/storage/IVolumeService.h>
+#include <abstractions/storage/IStorageScanner.h>
+#include <abstractions/storage/IPartitionService.h>
+#include <abstractions/platform/ISystemInfoService.h>
+
 
 namespace winsetup::adapters {
 

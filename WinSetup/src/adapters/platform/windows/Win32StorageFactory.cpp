@@ -1,9 +1,10 @@
 #include "Win32StorageFactory.h"
-#include "storage/Win32DiskService.h"
-#include "storage/Win32VolumeService.h"
-#include "storage/Win32PartitionService.h"
-#include "storage/Win32StorageScanner.h"
-#include "system/Win32SystemInfoService.h"
+#include <adapters/platform/windows/storage/Win32DiskService.h>
+#include <adapters/platform/windows/storage/Win32VolumeService.h>
+#include <adapters/platform/windows/storage/Win32StorageScanner.h>
+#include <adapters/platform/windows/storage/Win32PartitionService.h>
+#include <adapters/platform/windows/system/Win32SystemInfoService.h>
+
 
 namespace winsetup::adapters {
 

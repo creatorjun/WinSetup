@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../../../../abstractions/platform/ISystemInfoService.h"
-#include "../../../../abstractions/platform/ITextEncoder.h"
-#include "../../../../abstractions/logging/ILogger.h"
-#include "../../../../abstractions/logging/LogLevel.h"
-#include <Windows.h>
-#include <memory>
 #include <vector>
+#include <memory>
+#include <Windows.h>
+#include <abstractions/logging/ILogger.h>
+#include <abstractions/logging/LogLevel.h>
+#include <abstractions/platform/ITextEncoder.h>
+#include <abstractions/platform/ISystemInfoService.h>
 
 namespace winsetup::adapters {
 
