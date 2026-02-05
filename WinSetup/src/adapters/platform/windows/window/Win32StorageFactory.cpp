@@ -3,7 +3,7 @@
 #include "storage/Win32VolumeService.h"
 #include "storage/Win32PartitionService.h"
 #include "storage/Win32StorageScanner.h"
-#include "system/Win32SystemInfoService.h"
+#include "Win32SystemInfoService.h"
 
 namespace winsetup::adapters {
 

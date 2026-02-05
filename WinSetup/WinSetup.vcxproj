@@ -170,6 +170,7 @@ validate_dependencies.bat</Command>
     <ClInclude Include="src\abstractions\messaging\IEventBus.h" />
     <ClInclude Include="src\abstractions\messaging\IMessageQueue.h" />
     <ClInclude Include="src\abstractions\platform\IPlatformHandle.h" />
+    <ClInclude Include="src\abstractions\platform\ISystemInfoService.h" />
     <ClInclude Include="src\abstractions\platform\ITextEncoder.h" />
     <ClInclude Include="src\abstractions\platform\IThreadPool.h" />
     <ClInclude Include="src\abstractions\platform\IWindowHandle.h" />
@@ -186,6 +187,7 @@ validate_dependencies.bat</Command>
     <ClInclude Include="src\adapters\platform\windows\storage\Win32PartitionService.h" />
     <ClInclude Include="src\adapters\platform\windows\storage\Win32StorageScanner.h" />
     <ClInclude Include="src\adapters\platform\windows\storage\Win32VolumeService.h" />
+    <ClInclude Include="src\adapters\platform\windows\system\Win32SystemInfoService.h" />
     <ClInclude Include="src\adapters\platform\windows\threading\Win32Thread.h" />
     <ClInclude Include="src\adapters\platform\windows\threading\Win32ThreadPool.h" />
     <ClInclude Include="src\adapters\platform\windows\Win32Factory.h" />
@@ -244,6 +246,7 @@ validate_dependencies.bat</Command>
     <ClCompile Include="src\adapters\platform\windows\storage\Win32PartitionService.cpp" />
     <ClCompile Include="src\adapters\platform\windows\storage\Win32StorageScanner.cpp" />
     <ClCompile Include="src\adapters\platform\windows\storage\Win32VolumeService.cpp" />
+    <ClCompile Include="src\adapters\platform\windows\system\Win32SystemInfoService.cpp" />
     <ClCompile Include="src\adapters\platform\windows\threading\Win32Thread.cpp" />
     <ClCompile Include="src\adapters\platform\windows\threading\Win32ThreadPool.cpp" />
     <ClCompile Include="src\adapters\platform\windows\Win32StorageFactory.cpp" />
