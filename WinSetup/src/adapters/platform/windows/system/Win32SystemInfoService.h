@@ -2,6 +2,7 @@
 
 #include "../../../../abstractions/platform/ISystemInfoService.h"
 #include "../../../../abstractions/platform/ITextEncoder.h"
+#include "../../../../abstractions/logging/ILogger.h"
 #include <Windows.h>
 #include <memory>
 #include <vector>
@@ -11,7 +12,8 @@ namespace winsetup::adapters {
     class Win32SystemInfoService : public abstractions::ISystemInfoService {
     public:
         explicit Win32SystemInfoService(
-            std::shared_ptr<abstractions::ITextEncoder> textEncoder
+            std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+            std::shared_ptr<abstractions::ILogger> logger
         ) noexcept;
 
         ~Win32SystemInfoService() override = default;
@@ -32,6 +34,7 @@ namespace winsetup::adapters {
 
     private:
         std::shared_ptr<abstractions::ITextEncoder> textEncoder_;
+        std::shared_ptr<abstractions::ILogger> logger_;
 
         struct SMBIOSHeader {
             BYTE type;

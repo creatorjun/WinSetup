@@ -1,24 +1,22 @@
 #pragma once
 
 #include <memory>
+#include <vector>
+#include <string>
 #include "../../../../abstractions/storage/IStorageScanner.h"
 #include "../../../../abstractions/storage/IVolumeService.h"
 #include "../../../../abstractions/platform/ITextEncoder.h"
+#include "../../../../abstractions/logging/ILogger.h"
 
 namespace winsetup::adapters {
 
     class Win32StorageScanner : public abstractions::IStorageScanner {
     public:
-        Win32StorageScanner(
+        explicit Win32StorageScanner(
             std::shared_ptr<abstractions::IVolumeService> volumeService,
-            std::shared_ptr<abstractions::ITextEncoder> textEncoder
+            std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+            std::shared_ptr<abstractions::ILogger> logger
         );
-        ~Win32StorageScanner() override = default;
-
-        Win32StorageScanner(const Win32StorageScanner&) = delete;
-        Win32StorageScanner& operator=(const Win32StorageScanner&) = delete;
-        Win32StorageScanner(Win32StorageScanner&&) noexcept = default;
-        Win32StorageScanner& operator=(Win32StorageScanner&&) noexcept = default;
 
         [[nodiscard]] domain::Expected<abstractions::ScanResult>
             ScanVolume(
@@ -46,11 +44,13 @@ namespace winsetup::adapters {
 
         std::shared_ptr<abstractions::IVolumeService> volumeService_;
         std::shared_ptr<abstractions::ITextEncoder> textEncoder_;
+        std::shared_ptr<abstractions::ILogger> logger_;
     };
 
     std::unique_ptr<abstractions::IStorageScanner> CreateStorageScanner(
         std::shared_ptr<abstractions::IVolumeService> volumeService,
-        std::shared_ptr<abstractions::ITextEncoder> textEncoder
+        std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+        std::shared_ptr<abstractions::ILogger> logger
     );
 
 }

@@ -45,7 +45,8 @@ namespace winsetup::infrastructure {
             container.RegisterFactory<abstractions::ISystemInfoService>(
                 [&container]() {
                     auto encoder = container.Resolve<abstractions::ITextEncoder>();
-                    return std::make_shared<adapters::Win32SystemInfoService>(encoder);
+                    auto logger = container.Resolve<abstractions::ILogger>();
+                    return std::make_shared<adapters::Win32SystemInfoService>(encoder, logger);
                 },
                 ServiceLifetime::Singleton
             );
@@ -62,7 +63,8 @@ namespace winsetup::infrastructure {
             container.RegisterFactory<abstractions::IVolumeService>(
                 [&container]() {
                     auto encoder = container.Resolve<abstractions::ITextEncoder>();
-                    return std::make_shared<adapters::Win32VolumeService>(encoder);
+                    auto logger = container.Resolve<abstractions::ILogger>();
+                    return std::make_shared<adapters::Win32VolumeService>(encoder, logger);
                 },
                 ServiceLifetime::Singleton
             );
@@ -70,7 +72,8 @@ namespace winsetup::infrastructure {
             container.RegisterFactory<abstractions::IPartitionService>(
                 [&container]() {
                     auto encoder = container.Resolve<abstractions::ITextEncoder>();
-                    return std::make_shared<adapters::Win32PartitionService>(encoder);
+                    auto logger = container.Resolve<abstractions::ILogger>();
+                    return std::make_shared<adapters::Win32PartitionService>(encoder, logger);
                 },
                 ServiceLifetime::Singleton
             );
@@ -79,9 +82,11 @@ namespace winsetup::infrastructure {
                 [&container]() {
                     auto volumeService = container.Resolve<abstractions::IVolumeService>();
                     auto encoder = container.Resolve<abstractions::ITextEncoder>();
+                    auto logger = container.Resolve<abstractions::ILogger>();
                     return std::make_shared<adapters::Win32StorageScanner>(
                         volumeService,
-                        encoder
+                        encoder,
+                        logger
                     );
                 },
                 ServiceLifetime::Singleton

@@ -1,23 +1,20 @@
 #pragma once
 
 #include <memory>
+#include <optional>
+#include <Windows.h>
 #include "../../../../abstractions/storage/IVolumeService.h"
 #include "../../../../abstractions/platform/ITextEncoder.h"
-#include <Windows.h>
+#include "../../../../abstractions/logging/ILogger.h"
 
 namespace winsetup::adapters {
 
     class Win32VolumeService : public abstractions::IVolumeService {
     public:
         explicit Win32VolumeService(
-            std::shared_ptr<abstractions::ITextEncoder> textEncoder
+            std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+            std::shared_ptr<abstractions::ILogger> logger
         );
-        ~Win32VolumeService() override = default;
-
-        Win32VolumeService(const Win32VolumeService&) = delete;
-        Win32VolumeService& operator=(const Win32VolumeService&) = delete;
-        Win32VolumeService(Win32VolumeService&&) noexcept = default;
-        Win32VolumeService& operator=(Win32VolumeService&&) noexcept = default;
 
         [[nodiscard]] domain::Expected<std::vector<domain::VolumeInfo>>
             EnumerateVolumes() const noexcept override;
@@ -57,10 +54,12 @@ namespace winsetup::adapters {
             CreateErrorFromLastError(std::string_view operation) const noexcept;
 
         std::shared_ptr<abstractions::ITextEncoder> textEncoder_;
+        std::shared_ptr<abstractions::ILogger> logger_;
     };
 
     std::unique_ptr<abstractions::IVolumeService> CreateVolumeService(
-        std::shared_ptr<abstractions::ITextEncoder> textEncoder
+        std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+        std::shared_ptr<abstractions::ILogger> logger
     );
 
 }

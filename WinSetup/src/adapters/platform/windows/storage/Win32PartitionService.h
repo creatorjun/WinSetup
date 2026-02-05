@@ -1,23 +1,19 @@
 #pragma once
 
 #include <memory>
+#include <Windows.h>
 #include "../../../../abstractions/storage/IPartitionService.h"
 #include "../../../../abstractions/platform/ITextEncoder.h"
-#include <Windows.h>
+#include "../../../../abstractions/logging/ILogger.h"
 
 namespace winsetup::adapters {
 
     class Win32PartitionService : public abstractions::IPartitionService {
     public:
         explicit Win32PartitionService(
-            std::shared_ptr<abstractions::ITextEncoder> textEncoder
+            std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+            std::shared_ptr<abstractions::ILogger> logger
         );
-        ~Win32PartitionService() override = default;
-
-        Win32PartitionService(const Win32PartitionService&) = delete;
-        Win32PartitionService& operator=(const Win32PartitionService&) = delete;
-        Win32PartitionService(Win32PartitionService&&) noexcept = default;
-        Win32PartitionService& operator=(Win32PartitionService&&) noexcept = default;
 
         [[nodiscard]] domain::Expected<domain::PartitionInfo>
             CreatePartition(
@@ -33,7 +29,7 @@ namespace winsetup::adapters {
                 domain::PartitionId partitionId,
                 domain::FileSystemType fileSystem,
                 const std::wstring& label,
-                bool quickFormat
+                bool quickFormat = true
             ) noexcept override;
 
         [[nodiscard]] domain::Result<>
@@ -44,7 +40,10 @@ namespace winsetup::adapters {
 
     private:
         [[nodiscard]] domain::Expected<HANDLE>
-            OpenDiskHandle(domain::PhysicalDiskId diskId, DWORD accessFlags) const noexcept;
+            OpenDiskHandle(
+                domain::PhysicalDiskId diskId,
+                DWORD accessFlags
+            ) const noexcept;
 
         [[nodiscard]] domain::Expected<std::wstring>
             GetPartitionPath(domain::PartitionId partitionId) const noexcept;
@@ -56,10 +55,12 @@ namespace winsetup::adapters {
             CreateErrorFromLastError(std::string_view operation) const noexcept;
 
         std::shared_ptr<abstractions::ITextEncoder> textEncoder_;
+        std::shared_ptr<abstractions::ILogger> logger_;
     };
 
     std::unique_ptr<abstractions::IPartitionService> CreatePartitionService(
-        std::shared_ptr<abstractions::ITextEncoder> textEncoder
+        std::shared_ptr<abstractions::ITextEncoder> textEncoder,
+        std::shared_ptr<abstractions::ILogger> logger
     );
 
 }

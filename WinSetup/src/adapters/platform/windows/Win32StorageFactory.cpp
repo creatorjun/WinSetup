@@ -13,36 +13,55 @@ namespace winsetup::adapters {
     )
         : textEncoder_(std::move(textEncoder))
         , logger_(std::move(logger)) {
+        if (logger_) {
+            logger_->Info(L"Win32StorageFactory initialized");
+        }
     }
 
     std::shared_ptr<abstractions::IDiskService>
         Win32StorageFactory::CreateDiskService() const {
+        if (logger_) {
+            logger_->Debug(L"Creating Win32DiskService instance");
+        }
         return std::make_shared<Win32DiskService>(textEncoder_, logger_);
     }
 
     std::shared_ptr<abstractions::IVolumeService>
         Win32StorageFactory::CreateVolumeService() const {
-        return std::make_shared<Win32VolumeService>(textEncoder_);
+        if (logger_) {
+            logger_->Debug(L"Creating Win32VolumeService instance");
+        }
+        return std::make_shared<Win32VolumeService>(textEncoder_, logger_);
     }
 
     std::shared_ptr<abstractions::IPartitionService>
         Win32StorageFactory::CreatePartitionService() const {
-        return std::make_shared<Win32PartitionService>(textEncoder_);
+        if (logger_) {
+            logger_->Debug(L"Creating Win32PartitionService instance");
+        }
+        return std::make_shared<Win32PartitionService>(textEncoder_, logger_);
     }
 
     std::shared_ptr<abstractions::IStorageScanner>
         Win32StorageFactory::CreateStorageScanner(
             std::shared_ptr<abstractions::IVolumeService> volumeService
         ) const {
+        if (logger_) {
+            logger_->Debug(L"Creating Win32StorageScanner instance");
+        }
         return std::make_shared<Win32StorageScanner>(
             std::move(volumeService),
-            textEncoder_
+            textEncoder_,
+            logger_
         );
     }
 
     std::shared_ptr<abstractions::ISystemInfoService>
         Win32StorageFactory::CreateSystemInfoService() const {
-        return std::make_shared<Win32SystemInfoService>(textEncoder_);
+        if (logger_) {
+            logger_->Debug(L"Creating Win32SystemInfoService instance");
+        }
+        return std::make_shared<Win32SystemInfoService>(textEncoder_, logger_);
     }
 
 }
