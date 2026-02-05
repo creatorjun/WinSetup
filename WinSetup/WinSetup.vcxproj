@@ -166,6 +166,7 @@ validate_dependencies.bat</Command>
     <ClInclude Include="src\abstractions\io\IPath.h" />
     <ClInclude Include="src\abstractions\io\IStreamReader.h" />
     <ClInclude Include="src\abstractions\io\IStreamWriter.h" />
+    <ClInclude Include="src\abstractions\logging\ILogger.h" />
     <ClInclude Include="src\abstractions\messaging\IDispatcher.h" />
     <ClInclude Include="src\abstractions\messaging\IEventBus.h" />
     <ClInclude Include="src\abstractions\messaging\IMessageQueue.h" />
@@ -212,7 +213,9 @@ validate_dependencies.bat</Command>
     <ClInclude Include="src\application\reactive\Property.h" />
     <ClInclude Include="src\application\reactive\Subject.h" />
     <ClInclude Include="src\application\usecases\DiskAnalyzer.h" />
+    <ClInclude Include="src\domain\entities\ConfigData.h" />
     <ClInclude Include="src\domain\entities\DiskInfo.h" />
+    <ClInclude Include="src\domain\entities\LogEntry.h" />
     <ClInclude Include="src\domain\entities\PartitionInfo.h" />
     <ClInclude Include="src\domain\entities\VolumeInfo.h" />
     <ClInclude Include="src\domain\functional\Compose.h" />
@@ -232,7 +235,9 @@ validate_dependencies.bat</Command>
     <ClInclude Include="src\infrastructure\composition\DependencyContainer.h" />
     <ClInclude Include="src\infrastructure\composition\ServiceLocator.h" />
     <ClInclude Include="src\infrastructure\config\ConfigLoader.h" />
+    <ClInclude Include="src\infrastructure\config\IniParser.h" />
     <ClInclude Include="src\infrastructure\diagnostics\PerformanceMonitor.h" />
+    <ClInclude Include="src\infrastructure\logging\LogFormatter.h" />
     <ClInclude Include="src\infrastructure\logging\WindowsLogger.h" />
     <ClInclude Include="src\infrastructure\windows\MainWindow.h" />
     <ClInclude Include="src\infrastructure\windows\StatusTextWidget.h" />
@@ -261,7 +266,9 @@ validate_dependencies.bat</Command>
     <ClCompile Include="src\domain\validation\PathValidator.cpp" />
     <ClCompile Include="src\infrastructure\composition\DependencyContainer.cpp" />
     <ClCompile Include="src\infrastructure\config\ConfigLoader.cpp" />
+    <ClCompile Include="src\infrastructure\config\IniParser.cpp" />
     <ClCompile Include="src\infrastructure\diagnostics\PerformanceMonitor.cpp" />
+    <ClCompile Include="src\infrastructure\logging\LogFormatter.cpp" />
     <ClCompile Include="src\infrastructure\logging\WindowsLogger.cpp" />
     <ClCompile Include="src\infrastructure\windows\MainWindow.cpp" />
     <ClCompile Include="src\infrastructure\windows\StatusTextWidget.cpp" />
