@@ -19,7 +19,7 @@ namespace {
     constexpr int DEFAULT_WINDOW_WIDTH = 800;
     constexpr int DEFAULT_WINDOW_HEIGHT = 600;
     constexpr const wchar_t* APPLICATION_TITLE = L"WinSetup";
-    constexpr const wchar_t* LOG_FILE_PATH = L"WinSetup.log";
+    constexpr const wchar_t* LOG_FILE_PATH = L"log.txt";
 
     void ShowErrorMessage(const std::wstring& message) noexcept {
         ::MessageBoxW(
