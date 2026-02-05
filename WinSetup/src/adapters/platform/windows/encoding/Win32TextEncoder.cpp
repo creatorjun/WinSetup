@@ -1,5 +1,5 @@
-#include "Win32TextEncoder.h"
 #include <algorithm>
+#include "Win32TextEncoder.h"
 
 namespace winsetup::adapters {
 

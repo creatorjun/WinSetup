@@ -1,9 +1,9 @@
 // src/abstractions/reactive/IObservable.h 
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <exception>
+#include <functional>
 
 namespace winsetup::abstractions {
 

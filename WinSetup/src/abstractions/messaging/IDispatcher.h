@@ -1,8 +1,8 @@
 // src/abstractions/messaging/IDispatcher.h 
 #pragma once
 
-#include <functional>
 #include <chrono>
+#include <functional>
 
 namespace winsetup::abstractions {
 

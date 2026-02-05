@@ -1,10 +1,10 @@
 #pragma once
 
 #include <vector>
-#include "../../domain/primitives/Expected.h"
 #include "../../domain/primitives/Result.h"
-#include "../../domain/entities/PartitionInfo.h"
 #include "../../domain/entities/DiskInfo.h"
+#include "../../domain/primitives/Expected.h"
+#include "../../domain/entities/PartitionInfo.h"
 
 namespace winsetup::abstractions {
 

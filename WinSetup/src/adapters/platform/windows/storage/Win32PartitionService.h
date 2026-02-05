@@ -2,10 +2,11 @@
 
 #include <memory>
 #include <Windows.h>
-#include "../../../../abstractions/storage/IPartitionService.h"
-#include "../../../../abstractions/platform/ITextEncoder.h"
-#include "../../../../abstractions/logging/ILogger.h"
-#include "../../../../abstractions/logging/LogLevel.h" 
+#include <abstractions/logging/ILogger.h>
+#include <abstractions/logging/LogLevel.h>
+#include <abstractions/platform/ITextEncoder.h>
+#include <abstractions/storage/IPartitionService.h>
+
 
 namespace winsetup::adapters {
 

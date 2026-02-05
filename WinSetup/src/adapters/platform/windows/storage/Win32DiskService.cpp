@@ -1,9 +1,9 @@
 #include "Win32DiskService.h"
+#include <chrono>
+#include <algorithm>
 #include <ntddscsi.h>
 #include <ntdddisk.h>
 #include <winioctl.h>
-#include <algorithm>
-#include <chrono>
 
 namespace winsetup::adapters {
 

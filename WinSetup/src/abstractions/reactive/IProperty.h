@@ -1,8 +1,8 @@
 // src/abstractions/reactive/IProperty.h 
 #pragma once
 
-#include <functional>
 #include <memory>
+#include <functional>
 #include "IObservable.h"
 
 namespace winsetup::abstractions {

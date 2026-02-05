@@ -1,8 +1,8 @@
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <typeindex>
+#include <functional>
 
 namespace winsetup::abstractions {
 

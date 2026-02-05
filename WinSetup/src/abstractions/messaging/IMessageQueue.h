@@ -1,7 +1,7 @@
 #pragma once
 
-#include <functional>
 #include <optional>
+#include <functional>
 
 namespace winsetup::abstractions {
 

@@ -2,9 +2,9 @@
 
 #include <vector>
 #include <memory>
-#include "../../domain/primitives/Expected.h"
 #include "../../domain/primitives/Result.h"
 #include "../../domain/entities/DiskInfo.h"
+#include "../../domain/primitives/Expected.h"
 #include "../../domain/entities/PartitionInfo.h"
 
 namespace winsetup::abstractions {

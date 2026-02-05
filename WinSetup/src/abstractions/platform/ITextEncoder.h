@@ -2,8 +2,8 @@
 
 #include <string>
 #include <string_view>
-#include "../../domain/primitives/Expected.h"
 #include "../../domain/primitives/Error.h"
+#include "../../domain/primitives/Expected.h"
 
 namespace winsetup::abstractions {
 

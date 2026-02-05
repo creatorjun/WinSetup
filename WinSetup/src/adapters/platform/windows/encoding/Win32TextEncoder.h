@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../../../abstractions/platform/ITextEncoder.h"
-#include <Windows.h>
 #include <memory>
+#include <Windows.h>
+#include <abstractions/platform/ITextEncoder.h>
 
 namespace winsetup::adapters {
 
