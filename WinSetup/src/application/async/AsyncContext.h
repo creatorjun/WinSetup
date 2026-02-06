@@ -7,9 +7,9 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
-#include "../../abstractions/async/IAsyncContext.h"
-#include "../../abstractions/async/IExecutor.h"
-#include "../../abstractions/async/IScheduler.h"
+#include <abstractions/async/IExecutor.h>
+#include <abstractions/async/IScheduler.h>
+#include <abstractions/async/IAsyncContext.h>
 
 namespace winsetup::application {
 

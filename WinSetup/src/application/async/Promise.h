@@ -3,12 +3,12 @@
 #include <memory>
 #include <atomic>
 #include <mutex>
-#include <condition_variable>
-#include <functional>
 #include <vector>
 #include <optional>
-#include "../../domain/primitives/Expected.h"
-#include "../../domain/primitives/Error.h"
+#include <functional>
+#include <condition_variable>
+#include <domain/primitives/Error.h>
+#include <domain/primitives/Expected.h>
 
 namespace winsetup::application {
 

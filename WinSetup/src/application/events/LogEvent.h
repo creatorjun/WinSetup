@@ -2,7 +2,7 @@
 
 #include <string>
 #include <chrono>
-#include "../../domain/primitives/LogLevel.h"
+#include <abstractions/logging/LogLevel.h>
 
 namespace winsetup::application {
 

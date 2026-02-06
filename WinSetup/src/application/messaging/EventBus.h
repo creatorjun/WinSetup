@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <typeindex>
 #include <atomic>
-#include "../../abstractions/messaging/IEventBus.h"
+#include <abstractions/messaging/IEventBus.h>
 
 namespace winsetup::application {
 

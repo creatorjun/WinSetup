@@ -2,11 +2,11 @@
 #pragma once
 
 #include <mutex>
-#include <optional>
-#include <functional>
 #include <memory>
 #include <vector>
-#include "../../abstractions/reactive/IProperty.h"
+#include <optional>
+#include <functional>
+#include <abstractions/reactive/IProperty.h>
 #include "Observable.h"
 
 namespace winsetup::application {

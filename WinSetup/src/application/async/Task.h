@@ -4,9 +4,9 @@
 #include <exception>
 #include <utility>
 #include <optional>
-#include "../../domain/primitives/Expected.h"
-#include "../../domain/primitives/Result.h"
-#include "../../domain/primitives/Error.h"
+#include <domain/primitives/Error.h>
+#include <domain/primitives/Result.h>
+#include <domain/primitives/Expected.h>
 
 namespace winsetup::application {
 

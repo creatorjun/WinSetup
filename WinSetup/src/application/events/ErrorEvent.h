@@ -3,7 +3,7 @@
 
 #include <string>
 #include <chrono>
-#include "../../domain/primitives/Error.h"
+#include <domain/primitives/Error.h>
 
 namespace winsetup::application {
 

@@ -1,10 +1,10 @@
 #pragma once
 
+#include <mutex>
 #include <atomic>
 #include <memory>
-#include <functional>
 #include <vector>
-#include <mutex>
+#include <functional>
 
 namespace winsetup::application {
 

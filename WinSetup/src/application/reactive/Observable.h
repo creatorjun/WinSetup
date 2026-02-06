@@ -6,7 +6,7 @@
 #include <memory>
 #include <algorithm>
 #include <atomic>
-#include "../../abstractions/reactive/IObservable.h"
+#include <abstractions/reactive/IObservable.h>
 
 namespace winsetup::application {
 

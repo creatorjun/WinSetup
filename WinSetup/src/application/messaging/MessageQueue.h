@@ -4,7 +4,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <optional>
-#include "../../abstractions/messaging/IMessageQueue.h"
+#include <abstractions/messaging/IMessageQueue.h>
 
 namespace winsetup::application {
 

@@ -5,7 +5,7 @@
 #include <thread>
 #include <atomic>
 #include <functional>
-#include "../../abstractions/messaging/IDispatcher.h"
+#include <abstractions/messaging/IDispatcher.h>
 #include "MessageQueue.h"
 
 namespace winsetup::application {

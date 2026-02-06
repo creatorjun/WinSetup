@@ -1,16 +1,16 @@
 #pragma once
 
+#include <mutex>
+#include <atomic>
 #include <memory>
 #include <vector>
 #include <functional>
-#include <mutex>
-#include <condition_variable>
 #include <unordered_map>
 #include <unordered_set>
-#include <atomic>
-#include "../../abstractions/platform/IThreadPool.h"
-#include "CancellationToken.h"
+#include <condition_variable>
 #include "Task.h"
+#include "CancellationToken.h"
+#include <abstractions/platform/IThreadPool.h>
 
 namespace winsetup::application {
 
