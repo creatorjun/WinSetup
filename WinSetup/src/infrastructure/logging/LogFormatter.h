@@ -3,8 +3,8 @@
 #include <string>
 #include <string_view>
 #include <chrono>
-#include "../../abstractions/logging/LogLevel.h"
-#include "../../domain/entities/LogEntry.h"
+#include <abstractions/logging/LogLevel.h>
+#include <domain/entities/LogEntry.h>
 
 namespace winsetup::infrastructure {
 

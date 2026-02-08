@@ -1,5 +1,5 @@
 #include "MainWindow.h"
-#include "../../resources/resource.h"
+#include <resources/resource.h>
 #include <stdexcept>
 
 namespace winsetup::infrastructure {

@@ -7,8 +7,8 @@
 #include <mutex>
 #include <memory>
 #include <chrono>
-#include "../../abstractions/logging/ILogger.h"
-#include "../../abstractions/logging/LogLevel.h"
+#include <abstractions/logging/ILogger.h>
+#include <abstractions/logging/LogLevel.h>
 
 namespace winsetup::infrastructure {
 
