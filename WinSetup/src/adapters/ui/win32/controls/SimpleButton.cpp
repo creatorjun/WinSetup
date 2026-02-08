@@ -1,5 +1,4 @@
 // src/adapters/ui/win32/controls/SimpleButton.cpp
-
 #include "SimpleButton.h"
 #include <vector>
 
@@ -89,6 +88,24 @@ namespace winsetup::adapters::ui {
         m_cache.isDirty = true;
     }
 
+    void SimpleButton::UpdateState(bool hovering, bool pressed) {
+        bool needUpdate = false;
+
+        if (m_isHovering != hovering) {
+            m_isHovering = hovering;
+            needUpdate = true;
+        }
+
+        if (m_isPressed != pressed) {
+            m_isPressed = pressed;
+            needUpdate = true;
+        }
+
+        if (needUpdate) {
+            InvalidateCache();
+        }
+    }
+
     LRESULT CALLBACK SimpleButton::SubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
         SimpleButton* pButton = reinterpret_cast<SimpleButton*>(dwRefData);
 
@@ -96,35 +113,30 @@ namespace winsetup::adapters::ui {
             switch (uMsg) {
             case WM_MOUSEMOVE:
                 if (!pButton->m_isHovering) {
-                    pButton->m_isHovering = true;
+                    pButton->UpdateState(true, pButton->m_isPressed);
                     TRACKMOUSEEVENT tme{ sizeof(TRACKMOUSEEVENT), TME_LEAVE, hWnd, 0 };
                     TrackMouseEvent(&tme);
-                    pButton->InvalidateCache();
                 }
                 break;
 
             case WM_MOUSELEAVE:
                 if (pButton->m_isHovering || pButton->m_isPressed) {
-                    pButton->m_isHovering = false;
-                    pButton->m_isPressed = false;
-                    pButton->InvalidateCache();
+                    pButton->UpdateState(false, false);
                 }
                 break;
 
             case WM_LBUTTONDOWN:
                 if (!pButton->m_isPressed) {
-                    pButton->m_isPressed = true;
-                    pButton->InvalidateCache();
+                    pButton->UpdateState(pButton->m_isHovering, true);
                 }
                 break;
 
             case WM_LBUTTONUP:
                 if (pButton->m_isPressed) {
-                    pButton->m_isPressed = false;
+                    pButton->UpdateState(pButton->m_isHovering, false);
                     if (pButton->m_isHovering) {
                         SendMessage(GetParent(hWnd), WM_COMMAND, MAKEWPARAM(GetDlgCtrlID(hWnd), BN_CLICKED), reinterpret_cast<LPARAM>(hWnd));
                     }
-                    pButton->InvalidateCache();
                 }
                 break;
 
@@ -185,7 +197,6 @@ namespace winsetup::adapters::ui {
 
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
     }
-
 
     void SimpleButton::DrawButton(HDC hdc) {
         RECT rc;

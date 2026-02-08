@@ -1,5 +1,4 @@
 ﻿// src/domain/services/PartitionAnalyzer.h
-
 #pragma once
 
 #include <domain/entities/PartitionInfo.h>

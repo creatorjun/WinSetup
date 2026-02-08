@@ -1,42 +1,94 @@
 ﻿// src/domain/memory/PoolAllocator.h
-
 #pragma once
 
 #include <cstddef>
 #include <vector>
-#include <memory>
 #include <mutex>
+#include <memory>
 
 namespace winsetup::domain {
 
+    template<typename T, size_t BlockSize = 4096>
     class PoolAllocator {
     public:
-        explicit PoolAllocator(size_t blockSize, size_t blockCount = 128);
-        ~PoolAllocator();
+        PoolAllocator() {
+            m_blocks.reserve(4);
+            AllocateBlock();
+        }
+
+        ~PoolAllocator() {
+            for (auto* block : m_blocks) {
+                ::operator delete(block);
+            }
+        }
 
         PoolAllocator(const PoolAllocator&) = delete;
         PoolAllocator& operator=(const PoolAllocator&) = delete;
 
-        void* Allocate();
-        void Deallocate(void* ptr) noexcept;
+        T* Allocate() {
+            std::lock_guard lock(m_mutex);
 
-        [[nodiscard]] size_t GetBlockSize() const noexcept { return m_blockSize; }
-        [[nodiscard]] size_t GetTotalBlocks() const noexcept { return m_totalBlocks; }
-        [[nodiscard]] size_t GetUsedBlocks() const noexcept;
-        [[nodiscard]] size_t GetFreeBlocks() const noexcept;
+            if (m_freeList.empty()) {
+                AllocateBlock();
+            }
+
+            T* ptr = m_freeList.back();
+            m_freeList.pop_back();
+            return ptr;
+        }
+
+        void Deallocate(T* ptr) noexcept {
+            if (!ptr) return;
+
+            std::lock_guard lock(m_mutex);
+            m_freeList.push_back(ptr);
+        }
+
+        template<typename... Args>
+        T* Construct(Args&&... args) {
+            T* ptr = Allocate();
+            try {
+                new (ptr) T(std::forward<Args>(args)...);
+                return ptr;
+            }
+            catch (...) {
+                Deallocate(ptr);
+                throw;
+            }
+        }
+
+        void Destroy(T* ptr) noexcept {
+            if (!ptr) return;
+            ptr->~T();
+            Deallocate(ptr);
+        }
+
+        [[nodiscard]] size_t GetBlockCount() const noexcept {
+            return m_blocks.size();
+        }
+
+        [[nodiscard]] size_t GetFreeCount() const noexcept {
+            std::lock_guard lock(m_mutex);
+            return m_freeList.size();
+        }
 
     private:
-        struct Block {
-            Block* next = nullptr;
-        };
+        void AllocateBlock() {
+            constexpr size_t elementSize = sizeof(T) > sizeof(void*) ? sizeof(T) : sizeof(void*);
+            constexpr size_t elementsPerBlock = BlockSize / elementSize;
 
-        void AllocatePool();
+            void* block = ::operator new(BlockSize);
+            m_blocks.push_back(block);
 
-        size_t m_blockSize;
-        size_t m_totalBlocks;
-        std::vector<std::unique_ptr<std::byte[]>> m_pools;
-        Block* m_freeList;
-        std::mutex m_mutex;
+            char* ptr = static_cast<char*>(block);
+            for (size_t i = 0; i < elementsPerBlock; ++i) {
+                m_freeList.push_back(reinterpret_cast<T*>(ptr + i * elementSize));
+            }
+        }
+
+        std::vector<void*> m_blocks;
+        std::vector<T*> m_freeList;
+        mutable std::mutex m_mutex;
     };
 
 }

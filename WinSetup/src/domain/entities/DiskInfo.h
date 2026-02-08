@@ -1,5 +1,4 @@
 ﻿// src/domain/entities/DiskInfo.h
-
 #pragma once
 
 #include <string>
@@ -47,8 +46,20 @@ namespace winsetup::domain {
             m_volumes.push_back(volume);
         }
 
+        void AddVolume(VolumeInfo&& volume) {
+            m_volumes.push_back(std::move(volume));
+        }
+
+        void SetVolumes(std::vector<VolumeInfo>&& volumes) noexcept {
+            m_volumes = std::move(volumes);
+        }
+
         void ClearVolumes() {
             m_volumes.clear();
+        }
+
+        void ReserveVolumes(size_t capacity) {
+            m_volumes.reserve(capacity);
         }
 
         [[nodiscard]] bool IsValid() const noexcept {
@@ -72,9 +83,9 @@ namespace winsetup::domain {
             return m_volumes.size();
         }
 
-        [[nodiscard]] const VolumeInfo* FindVolumeByLetter(const std::wstring& letter) const {
+        [[nodiscard]] const VolumeInfo* FindVolumeByLetter(std::wstring_view letter) const {
             auto it = std::find_if(m_volumes.begin(), m_volumes.end(),
-                [&letter](const VolumeInfo& vol) {
+                [letter](const VolumeInfo& vol) {
                     return vol.GetLetter() == letter;
                 });
 

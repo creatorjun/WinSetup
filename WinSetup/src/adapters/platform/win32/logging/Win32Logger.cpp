@@ -1,8 +1,6 @@
 ﻿// src/adapters/platform/win32/logging/Win32Logger.cpp
-
 #include "Win32Logger.h"
 #include <chrono>
-#include <format>
 
 namespace winsetup::adapters::platform {
 
@@ -62,6 +60,11 @@ namespace winsetup::adapters::platform {
                 FlushBuffer();
             }
         }
+    }
+
+    void Win32Logger::Flush() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        FlushBuffer();
     }
 
     void Win32Logger::FlushBuffer() {

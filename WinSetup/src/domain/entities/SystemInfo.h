@@ -1,5 +1,4 @@
 ﻿// src/domain/entities/SystemInfo.h
-
 #pragma once
 
 #include <string>
@@ -68,12 +67,14 @@ namespace winsetup::domain {
 
         void SetSystemDiskIndex(int index) noexcept { m_systemDiskIndex = index; }
         void SetSystemDiskType(const std::wstring& type) { m_systemDiskType = type; }
+        void SetSystemDiskType(std::wstring&& type) noexcept { m_systemDiskType = std::move(type); }
         void SetDataDiskIndex(int index) noexcept { m_dataDiskIndex = index; }
         void SetSystemVolumeIndex(int index) noexcept { m_systemVolumeIndex = index; }
         void SetDataVolumeIndex(int index) noexcept { m_dataVolumeIndex = index; }
         void SetBootVolumeIndex(int index) noexcept { m_bootVolumeIndex = index; }
         void SetSystemVolumeCount(int count) noexcept { m_systemVolumeCount = count; }
         void SetMainboard(const std::wstring& mainboard) { m_mainboard = mainboard; }
+        void SetMainboard(std::wstring&& mainboard) noexcept { m_mainboard = std::move(mainboard); }
 
         void SetEstimatedTimeSec(int seconds) noexcept {
             m_estimatedTimeSec = seconds > 0 ? seconds : DEFAULT_ESTIMATED_TIME_SEC;
@@ -84,6 +85,10 @@ namespace winsetup::domain {
         void SetInstallType(int type) noexcept { m_installType = type; }
         void SetDataSave(bool dataSave) noexcept { m_dataSave = dataSave; }
         void SetBitlocker(bool bitlocker) noexcept { m_bitlocker = bitlocker; }
+
+        void ReserveDisks(size_t capacity) {
+            m_disks.reserve(capacity);
+        }
 
         [[nodiscard]] bool IsValid() const noexcept {
             return m_systemDiskIndex != INVALID_DISK_INDEX;

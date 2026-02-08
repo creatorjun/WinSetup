@@ -1,10 +1,10 @@
 ﻿// src/domain/events/DomainEvent.h
-
 #pragma once
 
 #include <string>
 #include <chrono>
 #include <cstdint>
+#include <atomic>
 
 namespace winsetup::domain {
 
@@ -25,8 +25,8 @@ namespace winsetup::domain {
 
     private:
         static uint64_t GenerateEventId() noexcept {
-            static uint64_t counter = 0;
-            return ++counter;
+            static std::atomic<uint64_t> counter{ 0 };
+            return counter.fetch_add(1, std::memory_order_relaxed);
         }
 
         uint64_t m_eventId;

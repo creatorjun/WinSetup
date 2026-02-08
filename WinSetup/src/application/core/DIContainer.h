@@ -1,5 +1,4 @@
 ﻿// src/application/core/DIContainer.h
-
 #pragma once
 
 #include <memory>
@@ -8,7 +7,7 @@
 #include <typeinfo>
 #include <functional>
 #include <any>
-#include <mutex>
+#include <shared_mutex>
 #include <stdexcept>
 
 namespace winsetup::application {
@@ -23,7 +22,7 @@ namespace winsetup::application {
     public:
         template<typename TInterface, typename TImplementation>
         void Register(ServiceLifetime lifetime = ServiceLifetime::Singleton) {
-            std::lock_guard lock(m_mutex);
+            std::unique_lock lock(m_mutex);
 
             auto factory = [this]() -> std::shared_ptr<void> {
                 return std::make_shared<TImplementation>();
@@ -34,7 +33,7 @@ namespace winsetup::application {
 
         template<typename TInterface, typename TImplementation, typename... TDeps>
         void RegisterWithDependencies(ServiceLifetime lifetime = ServiceLifetime::Singleton) {
-            std::lock_guard lock(m_mutex);
+            std::unique_lock lock(m_mutex);
 
             auto factory = [this]() -> std::shared_ptr<void> {
                 return std::make_shared<TImplementation>(
@@ -47,10 +46,9 @@ namespace winsetup::application {
 
         template<typename TInterface>
         void RegisterInstance(std::shared_ptr<TInterface> instance) {
-            std::lock_guard lock(m_mutex);
+            std::unique_lock lock(m_mutex);
 
             auto typeIndex = std::type_index(typeid(TInterface));
-
             m_singletons[typeIndex] = instance;
 
             auto factory = [instance]() -> std::shared_ptr<void> {
@@ -62,16 +60,28 @@ namespace winsetup::application {
 
         template<typename TInterface>
         std::shared_ptr<TInterface> Resolve() {
-            std::lock_guard lock(m_mutex);
-
             auto typeIndex = std::type_index(typeid(TInterface));
 
-            auto it = m_registrations.find(typeIndex);
-            if (it == m_registrations.end()) {
-                throw std::runtime_error("Service not registered");
+            {
+                std::shared_lock readLock(m_mutex);
+
+                auto regIt = m_registrations.find(typeIndex);
+                if (regIt == m_registrations.end()) {
+                    throw std::runtime_error("Service not registered");
+                }
+
+                if (regIt->second.lifetime == ServiceLifetime::Singleton) {
+                    auto singletonIt = m_singletons.find(typeIndex);
+                    if (singletonIt != m_singletons.end()) {
+                        return std::static_pointer_cast<TInterface>(singletonIt->second);
+                    }
+                }
             }
 
-            const auto& [factory, lifetime] = it->second;
+            std::unique_lock writeLock(m_mutex);
+
+            auto regIt = m_registrations.find(typeIndex);
+            const auto& [factory, lifetime] = regIt->second;
 
             if (lifetime == ServiceLifetime::Singleton) {
                 auto singletonIt = m_singletons.find(typeIndex);
@@ -89,12 +99,12 @@ namespace winsetup::application {
 
         template<typename TInterface>
         bool IsRegistered() const {
-            std::lock_guard lock(m_mutex);
+            std::shared_lock lock(m_mutex);
             return m_registrations.find(std::type_index(typeid(TInterface))) != m_registrations.end();
         }
 
         void Clear() {
-            std::lock_guard lock(m_mutex);
+            std::unique_lock lock(m_mutex);
             m_singletons.clear();
             m_registrations.clear();
         }
@@ -107,7 +117,7 @@ namespace winsetup::application {
 
         std::unordered_map<std::type_index, Registration> m_registrations;
         std::unordered_map<std::type_index, std::shared_ptr<void>> m_singletons;
-        mutable std::mutex m_mutex;
+        mutable std::shared_mutex m_mutex;
     };
 
 }

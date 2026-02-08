@@ -1,5 +1,4 @@
 ﻿// src/domain/services/DiskSortingService.cpp
-
 #include <domain/services/DiskSortingService.h>
 
 namespace winsetup::domain {
@@ -31,8 +30,8 @@ namespace winsetup::domain {
     }
 
     bool DiskSortingService::CompareByTypeAndSize(const DiskInfo& a, const DiskInfo& b) noexcept {
-        int priorityA = a.GetTypePriority();
-        int priorityB = b.GetTypePriority();
+        const int priorityA = a.GetTypePriority();
+        const int priorityB = b.GetTypePriority();
 
         if (priorityA != priorityB) {
             return priorityA < priorityB;

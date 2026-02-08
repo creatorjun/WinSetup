@@ -1,12 +1,10 @@
 ﻿// src/adapters/platform/win32/logging/Win32Logger.h
-
 #pragma once
 
 #include <abstractions/infrastructure/logging/ILogger.h>
 #include <windows.h>
 #include <string>
 #include <mutex>
-#include <array>
 #include <atomic>
 
 namespace winsetup::adapters::platform {
@@ -25,12 +23,13 @@ namespace winsetup::adapters::platform {
             const std::source_location& location
         ) override;
 
+        void Flush();
+
     private:
-        static constexpr size_t BUFFER_SIZE = 8192;
-        static constexpr size_t FLUSH_THRESHOLD = 6144;
+        static constexpr size_t BUFFER_SIZE = 16384;
+        static constexpr size_t FLUSH_THRESHOLD = 12288;
 
         void FlushBuffer();
-        void WriteToFile(const std::wstring& entry);
         const wchar_t* GetLevelString(abstractions::LogLevel level) const noexcept;
         void FormatTimestamp(wchar_t* buffer, size_t bufferSize) const noexcept;
 

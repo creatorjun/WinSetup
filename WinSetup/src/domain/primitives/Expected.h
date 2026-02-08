@@ -1,200 +1,141 @@
 ﻿// src/domain/primitives/Expected.h
-
 #pragma once
 
-#include <utility>
-#include <type_traits>
+#include <variant>
 #include <stdexcept>
+#include <type_traits>
+#include <utility>
 #include "Error.h"
 
 namespace winsetup::domain {
 
-    template<typename T>
+    template<typename T, typename E = Error>
     class Expected {
     public:
-        Expected(T value)
-            : m_hasValue(true)
-        {
-            new (&m_value) T(std::move(value));
-        }
+        Expected(const T& value) : m_data(value) {}
+        Expected(T&& value) noexcept : m_data(std::move(value)) {}
+        Expected(const E& error) : m_data(error) {}
+        Expected(E&& error) noexcept : m_data(std::move(error)) {}
 
-        Expected(Error error)
-            : m_hasValue(false)
-        {
-            new (&m_error) Error(std::move(error));
-        }
-
-        ~Expected() {
-            if (m_hasValue) {
-                m_value.~T();
-            }
-            else {
-                m_error.~Error();
-            }
-        }
-
-        Expected(const Expected& other)
-            : m_hasValue(other.m_hasValue)
-        {
-            if (m_hasValue) {
-                new (&m_value) T(other.m_value);
-            }
-            else {
-                new (&m_error) Error(other.m_error);
-            }
-        }
-
-        Expected(Expected&& other) noexcept
-            : m_hasValue(other.m_hasValue)
-        {
-            if (m_hasValue) {
-                new (&m_value) T(std::move(other.m_value));
-            }
-            else {
-                new (&m_error) Error(std::move(other.m_error));
-            }
-        }
-
-        Expected& operator=(const Expected& other) {
-            if (this != &other) {
-                this->~Expected();
-                new (this) Expected(other);
-            }
-            return *this;
-        }
-
-        Expected& operator=(Expected&& other) noexcept {
-            if (this != &other) {
-                this->~Expected();
-                new (this) Expected(std::move(other));
-            }
-            return *this;
-        }
+        Expected(const Expected&) = default;
+        Expected(Expected&&) noexcept = default;
+        Expected& operator=(const Expected&) = default;
+        Expected& operator=(Expected&&) noexcept = default;
 
         [[nodiscard]] bool HasValue() const noexcept {
-            return m_hasValue;
+            return std::holds_alternative<T>(m_data);
         }
 
-        [[nodiscard]] T& Value()& {
-            if (!m_hasValue) {
-                throw std::logic_error("Expected does not contain value");
-            }
-            return m_value;
+        [[nodiscard]] bool HasError() const noexcept {
+            return std::holds_alternative<E>(m_data);
+        }
+
+        [[nodiscard]] explicit operator bool() const noexcept {
+            return HasValue();
         }
 
         [[nodiscard]] const T& Value() const& {
-            if (!m_hasValue) {
-                throw std::logic_error("Expected does not contain value");
+            if (HasError()) {
+                throw std::runtime_error("Expected contains error");
             }
-            return m_value;
+            return std::get<T>(m_data);
+        }
+
+        [[nodiscard]] T& Value()& {
+            if (HasError()) {
+                throw std::runtime_error("Expected contains error");
+            }
+            return std::get<T>(m_data);
         }
 
         [[nodiscard]] T&& Value()&& {
-            if (!m_hasValue) {
-                throw std::logic_error("Expected does not contain value");
+            if (HasError()) {
+                throw std::runtime_error("Expected contains error");
             }
-            return std::move(m_value);
+            return std::move(std::get<T>(m_data));
         }
 
-        [[nodiscard]] const Error& GetError() const {
-            if (m_hasValue) {
-                throw std::logic_error("Expected does not contain error");
+        [[nodiscard]] const E& Error() const& {
+            if (HasValue()) {
+                throw std::runtime_error("Expected contains value");
             }
-            return m_error;
+            return std::get<E>(m_data);
         }
 
-        template<typename F>
-        [[nodiscard]] auto Map(F&& func) -> Expected<decltype(func(std::declval<T>()))> {
+        [[nodiscard]] E& Error()& {
+            if (HasValue()) {
+                throw std::runtime_error("Expected contains value");
+            }
+            return std::get<E>(m_data);
+        }
+
+        [[nodiscard]] E&& Error()&& {
+            if (HasValue()) {
+                throw std::runtime_error("Expected contains value");
+            }
+            return std::move(std::get<E>(m_data));
+        }
+
+        [[nodiscard]] const T& ValueOr(const T& defaultValue) const& noexcept {
+            return HasValue() ? std::get<T>(m_data) : defaultValue;
+        }
+
+        [[nodiscard]] T ValueOr(T&& defaultValue) && noexcept {
+            return HasValue() ? std::move(std::get<T>(m_data)) : std::move(defaultValue);
+        }
+
+        template<typename Func>
+        [[nodiscard]] auto Map(Func&& func) const& -> Expected<decltype(func(std::declval<T>())), E> {
             using U = decltype(func(std::declval<T>()));
-
-            if (m_hasValue) {
-                return Expected<U>(func(m_value));
+            if (HasValue()) {
+                return Expected<U, E>(func(std::get<T>(m_data)));
             }
-            else {
-                return Expected<U>(m_error);
-            }
+            return Expected<U, E>(std::get<E>(m_data));
         }
 
-        template<typename F>
-        [[nodiscard]] auto FlatMap(F&& func) -> decltype(func(std::declval<T>())) {
-            using Result = decltype(func(std::declval<T>()));
-
-            if (m_hasValue) {
-                return func(m_value);
+        template<typename Func>
+        [[nodiscard]] auto Map(Func&& func) && -> Expected<decltype(func(std::declval<T>())), E> {
+            using U = decltype(func(std::declval<T>()));
+            if (HasValue()) {
+                return Expected<U, E>(func(std::move(std::get<T>(m_data))));
             }
-            else {
-                return Result(m_error);
-            }
+            return Expected<U, E>(std::move(std::get<E>(m_data)));
         }
 
-        [[nodiscard]] T UnwrapOr(T defaultValue)&& {
-            if (m_hasValue) {
-                return std::move(m_value);
+        template<typename Func>
+        [[nodiscard]] auto AndThen(Func&& func) const& -> decltype(func(std::declval<T>())) {
+            if (HasValue()) {
+                return func(std::get<T>(m_data));
             }
-            else {
-                return defaultValue;
-            }
+            return decltype(func(std::declval<T>()))(std::get<E>(m_data));
         }
 
-        template<typename F>
-        [[nodiscard]] T UnwrapOrElse(F&& func)&& {
-            if (m_hasValue) {
-                return std::move(m_value);
+        template<typename Func>
+        [[nodiscard]] auto AndThen(Func&& func) && -> decltype(func(std::declval<T>())) {
+            if (HasValue()) {
+                return func(std::move(std::get<T>(m_data)));
             }
-            else {
-                return func(m_error);
-            }
+            return decltype(func(std::declval<T>()))(std::move(std::get<E>(m_data)));
         }
 
-        template<typename F>
-        Expected& OnError(F&& func)& {
-            if (!m_hasValue) {
-                func(m_error);
+        template<typename Func>
+        [[nodiscard]] Expected OrElse(Func&& func) const& {
+            if (HasError()) {
+                return func(std::get<E>(m_data));
             }
             return *this;
         }
 
-    private:
-        union {
-            T m_value;
-            Error m_error;
-        };
-        bool m_hasValue;
-    };
-
-    template<>
-    class Expected<void> {
-    public:
-        Expected() : m_hasValue(true) {}
-
-        Expected(Error error)
-            : m_hasValue(false)
-            , m_error(std::move(error))
-        {
-        }
-
-        [[nodiscard]] bool HasValue() const noexcept {
-            return m_hasValue;
-        }
-
-        [[nodiscard]] const Error& GetError() const {
-            if (m_hasValue) {
-                throw std::logic_error("Expected does not contain error");
+        template<typename Func>
+        [[nodiscard]] Expected OrElse(Func&& func)&& {
+            if (HasError()) {
+                return func(std::move(std::get<E>(m_data)));
             }
-            return m_error;
-        }
-
-        template<typename F>
-        Expected& OnError(F&& func)& {
-            if (!m_hasValue) {
-                func(m_error);
-            }
-            return *this;
+            return std::move(*this);
         }
 
     private:
-        bool m_hasValue;
-        Error m_error;
+        std::variant<T, E> m_data;
     };
 
 }

@@ -1,42 +1,78 @@
 ﻿// src/domain/memory/UniqueHandle.h
-
 #pragma once
 
+#include <windows.h>
 #include <utility>
-#include <cstdint>
 
 namespace winsetup::domain {
 
-    using NativeHandle = void*;
-
-    inline constexpr NativeHandle NULL_HANDLE = nullptr;
-
-    inline NativeHandle GetInvalidHandleValue() noexcept {
-        return reinterpret_cast<NativeHandle>(-1);
-    }
-
     class UniqueHandle {
     public:
-        explicit UniqueHandle(NativeHandle handle = nullptr) noexcept;
-        ~UniqueHandle() noexcept;
+        constexpr UniqueHandle() noexcept : m_handle(INVALID_HANDLE_VALUE) {}
+
+        explicit UniqueHandle(HANDLE handle) noexcept : m_handle(handle) {}
+
+        ~UniqueHandle() noexcept {
+            Close();
+        }
 
         UniqueHandle(const UniqueHandle&) = delete;
         UniqueHandle& operator=(const UniqueHandle&) = delete;
 
-        UniqueHandle(UniqueHandle&& other) noexcept;
-        UniqueHandle& operator=(UniqueHandle&& other) noexcept;
+        UniqueHandle(UniqueHandle&& other) noexcept
+            : m_handle(other.m_handle)
+        {
+            other.m_handle = INVALID_HANDLE_VALUE;
+        }
 
-        [[nodiscard]] NativeHandle Get() const noexcept { return m_handle; }
-        [[nodiscard]] NativeHandle Release() noexcept;
-        void Reset(NativeHandle handle = nullptr) noexcept;
-        [[nodiscard]] explicit operator bool() const noexcept;
-        [[nodiscard]] NativeHandle* AddressOf() noexcept { return &m_handle; }
+        UniqueHandle& operator=(UniqueHandle&& other) noexcept {
+            if (this != &other) {
+                Close();
+                m_handle = other.m_handle;
+                other.m_handle = INVALID_HANDLE_VALUE;
+            }
+            return *this;
+        }
 
-        [[nodiscard]] bool IsValid() const noexcept;
+        [[nodiscard]] HANDLE Get() const noexcept { return m_handle; }
+        [[nodiscard]] HANDLE* GetAddressOf() noexcept { return &m_handle; }
+        [[nodiscard]] bool IsValid() const noexcept {
+            return m_handle != INVALID_HANDLE_VALUE && m_handle != nullptr;
+        }
+
+        [[nodiscard]] explicit operator bool() const noexcept {
+            return IsValid();
+        }
+
+        [[nodiscard]] HANDLE Release() noexcept {
+            HANDLE h = m_handle;
+            m_handle = INVALID_HANDLE_VALUE;
+            return h;
+        }
+
+        void Reset(HANDLE handle = INVALID_HANDLE_VALUE) noexcept {
+            Close();
+            m_handle = handle;
+        }
+
+        void Close() noexcept {
+            if (IsValid()) {
+                ::CloseHandle(m_handle);
+                m_handle = INVALID_HANDLE_VALUE;
+            }
+        }
+
+        void Attach(HANDLE handle) noexcept {
+            Close();
+            m_handle = handle;
+        }
+
+        [[nodiscard]] HANDLE Detach() noexcept {
+            return Release();
+        }
 
     private:
-        void Close() noexcept;
-        NativeHandle m_handle;
+        HANDLE m_handle;
     };
 
 }

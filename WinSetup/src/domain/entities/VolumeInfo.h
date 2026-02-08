@@ -1,8 +1,8 @@
 ﻿// src/domain/entities/VolumeInfo.h
-
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <domain/valueobjects/DriveLetter.h>
 #include <domain/valueobjects/FileSystemType.h>
 #include <domain/valueobjects/DiskSize.h>
@@ -37,29 +37,38 @@ namespace winsetup::domain {
 
         void SetIndex(int index) noexcept { m_index = index; }
         void SetLetter(const std::wstring& letter) { m_letter = letter; }
+        void SetLetter(std::wstring&& letter) noexcept { m_letter = std::move(letter); }
         void SetLabel(const std::wstring& label) { m_label = label; }
+        void SetLabel(std::wstring&& label) noexcept { m_label = std::move(label); }
         void SetFileSystem(FileSystemType fileSystem) noexcept { m_fileSystem = fileSystem; }
         void SetSize(DiskSize size) noexcept { m_size = size; }
         void SetVolumeType(const std::wstring& volumeType) { m_volumeType = volumeType; }
+        void SetVolumeType(std::wstring&& volumeType) noexcept { m_volumeType = std::move(volumeType); }
 
         [[nodiscard]] bool IsValid() const noexcept {
             return m_index >= 0 && m_size.ToBytes() > 0;
         }
 
-        [[nodiscard]] bool IsSystemVolume() const {
-            std::wstring lower = m_volumeType;
-            for (auto& c : lower) {
-                c = static_cast<wchar_t>(::towlower(c));
+        [[nodiscard]] bool IsSystemVolume() const noexcept {
+            if (m_volumeType.empty()) return false;
+
+            for (wchar_t c : m_volumeType) {
+                wchar_t lower = static_cast<wchar_t>(::towlower(c));
+                if (lower == L's' || lower == L'y' || lower == L't' || lower == L'e' || lower == L'm') {
+                    continue;
+                }
             }
-            return lower.find(L"system") != std::wstring::npos;
+            return m_volumeType.find(L"system") != std::wstring::npos ||
+                m_volumeType.find(L"System") != std::wstring::npos ||
+                m_volumeType.find(L"SYSTEM") != std::wstring::npos;
         }
 
-        [[nodiscard]] bool IsBootVolume() const {
-            std::wstring lower = m_volumeType;
-            for (auto& c : lower) {
-                c = static_cast<wchar_t>(::towlower(c));
-            }
-            return lower.find(L"boot") != std::wstring::npos;
+        [[nodiscard]] bool IsBootVolume() const noexcept {
+            if (m_volumeType.empty()) return false;
+
+            return m_volumeType.find(L"boot") != std::wstring::npos ||
+                m_volumeType.find(L"Boot") != std::wstring::npos ||
+                m_volumeType.find(L"BOOT") != std::wstring::npos;
         }
 
         [[nodiscard]] bool HasEnoughSpace(DiskSize required) const noexcept {

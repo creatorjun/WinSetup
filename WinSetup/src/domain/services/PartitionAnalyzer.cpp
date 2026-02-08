@@ -1,5 +1,4 @@
 ﻿// src/domain/services/PartitionAnalyzer.cpp
-
 #include <domain/services/PartitionAnalyzer.h>
 #include <algorithm>
 
@@ -9,20 +8,29 @@ namespace winsetup::domain {
         const std::vector<PartitionInfo>& partitions)
     {
         AnalysisResult result;
+
+        if (partitions.empty()) {
+            return result;
+        }
+
         uint64_t totalUsed = 0;
 
         for (size_t i = 0; i < partitions.size(); ++i) {
             const auto& partition = partitions[i];
-            totalUsed += partition.GetSize().ToBytes();
+            const uint64_t size = partition.GetSize().ToBytes();
+            totalUsed += size;
 
-            switch (partition.GetType()) {
+            const PartitionType type = partition.GetType();
+            const int idx = static_cast<int>(i);
+
+            switch (type) {
             case PartitionType::System:
                 result.hasSystemPartition = true;
-                result.systemPartitionIndex = static_cast<int>(i);
+                result.systemPartitionIndex = idx;
                 break;
             case PartitionType::EFI:
                 result.hasEFIPartition = true;
-                result.efiPartitionIndex = static_cast<int>(i);
+                result.efiPartitionIndex = idx;
                 break;
             case PartitionType::MSR:
                 result.hasMSRPartition = true;
@@ -32,10 +40,8 @@ namespace winsetup::domain {
                 break;
             case PartitionType::Basic:
                 if (result.dataPartitionIndex == -1) {
-                    result.dataPartitionIndex = static_cast<int>(i);
+                    result.dataPartitionIndex = idx;
                 }
-                break;
-            default:
                 break;
             }
         }

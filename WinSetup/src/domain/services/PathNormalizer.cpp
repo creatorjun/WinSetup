@@ -1,5 +1,4 @@
 ﻿// src/domain/services/PathNormalizer.cpp
-
 #include <domain/services/PathNormalizer.h>
 #include <algorithm>
 
@@ -10,129 +9,86 @@ namespace winsetup::domain {
             return path;
         }
 
-        std::wstring normalized = path;
-        std::replace(normalized.begin(), normalized.end(), ALT_SEPARATOR, SEPARATOR);
+        std::wstring normalized;
+        normalized.reserve(path.length());
 
-        size_t pos = 0;
-        while ((pos = normalized.find(L"\\\\", pos)) != std::wstring::npos) {
-            normalized.erase(pos, 1);
+        wchar_t prev = L'\0';
+        for (wchar_t c : path) {
+            if (c == ALT_SEPARATOR) {
+                c = SEPARATOR;
+            }
+
+            if (c == SEPARATOR && prev == SEPARATOR) {
+                continue;
+            }
+
+            normalized += c;
+            prev = c;
         }
 
-        return RemoveTrailingSlash(normalized);
+        if (normalized.length() > 3 && normalized.back() == SEPARATOR) {
+            normalized.pop_back();
+        }
+
+        return normalized;
     }
 
-    std::wstring PathNormalizer::RemoveTrailingSlash(const std::wstring& path) {
-        if (path.empty() || path.length() <= 3) {
-            return path;
+    std::wstring PathNormalizer::Combine(const std::wstring& path1, const std::wstring& path2) {
+        if (path1.empty()) return path2;
+        if (path2.empty()) return path1;
+
+        std::wstring result;
+        result.reserve(path1.length() + path2.length() + 1);
+
+        result = path1;
+        if (result.back() != SEPARATOR && result.back() != ALT_SEPARATOR) {
+            result += SEPARATOR;
         }
 
-        if (path.back() == SEPARATOR || path.back() == ALT_SEPARATOR) {
-            return path.substr(0, path.length() - 1);
-        }
+        size_t start = (path2.front() == SEPARATOR || path2.front() == ALT_SEPARATOR) ? 1 : 0;
+        result.append(path2, start, std::wstring::npos);
 
-        return path;
-    }
-
-    std::wstring PathNormalizer::AddTrailingSlash(const std::wstring& path) {
-        if (path.empty()) {
-            return path;
-        }
-
-        if (path.back() != SEPARATOR && path.back() != ALT_SEPARATOR) {
-            return path + SEPARATOR;
-        }
-
-        return path;
-    }
-
-    std::wstring PathNormalizer::GetFileName(const std::wstring& path) {
-        auto normalized = Normalize(path);
-        auto pos = normalized.find_last_of(SEPARATOR);
-
-        if (pos == std::wstring::npos) {
-            return normalized;
-        }
-
-        return normalized.substr(pos + 1);
+        return Normalize(result);
     }
 
     std::wstring PathNormalizer::GetDirectory(const std::wstring& path) {
-        auto normalized = Normalize(path);
-        auto pos = normalized.find_last_of(SEPARATOR);
-
+        auto pos = path.find_last_of(SEPARATOR);
         if (pos == std::wstring::npos) {
             return L"";
         }
+        return path.substr(0, pos);
+    }
 
-        return normalized.substr(0, pos);
+    std::wstring PathNormalizer::GetFileName(const std::wstring& path) {
+        auto pos = path.find_last_of(SEPARATOR);
+        if (pos == std::wstring::npos) {
+            return path;
+        }
+        return path.substr(pos + 1);
     }
 
     std::wstring PathNormalizer::GetExtension(const std::wstring& path) {
         auto fileName = GetFileName(path);
         auto pos = fileName.find_last_of(L'.');
-
         if (pos == std::wstring::npos || pos == 0) {
             return L"";
         }
-
         return fileName.substr(pos);
     }
 
-    std::wstring PathNormalizer::Combine(const std::wstring& path1, const std::wstring& path2) {
-        if (path1.empty()) {
-            return Normalize(path2);
-        }
-
-        if (path2.empty()) {
-            return Normalize(path1);
-        }
-
-        auto normalized1 = RemoveTrailingSlash(Normalize(path1));
-        auto normalized2 = path2;
-
-        if (normalized2.front() == SEPARATOR || normalized2.front() == ALT_SEPARATOR) {
-            normalized2 = normalized2.substr(1);
-        }
-
-        return normalized1 + SEPARATOR + normalized2;
-    }
-
-    std::vector<std::wstring> PathNormalizer::Split(const std::wstring& path) {
-        std::vector<std::wstring> parts;
-        auto normalized = Normalize(path);
-
-        size_t start = 0;
-        size_t pos = 0;
-
-        while ((pos = normalized.find(SEPARATOR, start)) != std::wstring::npos) {
-            if (pos > start) {
-                parts.push_back(normalized.substr(start, pos - start));
-            }
-            start = pos + 1;
-        }
-
-        if (start < normalized.length()) {
-            parts.push_back(normalized.substr(start));
-        }
-
-        return parts;
-    }
-
     bool PathNormalizer::IsAbsolute(const std::wstring& path) noexcept {
-        if (path.length() < 3) {
+        if (path.length() < 2) {
             return false;
         }
-
-        if ((path[0] >= L'A' && path[0] <= L'Z') || (path[0] >= L'a' && path[0] <= L'z')) {
-            return path[1] == L':' && (path[2] == SEPARATOR || path[2] == ALT_SEPARATOR);
-        }
-
-        return (path[0] == SEPARATOR || path[0] == ALT_SEPARATOR) &&
-            (path[1] == SEPARATOR || path[1] == ALT_SEPARATOR);
+        return (path[1] == L':') || (path[0] == SEPARATOR && path[1] == SEPARATOR);
     }
 
-    bool PathNormalizer::IsRelative(const std::wstring& path) noexcept {
-        return !IsAbsolute(path);
+    bool PathNormalizer::HasTrailingSeparator(const std::wstring& path) noexcept {
+        if (path.empty()) {
+            return false;
+        }
+        wchar_t last = path.back();
+        return last == SEPARATOR || last == ALT_SEPARATOR;
     }
 
 }

@@ -1,5 +1,4 @@
 // src/adapters/ui/win32/controls/SimpleButton.h
-
 #pragma once
 
 #include <windows.h>
@@ -40,6 +39,7 @@ namespace winsetup::adapters::ui {
         void DrawButton(HDC hdc);
         void InvalidateCache();
         void CleanupCache();
+        void UpdateState(bool hovering, bool pressed);
 
         HWND m_hwnd;
         bool m_isHovering;
