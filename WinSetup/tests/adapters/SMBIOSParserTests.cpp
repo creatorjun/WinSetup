@@ -1,0 +1,1 @@
+﻿// tests\adapters\SMBIOSParserTests.cpp

@@ -1,1 +1,1 @@
-// src/domain/functional/Compose.h 
+﻿// src\domain\functional\Compose.h

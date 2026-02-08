@@ -1,1 +1,1 @@
-// src/domain/functional/Pipeline.h 
+﻿// src\domain\functional\Pipeline.h

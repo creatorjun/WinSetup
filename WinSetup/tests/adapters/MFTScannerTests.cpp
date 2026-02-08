@@ -1,0 +1,1 @@
+﻿// tests\adapters\MFTScannerTests.cpp

@@ -18,6 +18,169 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\adapters\imaging\DismAdapter.cpp" />
+    <ClCompile Include="src\adapters\imaging\WimlibAdapter.cpp" />
+    <ClCompile Include="src\adapters\imaging\WimlibOptimizer.cpp" />
+    <ClCompile Include="src\adapters\persistence\config\IniConfigRepository.cpp" />
+    <ClCompile Include="src\adapters\persistence\config\IniParser.cpp" />
+    <ClCompile Include="src\adapters\persistence\filesystem\Win32FileSystem.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\core\Win32ErrorHandler.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\core\Win32TypeMapper.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\logging\Win32Logger.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\storage\AsyncIOCTL.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\storage\DiskLayoutBuilder.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\storage\DiskTransaction.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\storage\IOCTLWrapper.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\storage\MFTScanner.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\storage\Win32DiskService.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\storage\Win32VolumeService.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\system\SMBIOSParser.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\system\Win32SystemInfoService.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\threading\Win32Thread.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\threading\Win32ThreadPool.cpp" />
+    <ClCompile Include="src\adapters\ui\win32\controls\SimpleButton.cpp" />
+    <ClCompile Include="src\adapters\ui\win32\controls\ToggleButton.cpp" />
+    <ClCompile Include="src\adapters\ui\win32\Win32MainWindow.cpp" />
+    <ClCompile Include="src\adapters\ui\win32\Win32ProgressBar.cpp" />
+    <ClCompile Include="src\application\async\CancellationToken.cpp" />
+    <ClCompile Include="src\application\async\Task.cpp" />
+    <ClCompile Include="src\application\core\DIContainer.cpp" />
+    <ClCompile Include="src\application\core\ServiceLocator.cpp" />
+    <ClCompile Include="src\application\eventhandlers\DiskAnalyzedEventHandler.cpp" />
+    <ClCompile Include="src\application\eventhandlers\InstallProgressEventHandler.cpp" />
+    <ClCompile Include="src\application\services\Dispatcher.cpp" />
+    <ClCompile Include="src\application\services\EventBus.cpp" />
+    <ClCompile Include="src\application\services\TaskScheduler.cpp" />
+    <ClCompile Include="src\application\usecases\disk\AnalyzeDisksUseCase.cpp" />
+    <ClCompile Include="src\application\usecases\disk\EnumerateDisksUseCase.cpp" />
+    <ClCompile Include="src\application\usecases\disk\SelectTargetDisksUseCase.cpp" />
+    <ClCompile Include="src\application\usecases\install\ApplyImageUseCase.cpp" />
+    <ClCompile Include="src\application\usecases\install\BackupUserDataUseCase.cpp" />
+    <ClCompile Include="src\application\usecases\install\InjectDriversUseCase.cpp" />
+    <ClCompile Include="src\application\usecases\install\InstallWindowsUseCase.cpp" />
+    <ClCompile Include="src\application\usecases\install\RestoreUserDataUseCase.cpp" />
+    <ClCompile Include="src\application\usecases\system\AnalyzeSystemUseCase.cpp" />
+    <ClCompile Include="src\application\usecases\system\LoadConfigurationUseCase.cpp" />
+    <ClCompile Include="src\domain\entities\DiskInfo.cpp" />
+    <ClCompile Include="src\domain\entities\PartitionInfo.cpp" />
+    <ClCompile Include="src\domain\entities\SetupConfig.cpp" />
+    <ClCompile Include="src\domain\entities\SystemInfo.cpp" />
+    <ClCompile Include="src\domain\entities\VolumeInfo.cpp" />
+    <ClCompile Include="src\domain\events\DomainEvent.cpp" />
+    <ClCompile Include="src\domain\memory\PoolAllocator.cpp" />
+    <ClCompile Include="src\domain\memory\UniqueHandle.cpp" />
+    <ClCompile Include="src\domain\primitives\Error.cpp" />
+    <ClCompile Include="src\domain\primitives\Expected.cpp" />
+    <ClCompile Include="src\domain\services\DiskSortingService.cpp" />
+    <ClCompile Include="src\domain\services\PartitionAnalyzer.cpp" />
+    <ClCompile Include="src\domain\services\PathNormalizer.cpp" />
+    <ClCompile Include="src\domain\specifications\DiskSpecifications.cpp" />
+    <ClCompile Include="src\domain\specifications\VolumeSpecifications.cpp" />
+    <ClCompile Include="src\domain\valueobjects\DiskSize.cpp" />
+    <ClCompile Include="src\domain\valueobjects\DriveLetter.cpp" />
+    <ClCompile Include="src\main\Main.cpp" />
+    <ClCompile Include="src\main\ServiceRegistration.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\abstractions\infrastructure\async\IAsyncContext.h" />
+    <ClInclude Include="src\abstractions\infrastructure\async\IExecutor.h" />
+    <ClInclude Include="src\abstractions\infrastructure\async\IScheduler.h" />
+    <ClInclude Include="src\abstractions\infrastructure\logging\ILogger.h" />
+    <ClInclude Include="src\abstractions\infrastructure\logging\LogLevel.h" />
+    <ClInclude Include="src\abstractions\infrastructure\messaging\IDispatcher.h" />
+    <ClInclude Include="src\abstractions\infrastructure\messaging\IEvent.h" />
+    <ClInclude Include="src\abstractions\infrastructure\messaging\IEventBus.h" />
+    <ClInclude Include="src\abstractions\infrastructure\messaging\IMessageQueue.h" />
+    <ClInclude Include="src\abstractions\infrastructure\transaction\ITransaction.h" />
+    <ClInclude Include="src\abstractions\infrastructure\transaction\ITransactionManager.h" />
+    <ClInclude Include="src\adapters\imaging\DismAdapter.h" />
+    <ClInclude Include="src\adapters\imaging\WimlibAdapter.h" />
+    <ClInclude Include="src\adapters\imaging\WimlibOptimizer.h" />
+    <ClInclude Include="src\adapters\persistence\config\IniConfigRepository.h" />
+    <ClInclude Include="src\adapters\persistence\config\IniParser.h" />
+    <ClInclude Include="src\adapters\persistence\filesystem\Win32FileSystem.h" />
+    <ClInclude Include="src\adapters\platform\win32\core\Win32Constants.h" />
+    <ClInclude Include="src\adapters\platform\win32\core\Win32ErrorHandler.h" />
+    <ClInclude Include="src\adapters\platform\win32\core\Win32TypeMapper.h" />
+    <ClInclude Include="src\adapters\platform\win32\logging\Win32Logger.h" />
+    <ClInclude Include="src\adapters\platform\win32\storage\AsyncIOCTL.h" />
+    <ClInclude Include="src\adapters\platform\win32\storage\DiskLayoutBuilder.h" />
+    <ClInclude Include="src\adapters\platform\win32\storage\DiskTransaction.h" />
+    <ClInclude Include="src\adapters\platform\win32\storage\IOCTLWrapper.h" />
+    <ClInclude Include="src\adapters\platform\win32\storage\MFTScanner.h" />
+    <ClInclude Include="src\adapters\platform\win32\storage\Win32DiskService.h" />
+    <ClInclude Include="src\adapters\platform\win32\storage\Win32VolumeService.h" />
+    <ClInclude Include="src\adapters\platform\win32\system\FirmwareTableReader.h" />
+    <ClInclude Include="src\adapters\platform\win32\system\SMBIOSParser.h" />
+    <ClInclude Include="src\adapters\platform\win32\system\SMBIOSStructures.h" />
+    <ClInclude Include="src\adapters\platform\win32\system\Win32SystemInfoService.h" />
+    <ClInclude Include="src\adapters\platform\win32\threading\Win32Thread.h" />
+    <ClInclude Include="src\adapters\platform\win32\threading\Win32ThreadPool.h" />
+    <ClInclude Include="src\adapters\ui\win32\controls\SimpleButton.h" />
+    <ClInclude Include="src\adapters\ui\win32\controls\ToggleButton.h" />
+    <ClInclude Include="src\adapters\ui\win32\Win32MainWindow.h" />
+    <ClInclude Include="src\adapters\ui\win32\Win32ProgressBar.h" />
+    <ClInclude Include="src\application\async\Awaitable.h" />
+    <ClInclude Include="src\application\async\CancellationToken.h" />
+    <ClInclude Include="src\application\async\Promise.h" />
+    <ClInclude Include="src\application\async\Task.h" />
+    <ClInclude Include="src\application\core\DIContainer.h" />
+    <ClInclude Include="src\application\core\ServiceLocator.h" />
+    <ClInclude Include="src\application\dto\DiskAnalysisResult.h" />
+    <ClInclude Include="src\application\dto\InstallationProgress.h" />
+    <ClInclude Include="src\application\dto\SystemAnalysisResult.h" />
+    <ClInclude Include="src\application\eventhandlers\DiskAnalyzedEventHandler.h" />
+    <ClInclude Include="src\application\eventhandlers\InstallProgressEventHandler.h" />
+    <ClInclude Include="src\application\services\Dispatcher.h" />
+    <ClInclude Include="src\application\services\EventBus.h" />
+    <ClInclude Include="src\application\services\TaskScheduler.h" />
+    <ClInclude Include="src\application\usecases\disk\AnalyzeDisksUseCase.h" />
+    <ClInclude Include="src\application\usecases\disk\EnumerateDisksUseCase.h" />
+    <ClInclude Include="src\application\usecases\disk\SelectTargetDisksUseCase.h" />
+    <ClInclude Include="src\application\usecases\install\ApplyImageUseCase.h" />
+    <ClInclude Include="src\application\usecases\install\BackupUserDataUseCase.h" />
+    <ClInclude Include="src\application\usecases\install\InjectDriversUseCase.h" />
+    <ClInclude Include="src\application\usecases\install\InstallWindowsUseCase.h" />
+    <ClInclude Include="src\application\usecases\install\RestoreUserDataUseCase.h" />
+    <ClInclude Include="src\application\usecases\system\AnalyzeSystemUseCase.h" />
+    <ClInclude Include="src\application\usecases\system\LoadConfigurationUseCase.h" />
+    <ClInclude Include="src\domain\entities\DiskInfo.h" />
+    <ClInclude Include="src\domain\entities\PartitionInfo.h" />
+    <ClInclude Include="src\domain\entities\SetupConfig.h" />
+    <ClInclude Include="src\domain\entities\SystemInfo.h" />
+    <ClInclude Include="src\domain\entities\VolumeInfo.h" />
+    <ClInclude Include="src\domain\events\DiskAnalyzedEvent.h" />
+    <ClInclude Include="src\domain\events\DomainEvent.h" />
+    <ClInclude Include="src\domain\events\ErrorOccurredEvent.h" />
+    <ClInclude Include="src\domain\events\InstallCompletedEvent.h" />
+    <ClInclude Include="src\domain\events\InstallProgressEvent.h" />
+    <ClInclude Include="src\domain\events\InstallStartedEvent.h" />
+    <ClInclude Include="src\domain\functional\Compose.h" />
+    <ClInclude Include="src\domain\functional\Monads.h" />
+    <ClInclude Include="src\domain\functional\Optional.h" />
+    <ClInclude Include="src\domain\functional\Pipeline.h" />
+    <ClInclude Include="src\domain\memory\PoolAllocator.h" />
+    <ClInclude Include="src\domain\memory\UniqueFindHandle.h" />
+    <ClInclude Include="src\domain\memory\UniqueHandle.h" />
+    <ClInclude Include="src\domain\memory\UniqueLibrary.h" />
+    <ClInclude Include="src\domain\primitives\Error.h" />
+    <ClInclude Include="src\domain\primitives\Expected.h" />
+    <ClInclude Include="src\domain\primitives\Result.h" />
+    <ClInclude Include="src\domain\services\DiskSortingService.h" />
+    <ClInclude Include="src\domain\services\PartitionAnalyzer.h" />
+    <ClInclude Include="src\domain\services\PathNormalizer.h" />
+    <ClInclude Include="src\domain\specifications\DiskSpecifications.h" />
+    <ClInclude Include="src\domain\specifications\ISpecification.h" />
+    <ClInclude Include="src\domain\specifications\VolumeSpecifications.h" />
+    <ClInclude Include="src\domain\valueobjects\BusType.h" />
+    <ClInclude Include="src\domain\valueobjects\DiskSize.h" />
+    <ClInclude Include="src\domain\valueobjects\DriveLetter.h" />
+    <ClInclude Include="src\domain\valueobjects\FileSystemType.h" />
+    <ClInclude Include="src\domain\valueobjects\PartitionType.h" />
+    <ClInclude Include="src\main\ServiceRegistration.h" />
+    <ClInclude Include="src\resources\resource.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -79,6 +242,7 @@
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -100,14 +264,15 @@ validate_dependencies.bat</Command>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreBuildEvent>
-      <Command>cd $(SolutionDir)scripts
-validate_dependencies.bat</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -119,6 +284,7 @@ validate_dependencies.bat</Command>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -140,153 +306,17 @@ validate_dependencies.bat</Command>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreBuildEvent>
-      <Command>cd $(SolutionDir)scripts
-validate_dependencies.bat</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <None Include="docs\api\abstractions.md" />
-    <None Include="docs\api\application.md" />
-    <None Include="docs\api\domain.md" />
-    <None Include="docs\architecture\dependencies.md" />
-    <None Include="docs\architecture\layers.md" />
-    <None Include="docs\architecture\patterns.md" />
-    <None Include="docs\guides\contributing.md" />
-    <None Include="docs\guides\migration.md" />
-    <None Include="docs\guides\testing.md" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\abstractions\async\IAsyncContext.h" />
-    <ClInclude Include="src\abstractions\async\IAwaitable.h" />
-    <ClInclude Include="src\abstractions\async\IExecutor.h" />
-    <ClInclude Include="src\abstractions\async\IScheduler.h" />
-    <ClInclude Include="src\abstractions\io\IFileSystem.h" />
-    <ClInclude Include="src\abstractions\io\IPath.h" />
-    <ClInclude Include="src\abstractions\io\IStreamReader.h" />
-    <ClInclude Include="src\abstractions\io\IStreamWriter.h" />
-    <ClInclude Include="src\abstractions\logging\ILogger.h" />
-    <ClInclude Include="src\abstractions\logging\LogLevel.h" />
-    <ClInclude Include="src\abstractions\messaging\IDispatcher.h" />
-    <ClInclude Include="src\abstractions\messaging\IEventBus.h" />
-    <ClInclude Include="src\abstractions\messaging\IMessageQueue.h" />
-    <ClInclude Include="src\abstractions\platform\IPlatformHandle.h" />
-    <ClInclude Include="src\abstractions\platform\ISystemInfoService.h" />
-    <ClInclude Include="src\abstractions\platform\ITextEncoder.h" />
-    <ClInclude Include="src\abstractions\platform\IThreadPool.h" />
-    <ClInclude Include="src\abstractions\platform\IWindowHandle.h" />
-    <ClInclude Include="src\abstractions\reactive\IObservable.h" />
-    <ClInclude Include="src\abstractions\reactive\IProperty.h" />
-    <ClInclude Include="src\abstractions\storage\IDiskService.h" />
-    <ClInclude Include="src\abstractions\storage\IPartitionService.h" />
-    <ClInclude Include="src\abstractions\storage\IStorageScanner.h" />
-    <ClInclude Include="src\abstractions\storage\IVolumeService.h" />
-    <ClInclude Include="src\adapters\platform\windows\encoding\Win32TextEncoder.h" />
-    <ClInclude Include="src\adapters\platform\windows\filesystem\Win32File.h" />
-    <ClInclude Include="src\adapters\platform\windows\filesystem\Win32FileSystem.h" />
-    <ClInclude Include="src\adapters\platform\windows\storage\Win32DiskService.h" />
-    <ClInclude Include="src\adapters\platform\windows\storage\Win32PartitionService.h" />
-    <ClInclude Include="src\adapters\platform\windows\storage\Win32StorageScanner.h" />
-    <ClInclude Include="src\adapters\platform\windows\storage\Win32VolumeService.h" />
-    <ClInclude Include="src\adapters\platform\windows\system\Win32SystemInfoService.h" />
-    <ClInclude Include="src\adapters\platform\windows\threading\Win32Thread.h" />
-    <ClInclude Include="src\adapters\platform\windows\threading\Win32ThreadPool.h" />
-    <ClInclude Include="src\adapters\platform\windows\Win32Factory.h" />
-    <ClInclude Include="src\adapters\platform\windows\Win32StorageFactory.h" />
-    <ClInclude Include="src\adapters\platform\windows\window\Win32Handle.h" />
-    <ClInclude Include="src\adapters\platform\windows\window\Win32WindowHandle.h" />
-    <ClInclude Include="src\application\async\AsyncContext.h" />
-    <ClInclude Include="src\application\async\Awaitable.h" />
-    <ClInclude Include="src\application\async\CancellationToken.h" />
-    <ClInclude Include="src\application\async\Promise.h" />
-    <ClInclude Include="src\application\async\Task.h" />
-    <ClInclude Include="src\application\async\TaskScheduler.h" />
-    <ClInclude Include="src\application\events\ErrorEvent.h" />
-    <ClInclude Include="src\application\events\InstallEvent.h" />
-    <ClInclude Include="src\application\events\LogEvent.h" />
-    <ClInclude Include="src\application\events\ProgressEvent.h" />
-    <ClInclude Include="src\application\messaging\Dispatcher.h" />
-    <ClInclude Include="src\application\messaging\EventBus.h" />
-    <ClInclude Include="src\application\messaging\MessageQueue.h" />
-    <ClInclude Include="src\application\reactive\Observable.h" />
-    <ClInclude Include="src\application\reactive\Operators.h" />
-    <ClInclude Include="src\application\reactive\Property.h" />
-    <ClInclude Include="src\application\reactive\Subject.h" />
-    <ClInclude Include="src\application\usecases\DiskAnalyzer.h" />
-    <ClInclude Include="src\domain\entities\ConfigData.h" />
-    <ClInclude Include="src\domain\entities\DiskInfo.h" />
-    <ClInclude Include="src\domain\entities\LogEntry.h" />
-    <ClInclude Include="src\domain\entities\PartitionInfo.h" />
-    <ClInclude Include="src\domain\entities\VolumeInfo.h" />
-    <ClInclude Include="src\domain\functional\Compose.h" />
-    <ClInclude Include="src\domain\functional\Monads.h" />
-    <ClInclude Include="src\domain\functional\Optional.h" />
-    <ClInclude Include="src\domain\functional\Pipeline.h" />
-    <ClInclude Include="src\domain\memory\PoolAllocator.h" />
-    <ClInclude Include="src\domain\memory\SharedResource.h" />
-    <ClInclude Include="src\domain\memory\SmartPtr.h" />
-    <ClInclude Include="src\domain\memory\UniqueResource.h" />
-    <ClInclude Include="src\domain\primitives\Error.h" />
-    <ClInclude Include="src\domain\primitives\Expected.h" />
-    <ClInclude Include="src\domain\primitives\Result.h" />
-    <ClInclude Include="src\domain\validation\PathValidator.h" />
-    <ClInclude Include="src\domain\validation\ValidationResult.h" />
-    <ClInclude Include="src\domain\validation\ValidationRules.h" />
-    <ClInclude Include="src\infrastructure\composition\DependencyContainer.h" />
-    <ClInclude Include="src\infrastructure\composition\ServiceRegistration.h" />
-    <ClInclude Include="src\infrastructure\config\ConfigLoader.h" />
-    <ClInclude Include="src\infrastructure\config\IniParser.h" />
-    <ClInclude Include="src\infrastructure\diagnostics\PerformanceMonitor.h" />
-    <ClInclude Include="src\infrastructure\logging\LogFormatter.h" />
-    <ClInclude Include="src\infrastructure\logging\WindowsLogger.h" />
-    <ClInclude Include="src\infrastructure\windows\MainWindow.h" />
-    <ClInclude Include="src\infrastructure\windows\StatusTextWidget.h" />
-    <ClInclude Include="src\resources\resource.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\adapters\platform\windows\encoding\Win32TextEncoder.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\filesystem\Win32File.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\filesystem\Win32FileSystem.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\storage\Win32DiskService.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\storage\Win32PartitionService.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\storage\Win32StorageScanner.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\storage\Win32VolumeService.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\system\Win32SystemInfoService.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\threading\Win32Thread.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\threading\Win32ThreadPool.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\Win32StorageFactory.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\window\Win32Handle.cpp" />
-    <ClCompile Include="src\adapters\platform\windows\window\Win32WindowHandle.cpp" />
-    <ClCompile Include="src\application\async\AsyncContext.cpp" />
-    <ClCompile Include="src\application\async\CancellationToken.cpp" />
-    <ClCompile Include="src\application\async\TaskScheduler.cpp" />
-    <ClCompile Include="src\application\messaging\Dispatcher.cpp" />
-    <ClCompile Include="src\application\messaging\EventBus.cpp" />
-    <ClCompile Include="src\application\usecases\DiskAnalyzer.cpp" />
-    <ClCompile Include="src\domain\validation\PathValidator.cpp" />
-    <ClCompile Include="src\infrastructure\composition\DependencyContainer.cpp" />
-    <ClCompile Include="src\infrastructure\composition\ServiceRegistration.cpp" />
-    <ClCompile Include="src\infrastructure\config\ConfigLoader.cpp" />
-    <ClCompile Include="src\infrastructure\config\IniParser.cpp" />
-    <ClCompile Include="src\infrastructure\diagnostics\PerformanceMonitor.cpp" />
-    <ClCompile Include="src\infrastructure\logging\LogFormatter.cpp" />
-    <ClCompile Include="src\infrastructure\logging\WindowsLogger.cpp" />
-    <ClCompile Include="src\infrastructure\windows\MainWindow.cpp" />
-    <ClCompile Include="src\infrastructure\windows\StatusTextWidget.cpp" />
-    <ClCompile Include="src\Main.cpp" />
-    <ClCompile Include="tests\TestMain.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="src\resources\WinSetup.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="src\resources\WinSetup.rc" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

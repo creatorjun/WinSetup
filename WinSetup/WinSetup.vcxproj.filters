@@ -15,90 +15,411 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="docs\api\abstractions.md" />
-    <None Include="docs\api\application.md" />
-    <None Include="docs\api\domain.md" />
-    <None Include="docs\architecture\dependencies.md" />
-    <None Include="docs\architecture\layers.md" />
-    <None Include="docs\architecture\patterns.md" />
-    <None Include="docs\guides\contributing.md" />
-    <None Include="docs\guides\migration.md" />
-    <None Include="docs\guides\testing.md" />
+    <ClCompile Include="src\main\Main.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main\ServiceRegistration.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\imaging\DismAdapter.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\imaging\WimlibAdapter.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\imaging\WimlibOptimizer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\persistence\config\IniConfigRepository.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\persistence\config\IniParser.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\persistence\filesystem\Win32FileSystem.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\core\Win32ErrorHandler.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\core\Win32TypeMapper.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\logging\Win32Logger.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\storage\AsyncIOCTL.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\storage\DiskLayoutBuilder.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\storage\DiskTransaction.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\storage\IOCTLWrapper.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\storage\MFTScanner.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\storage\Win32DiskService.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\storage\Win32VolumeService.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\system\SMBIOSParser.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\system\Win32SystemInfoService.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\threading\Win32Thread.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\threading\Win32ThreadPool.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\ui\win32\Win32MainWindow.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\ui\win32\Win32ProgressBar.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\async\CancellationToken.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\async\Task.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\core\DIContainer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\core\ServiceLocator.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\eventhandlers\DiskAnalyzedEventHandler.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\eventhandlers\InstallProgressEventHandler.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\services\Dispatcher.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\services\EventBus.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\services\TaskScheduler.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\disk\AnalyzeDisksUseCase.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\disk\EnumerateDisksUseCase.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\disk\SelectTargetDisksUseCase.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\install\ApplyImageUseCase.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\install\BackupUserDataUseCase.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\install\InjectDriversUseCase.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\install\InstallWindowsUseCase.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\install\RestoreUserDataUseCase.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\system\AnalyzeSystemUseCase.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\system\LoadConfigurationUseCase.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\entities\DiskInfo.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\entities\PartitionInfo.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\entities\SetupConfig.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\entities\SystemInfo.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\entities\VolumeInfo.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\events\DomainEvent.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\memory\PoolAllocator.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\memory\UniqueHandle.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\primitives\Error.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\primitives\Expected.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\services\DiskSortingService.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\services\PartitionAnalyzer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\services\PathNormalizer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\specifications\DiskSpecifications.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\specifications\VolumeSpecifications.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\valueobjects\DiskSize.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\domain\valueobjects\DriveLetter.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\ui\win32\controls\ToggleButton.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\ui\win32\controls\SimpleButton.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\abstractions\async\IAsyncContext.h">
+    <ClInclude Include="src\main\ServiceRegistration.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\async\IAwaitable.h">
+    <ClInclude Include="src\resources\resource.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\async\IExecutor.h">
+    <ClInclude Include="src\abstractions\infrastructure\async\IAsyncContext.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\async\IScheduler.h">
+    <ClInclude Include="src\abstractions\infrastructure\async\IExecutor.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\io\IFileSystem.h">
+    <ClInclude Include="src\abstractions\infrastructure\async\IScheduler.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\io\IPath.h">
+    <ClInclude Include="src\abstractions\infrastructure\logging\ILogger.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\io\IStreamReader.h">
+    <ClInclude Include="src\abstractions\infrastructure\logging\LogLevel.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\io\IStreamWriter.h">
+    <ClInclude Include="src\abstractions\infrastructure\messaging\IDispatcher.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\messaging\IDispatcher.h">
+    <ClInclude Include="src\abstractions\infrastructure\messaging\IEvent.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\messaging\IEventBus.h">
+    <ClInclude Include="src\abstractions\infrastructure\messaging\IEventBus.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\messaging\IMessageQueue.h">
+    <ClInclude Include="src\abstractions\infrastructure\messaging\IMessageQueue.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\platform\IPlatformHandle.h">
+    <ClInclude Include="src\abstractions\infrastructure\transaction\ITransaction.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\platform\ITextEncoder.h">
+    <ClInclude Include="src\abstractions\infrastructure\transaction\ITransactionManager.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\platform\IThreadPool.h">
+    <ClInclude Include="src\adapters\imaging\DismAdapter.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\platform\IWindowHandle.h">
+    <ClInclude Include="src\adapters\imaging\WimlibAdapter.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\reactive\IObservable.h">
+    <ClInclude Include="src\adapters\imaging\WimlibOptimizer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\reactive\IProperty.h">
+    <ClInclude Include="src\adapters\persistence\config\IniConfigRepository.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\encoding\Win32TextEncoder.h">
+    <ClInclude Include="src\adapters\persistence\config\IniParser.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\filesystem\Win32File.h">
+    <ClInclude Include="src\adapters\persistence\filesystem\Win32FileSystem.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\filesystem\Win32FileSystem.h">
+    <ClInclude Include="src\adapters\platform\win32\core\Win32Constants.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\threading\Win32Thread.h">
+    <ClInclude Include="src\adapters\platform\win32\core\Win32ErrorHandler.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\threading\Win32ThreadPool.h">
+    <ClInclude Include="src\adapters\platform\win32\core\Win32TypeMapper.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\window\Win32Handle.h">
+    <ClInclude Include="src\adapters\platform\win32\logging\Win32Logger.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\window\Win32WindowHandle.h">
+    <ClInclude Include="src\adapters\platform\win32\storage\AsyncIOCTL.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\Win32Factory.h">
+    <ClInclude Include="src\adapters\platform\win32\storage\DiskLayoutBuilder.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\storage\DiskTransaction.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\storage\IOCTLWrapper.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\storage\MFTScanner.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\storage\Win32DiskService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\storage\Win32VolumeService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\system\FirmwareTableReader.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\system\SMBIOSParser.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\system\SMBIOSStructures.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\system\Win32SystemInfoService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\threading\Win32Thread.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\threading\Win32ThreadPool.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\ui\win32\Win32MainWindow.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\ui\win32\Win32ProgressBar.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\async\Awaitable.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\async\CancellationToken.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\async\Promise.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\async\Task.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\core\DIContainer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\core\ServiceLocator.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\dto\DiskAnalysisResult.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\dto\InstallationProgress.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\dto\SystemAnalysisResult.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\eventhandlers\DiskAnalyzedEventHandler.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\eventhandlers\InstallProgressEventHandler.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\services\Dispatcher.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\services\EventBus.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\services\TaskScheduler.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\disk\AnalyzeDisksUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\disk\EnumerateDisksUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\disk\SelectTargetDisksUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\install\ApplyImageUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\install\BackupUserDataUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\install\InjectDriversUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\install\InstallWindowsUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\install\RestoreUserDataUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\system\AnalyzeSystemUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\system\LoadConfigurationUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\entities\DiskInfo.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\entities\PartitionInfo.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\entities\SetupConfig.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\entities\SystemInfo.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\entities\VolumeInfo.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\events\DiskAnalyzedEvent.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\events\DomainEvent.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\events\ErrorOccurredEvent.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\events\InstallCompletedEvent.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\events\InstallProgressEvent.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\domain\events\InstallStartedEvent.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\domain\functional\Compose.h">
@@ -116,22 +437,13 @@
     <ClInclude Include="src\domain\memory\PoolAllocator.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\domain\memory\SharedResource.h">
+    <ClInclude Include="src\domain\memory\UniqueFindHandle.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\domain\memory\SmartPtr.h">
+    <ClInclude Include="src\domain\memory\UniqueHandle.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\domain\memory\UniqueResource.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\domain\validation\PathValidator.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\domain\validation\ValidationResult.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\domain\validation\ValidationRules.h">
+    <ClInclude Include="src\domain\memory\UniqueLibrary.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\domain\primitives\Error.h">
@@ -143,248 +455,44 @@
     <ClInclude Include="src\domain\primitives\Result.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\infrastructure\composition\DependencyContainer.h">
+    <ClInclude Include="src\domain\services\DiskSortingService.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\infrastructure\config\ConfigLoader.h">
+    <ClInclude Include="src\domain\services\PartitionAnalyzer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\infrastructure\diagnostics\PerformanceMonitor.h">
+    <ClInclude Include="src\domain\services\PathNormalizer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\infrastructure\logging\WindowsLogger.h">
+    <ClInclude Include="src\domain\specifications\DiskSpecifications.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\async\AsyncContext.h">
+    <ClInclude Include="src\domain\specifications\ISpecification.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\async\Awaitable.h">
+    <ClInclude Include="src\domain\specifications\VolumeSpecifications.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\async\Promise.h">
+    <ClInclude Include="src\domain\valueobjects\BusType.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\async\Task.h">
+    <ClInclude Include="src\domain\valueobjects\DiskSize.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\async\TaskScheduler.h">
+    <ClInclude Include="src\domain\valueobjects\DriveLetter.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\events\ErrorEvent.h">
+    <ClInclude Include="src\domain\valueobjects\FileSystemType.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\events\InstallEvent.h">
+    <ClInclude Include="src\domain\valueobjects\PartitionType.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\events\LogEvent.h">
+    <ClInclude Include="src\adapters\ui\win32\controls\ToggleButton.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\events\ProgressEvent.h">
+    <ClInclude Include="src\adapters\ui\win32\controls\SimpleButton.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\messaging\Dispatcher.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\messaging\EventBus.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\messaging\MessageQueue.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\reactive\Observable.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\reactive\Operators.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\reactive\Property.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\reactive\Subject.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\async\CancellationToken.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\domain\entities\DiskInfo.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\domain\entities\VolumeInfo.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\domain\entities\PartitionInfo.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\abstractions\storage\IDiskService.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\abstractions\storage\IVolumeService.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\abstractions\storage\IPartitionService.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\abstractions\storage\IStorageScanner.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\storage\Win32DiskService.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\storage\Win32VolumeService.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\storage\Win32PartitionService.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\storage\Win32StorageScanner.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\usecases\DiskAnalyzer.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\Win32StorageFactory.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\infrastructure\windows\MainWindow.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\resources\resource.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\infrastructure\windows\StatusTextWidget.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\abstractions\logging\ILogger.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\abstractions\platform\ISystemInfoService.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\adapters\platform\windows\system\Win32SystemInfoService.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\domain\entities\ConfigData.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\domain\entities\LogEntry.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\infrastructure\composition\ServiceRegistration.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\infrastructure\config\IniParser.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\infrastructure\logging\LogFormatter.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\abstractions\logging\LogLevel.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\adapters\platform\windows\encoding\Win32TextEncoder.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\filesystem\Win32File.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\filesystem\Win32FileSystem.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\threading\Win32Thread.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\threading\Win32ThreadPool.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\window\Win32Handle.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\window\Win32WindowHandle.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\domain\validation\PathValidator.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\infrastructure\composition\DependencyContainer.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\infrastructure\config\ConfigLoader.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\infrastructure\diagnostics\PerformanceMonitor.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\infrastructure\logging\WindowsLogger.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Main.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\application\async\AsyncContext.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\application\async\TaskScheduler.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\application\messaging\Dispatcher.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\application\messaging\EventBus.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\application\async\CancellationToken.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\storage\Win32DiskService.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\storage\Win32VolumeService.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\storage\Win32PartitionService.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\storage\Win32StorageScanner.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\application\usecases\DiskAnalyzer.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="tests\TestMain.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\Win32StorageFactory.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\infrastructure\windows\MainWindow.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\infrastructure\windows\StatusTextWidget.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\adapters\platform\windows\system\Win32SystemInfoService.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\infrastructure\composition\ServiceRegistration.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\infrastructure\config\IniParser.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="src\infrastructure\logging\LogFormatter.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="src\resources\WinSetup.ico">
-      <Filter>리소스 파일</Filter>
-    </Image>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="src\resources\WinSetup.rc">
-      <Filter>리소스 파일</Filter>
-    </ResourceCompile>
   </ItemGroup>
 </Project>

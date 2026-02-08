@@ -1,57 +1,78 @@
+﻿// src/domain/primitives/Error.h
+
 #pragma once
 
 #include <string>
-#include <optional>
-#include <format>
+#include <cstdint>
+#include <vector>
+#include <chrono>
 
 namespace winsetup::domain {
 
+    enum class ErrorCategory {
+        Unknown,
+        System,
+        Disk,
+        Volume,
+        Imaging,
+        Configuration,
+        Network,
+        Permission
+    };
+
+    struct ErrorContext {
+        std::wstring function;
+        std::wstring file;
+        int line;
+        std::chrono::system_clock::time_point timestamp;
+    };
+
     class Error {
     public:
-        explicit Error(std::string message)
-            : message_(std::move(message)), code_(std::nullopt) {
+        Error(
+            std::wstring message,
+            uint32_t code = 0,
+            ErrorCategory category = ErrorCategory::Unknown
+        )
+            : m_message(std::move(message))
+            , m_code(code)
+            , m_category(category)
+            , m_timestamp(std::chrono::system_clock::now())
+        {
         }
 
-        Error(std::string message, int code)
-            : message_(std::move(message)), code_(code) {
+        [[nodiscard]] const std::wstring& GetMessage() const noexcept {
+            return m_message;
         }
 
-        const std::string& Message() const noexcept {
-            return message_;
+        [[nodiscard]] uint32_t GetCode() const noexcept {
+            return m_code;
         }
 
-        int Code() const noexcept {
-            return code_.value_or(0);
+        [[nodiscard]] ErrorCategory GetCategory() const noexcept {
+            return m_category;
         }
 
-        bool HasCode() const noexcept {
-            return code_.has_value();
+        [[nodiscard]] auto GetTimestamp() const noexcept {
+            return m_timestamp;
         }
 
-        static Error FromWin32(unsigned long errorCode) {
-            return Error(
-                std::format("Win32 error: 0x{:08X}", errorCode),
-                static_cast<int>(errorCode)
-            );
+        void AddContext(const ErrorContext& context) {
+            m_contexts.push_back(context);
         }
 
-        static Error FromHRESULT(long hr) {
-            return Error(
-                std::format("HRESULT: 0x{:08X}", hr),
-                static_cast<int>(hr)
-            );
+        [[nodiscard]] const std::vector<ErrorContext>& GetContexts() const noexcept {
+            return m_contexts;
         }
 
-        static Error FromErrno(int err) {
-            return Error(
-                std::format("errno: {}", err),
-                err
-            );
-        }
+        [[nodiscard]] std::wstring ToString() const;
 
     private:
-        std::string message_;
-        std::optional<int> code_;
+        std::wstring m_message;
+        uint32_t m_code;
+        ErrorCategory m_category;
+        std::chrono::system_clock::time_point m_timestamp;
+        std::vector<ErrorContext> m_contexts;
     };
 
 }

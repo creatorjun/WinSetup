@@ -1,129 +1,84 @@
+﻿// src/domain/entities/VolumeInfo.h
+
 #pragma once
 
 #include <string>
-#include <optional>
-#include <domain/primitives/Expected.h>
+#include <domain/valueobjects/DriveLetter.h>
+#include <domain/valueobjects/FileSystemType.h>
+#include <domain/valueobjects/DiskSize.h>
 
 namespace winsetup::domain {
-
-    enum class FileSystemType : uint8_t {
-        Unknown,
-        NTFS,
-        FAT32,
-        exFAT,
-        ReFS
-    };
-
-    [[nodiscard]] constexpr const wchar_t* FileSystemTypeToString(FileSystemType type) noexcept {
-        switch (type) {
-        case FileSystemType::NTFS:   return L"NTFS";
-        case FileSystemType::FAT32:  return L"FAT32";
-        case FileSystemType::exFAT:  return L"exFAT";
-        case FileSystemType::ReFS:   return L"ReFS";
-        default:                     return L"Unknown";
-        }
-    }
-
-    enum class VolumeRole : uint8_t {
-        Unknown,
-        System,
-        Boot,
-        Data,
-        Recovery
-    };
 
     class VolumeInfo {
     public:
         VolumeInfo() = default;
 
         VolumeInfo(
-            std::wstring volumePath,
-            std::optional<wchar_t> driveLetter,
-            FileSystemType fsType,
-            uint64_t totalSize,
-            uint64_t freeSize
+            int index,
+            const std::wstring& letter,
+            const std::wstring& label,
+            FileSystemType fileSystem,
+            DiskSize size
         )
-            : volumePath_(std::move(volumePath))
-            , driveLetter_(driveLetter)
-            , fileSystemType_(fsType)
-            , totalSizeInBytes_(totalSize)
-            , freeSizeInBytes_(freeSize)
-            , role_(VolumeRole::Unknown) {
+            : m_index(index)
+            , m_letter(letter)
+            , m_label(label)
+            , m_fileSystem(fileSystem)
+            , m_size(size)
+        {
         }
 
-        [[nodiscard]] const std::wstring& GetVolumePath() const noexcept {
-            return volumePath_;
+        [[nodiscard]] int GetIndex() const noexcept { return m_index; }
+        [[nodiscard]] const std::wstring& GetLetter() const noexcept { return m_letter; }
+        [[nodiscard]] const std::wstring& GetLabel() const noexcept { return m_label; }
+        [[nodiscard]] FileSystemType GetFileSystem() const noexcept { return m_fileSystem; }
+        [[nodiscard]] DiskSize GetSize() const noexcept { return m_size; }
+        [[nodiscard]] const std::wstring& GetVolumeType() const noexcept { return m_volumeType; }
+
+        void SetIndex(int index) noexcept { m_index = index; }
+        void SetLetter(const std::wstring& letter) { m_letter = letter; }
+        void SetLabel(const std::wstring& label) { m_label = label; }
+        void SetFileSystem(FileSystemType fileSystem) noexcept { m_fileSystem = fileSystem; }
+        void SetSize(DiskSize size) noexcept { m_size = size; }
+        void SetVolumeType(const std::wstring& volumeType) { m_volumeType = volumeType; }
+
+        [[nodiscard]] bool IsValid() const noexcept {
+            return m_index >= 0 && m_size.ToBytes() > 0;
         }
 
-        [[nodiscard]] std::optional<wchar_t> GetDriveLetter() const noexcept {
-            return driveLetter_;
-        }
-
-        [[nodiscard]] std::wstring GetDriveLetterString() const {
-            if (driveLetter_.has_value()) {
-                return std::wstring(1, driveLetter_.value()) + L":";
+        [[nodiscard]] bool IsSystemVolume() const {
+            std::wstring lower = m_volumeType;
+            for (auto& c : lower) {
+                c = static_cast<wchar_t>(::towlower(c));
             }
-            return L"";
+            return lower.find(L"system") != std::wstring::npos;
         }
 
-        [[nodiscard]] FileSystemType GetFileSystemType() const noexcept {
-            return fileSystemType_;
+        [[nodiscard]] bool IsBootVolume() const {
+            std::wstring lower = m_volumeType;
+            for (auto& c : lower) {
+                c = static_cast<wchar_t>(::towlower(c));
+            }
+            return lower.find(L"boot") != std::wstring::npos;
         }
 
-        [[nodiscard]] uint64_t GetTotalSizeInBytes() const noexcept {
-            return totalSizeInBytes_;
+        [[nodiscard]] bool HasEnoughSpace(DiskSize required) const noexcept {
+            return m_size >= required;
         }
 
-        [[nodiscard]] uint64_t GetFreeSizeInBytes() const noexcept {
-            return freeSizeInBytes_;
+        [[nodiscard]] double GetSizeGB() const noexcept {
+            return m_size.ToGB();
         }
 
-        [[nodiscard]] uint64_t GetUsedSizeInBytes() const noexcept {
-            return totalSizeInBytes_ - freeSizeInBytes_;
-        }
-
-        [[nodiscard]] double GetUsagePercentage() const noexcept {
-            if (totalSizeInBytes_ == 0) return 0.0;
-            return static_cast<double>(GetUsedSizeInBytes()) /
-                static_cast<double>(totalSizeInBytes_) * 100.0;
-        }
-
-        [[nodiscard]] VolumeRole GetRole() const noexcept {
-            return role_;
-        }
-
-        void SetRole(VolumeRole role) noexcept {
-            role_ = role;
-        }
-
-        [[nodiscard]] const std::wstring& GetLabel() const noexcept {
-            return label_;
-        }
-
-        void SetLabel(std::wstring label) {
-            label_ = std::move(label);
-        }
-
-        [[nodiscard]] bool HasDriveLetter() const noexcept {
-            return driveLetter_.has_value();
-        }
-
-        [[nodiscard]] bool IsNTFS() const noexcept {
-            return fileSystemType_ == FileSystemType::NTFS;
-        }
-
-        [[nodiscard]] bool HasEnoughSpace(uint64_t requiredBytes) const noexcept {
-            return freeSizeInBytes_ >= requiredBytes;
-        }
+        static constexpr int INVALID_INDEX = -1;
 
     private:
-        std::wstring volumePath_;
-        std::optional<wchar_t> driveLetter_;
-        std::wstring label_;
-        FileSystemType fileSystemType_{ FileSystemType::Unknown };
-        uint64_t totalSizeInBytes_{ 0 };
-        uint64_t freeSizeInBytes_{ 0 };
-        VolumeRole role_{ VolumeRole::Unknown };
+        int m_index = INVALID_INDEX;
+        std::wstring m_letter;
+        std::wstring m_label;
+        FileSystemType m_fileSystem = FileSystemType::Unknown;
+        DiskSize m_size;
+        std::wstring m_volumeType;
     };
 
 }

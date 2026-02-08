@@ -1,276 +1,200 @@
+﻿// src/domain/primitives/Expected.h
+
 #pragma once
 
-#include "Error.h"
-#include <variant>
-#include <functional>
+#include <utility>
 #include <type_traits>
+#include <stdexcept>
+#include "Error.h"
 
 namespace winsetup::domain {
 
-    template<typename T, typename E = Error>
+    template<typename T>
     class Expected {
     public:
-        Expected(const Expected&) = default;
-        Expected(Expected&&) noexcept = default;
-        Expected& operator=(const Expected&) = default;
-        Expected& operator=(Expected&&) noexcept = default;
-
-        static Expected Success(T value) {
-            Expected result;
-            result.data_ = std::move(value);
-            return result;
+        Expected(T value)
+            : m_hasValue(true)
+        {
+            new (&m_value) T(std::move(value));
         }
 
-        static Expected Failure(E error) {
-            Expected result;
-            result.data_ = std::move(error);
-            return result;
+        Expected(Error error)
+            : m_hasValue(false)
+        {
+            new (&m_error) Error(std::move(error));
         }
 
-        [[nodiscard]] constexpr bool HasValue() const noexcept {
-            return std::holds_alternative<T>(data_);
-        }
-
-        [[nodiscard]] constexpr bool HasError() const noexcept {
-            return std::holds_alternative<E>(data_);
-        }
-
-        const T& Value() const& {
-            if (!HasValue()) {
-                throw std::logic_error("Expected does not contain a value");
+        ~Expected() {
+            if (m_hasValue) {
+                m_value.~T();
             }
-            return std::get<T>(data_);
-        }
-
-        T& Value()& {
-            if (!HasValue()) {
-                throw std::logic_error("Expected does not contain a value");
+            else {
+                m_error.~Error();
             }
-            return std::get<T>(data_);
         }
 
-        T&& Value()&& {
-            if (!HasValue()) {
-                throw std::logic_error("Expected does not contain a value");
+        Expected(const Expected& other)
+            : m_hasValue(other.m_hasValue)
+        {
+            if (m_hasValue) {
+                new (&m_value) T(other.m_value);
             }
-            return std::move(std::get<T>(data_));
-        }
-
-        const E& GetError() const& {
-            if (!HasError()) {
-                throw std::logic_error("Expected does not contain an error");
+            else {
+                new (&m_error) Error(other.m_error);
             }
-            return std::get<E>(data_);
         }
 
-        E& GetError()& {
-            if (!HasError()) {
-                throw std::logic_error("Expected does not contain an error");
+        Expected(Expected&& other) noexcept
+            : m_hasValue(other.m_hasValue)
+        {
+            if (m_hasValue) {
+                new (&m_value) T(std::move(other.m_value));
             }
-            return std::get<E>(data_);
-        }
-
-        E&& GetError()&& {
-            if (!HasError()) {
-                throw std::logic_error("Expected does not contain an error");
+            else {
+                new (&m_error) Error(std::move(other.m_error));
             }
-            return std::move(std::get<E>(data_));
         }
 
-        template<typename F>
-        constexpr auto Map(F&& func) const& -> Expected<std::invoke_result_t<F, const T&>, E> {
-            using U = std::invoke_result_t<F, const T&>;
-            if (HasValue()) [[likely]] {
-                return Expected<U, E>::Success(std::invoke(std::forward<F>(func), std::get<T>(data_)));
-            }
-            return Expected<U, E>::Failure(std::get<E>(data_));
-        }
-
-        template<typename F>
-        constexpr auto Map(F&& func) && -> Expected<std::invoke_result_t<F, T&&>, E> {
-            using U = std::invoke_result_t<F, T&&>;
-            if (HasValue()) [[likely]] {
-                return Expected<U, E>::Success(std::invoke(std::forward<F>(func), std::move(std::get<T>(data_))));
-            }
-            return Expected<U, E>::Failure(std::move(std::get<E>(data_)));
-        }
-
-        template<typename F>
-        constexpr auto FlatMap(F&& func) const& -> std::invoke_result_t<F, const T&> {
-            if (HasValue()) [[likely]] {
-                return std::invoke(std::forward<F>(func), std::get<T>(data_));
-            }
-            using ResultType = std::invoke_result_t<F, const T&>;
-            return ResultType::Failure(std::get<E>(data_));
-        }
-
-        template<typename F>
-        constexpr auto FlatMap(F&& func) && -> std::invoke_result_t<F, T&&> {
-            if (HasValue()) [[likely]] {
-                return std::invoke(std::forward<F>(func), std::move(std::get<T>(data_)));
-            }
-            using ResultType = std::invoke_result_t<F, T&&>;
-            return ResultType::Failure(std::move(std::get<E>(data_)));
-        }
-
-        template<typename F>
-        const Expected& OnError(F&& func) const& {
-            if (HasError()) [[unlikely]] {
-                std::invoke(std::forward<F>(func), std::get<E>(data_));
+        Expected& operator=(const Expected& other) {
+            if (this != &other) {
+                this->~Expected();
+                new (this) Expected(other);
             }
             return *this;
+        }
+
+        Expected& operator=(Expected&& other) noexcept {
+            if (this != &other) {
+                this->~Expected();
+                new (this) Expected(std::move(other));
+            }
+            return *this;
+        }
+
+        [[nodiscard]] bool HasValue() const noexcept {
+            return m_hasValue;
+        }
+
+        [[nodiscard]] T& Value()& {
+            if (!m_hasValue) {
+                throw std::logic_error("Expected does not contain value");
+            }
+            return m_value;
+        }
+
+        [[nodiscard]] const T& Value() const& {
+            if (!m_hasValue) {
+                throw std::logic_error("Expected does not contain value");
+            }
+            return m_value;
+        }
+
+        [[nodiscard]] T&& Value()&& {
+            if (!m_hasValue) {
+                throw std::logic_error("Expected does not contain value");
+            }
+            return std::move(m_value);
+        }
+
+        [[nodiscard]] const Error& GetError() const {
+            if (m_hasValue) {
+                throw std::logic_error("Expected does not contain error");
+            }
+            return m_error;
+        }
+
+        template<typename F>
+        [[nodiscard]] auto Map(F&& func) -> Expected<decltype(func(std::declval<T>()))> {
+            using U = decltype(func(std::declval<T>()));
+
+            if (m_hasValue) {
+                return Expected<U>(func(m_value));
+            }
+            else {
+                return Expected<U>(m_error);
+            }
+        }
+
+        template<typename F>
+        [[nodiscard]] auto FlatMap(F&& func) -> decltype(func(std::declval<T>())) {
+            using Result = decltype(func(std::declval<T>()));
+
+            if (m_hasValue) {
+                return func(m_value);
+            }
+            else {
+                return Result(m_error);
+            }
+        }
+
+        [[nodiscard]] T UnwrapOr(T defaultValue)&& {
+            if (m_hasValue) {
+                return std::move(m_value);
+            }
+            else {
+                return defaultValue;
+            }
+        }
+
+        template<typename F>
+        [[nodiscard]] T UnwrapOrElse(F&& func)&& {
+            if (m_hasValue) {
+                return std::move(m_value);
+            }
+            else {
+                return func(m_error);
+            }
         }
 
         template<typename F>
         Expected& OnError(F&& func)& {
-            if (HasError()) [[unlikely]] {
-                std::invoke(std::forward<F>(func), std::get<E>(data_));
+            if (!m_hasValue) {
+                func(m_error);
             }
             return *this;
         }
 
-        template<typename F>
-        Expected&& OnError(F&& func)&& {
-            if (HasError()) [[unlikely]] {
-                std::invoke(std::forward<F>(func), std::move(std::get<E>(data_)));
-            }
-            return std::move(*this);
-        }
-
-        constexpr T ValueOr(T defaultValue) const& {
-            return HasValue() ? std::get<T>(data_) : std::move(defaultValue);
-        }
-
-        constexpr T ValueOr(T defaultValue)&& {
-            return HasValue() ? std::move(std::get<T>(data_)) : std::move(defaultValue);
-        }
-
-        template<typename F>
-        constexpr auto MapError(F&& func) const& -> Expected<T, std::invoke_result_t<F, const E&>> {
-            using NewError = std::invoke_result_t<F, const E&>;
-            if (HasError()) [[unlikely]] {
-                return Expected<T, NewError>::Failure(std::invoke(std::forward<F>(func), std::get<E>(data_)));
-            }
-            return Expected<T, NewError>::Success(std::get<T>(data_));
-        }
-
-        template<typename F>
-        constexpr auto MapError(F&& func) && -> Expected<T, std::invoke_result_t<F, E&&>> {
-            using NewError = std::invoke_result_t<F, E&&>;
-            if (HasError()) [[unlikely]] {
-                return Expected<T, NewError>::Failure(std::invoke(std::forward<F>(func), std::move(std::get<E>(data_))));
-            }
-            return Expected<T, NewError>::Success(std::move(std::get<T>(data_)));
-        }
-
-        [[nodiscard]] explicit constexpr operator bool() const noexcept {
-            return HasValue();
-        }
-
     private:
-        Expected() = default;
-        std::variant<T, E> data_;
+        union {
+            T m_value;
+            Error m_error;
+        };
+        bool m_hasValue;
     };
 
-    template<typename E>
-    class Expected<void, E> {
+    template<>
+    class Expected<void> {
     public:
-        Expected(const Expected&) = default;
-        Expected(Expected&&) noexcept = default;
-        Expected& operator=(const Expected&) = default;
-        Expected& operator=(Expected&&) noexcept = default;
+        Expected() : m_hasValue(true) {}
 
-        static Expected Success() {
-            Expected result;
-            result.data_ = SuccessTag{};
-            return result;
+        Expected(Error error)
+            : m_hasValue(false)
+            , m_error(std::move(error))
+        {
         }
 
-        static Expected Failure(E error) {
-            Expected result;
-            result.data_ = std::move(error);
-            return result;
+        [[nodiscard]] bool HasValue() const noexcept {
+            return m_hasValue;
         }
 
-        [[nodiscard]] constexpr bool HasValue() const noexcept {
-            return std::holds_alternative<SuccessTag>(data_);
-        }
-
-        [[nodiscard]] constexpr bool HasError() const noexcept {
-            return std::holds_alternative<E>(data_);
-        }
-
-        const E& GetError() const& {
-            if (!HasError()) {
-                throw std::logic_error("Expected does not contain an error");
+        [[nodiscard]] const Error& GetError() const {
+            if (m_hasValue) {
+                throw std::logic_error("Expected does not contain error");
             }
-            return std::get<E>(data_);
-        }
-
-        E& GetError()& {
-            if (!HasError()) {
-                throw std::logic_error("Expected does not contain an error");
-            }
-            return std::get<E>(data_);
-        }
-
-        E&& GetError()&& {
-            if (!HasError()) {
-                throw std::logic_error("Expected does not contain an error");
-            }
-            return std::move(std::get<E>(data_));
-        }
-
-        template<typename F>
-        const Expected& OnError(F&& func) const& {
-            if (HasError()) [[unlikely]] {
-                std::invoke(std::forward<F>(func), std::get<E>(data_));
-            }
-            return *this;
+            return m_error;
         }
 
         template<typename F>
         Expected& OnError(F&& func)& {
-            if (HasError()) [[unlikely]] {
-                std::invoke(std::forward<F>(func), std::get<E>(data_));
+            if (!m_hasValue) {
+                func(m_error);
             }
             return *this;
         }
 
-        template<typename F>
-        Expected&& OnError(F&& func)&& {
-            if (HasError()) [[unlikely]] {
-                std::invoke(std::forward<F>(func), std::move(std::get<E>(data_)));
-            }
-            return std::move(*this);
-        }
-
-        template<typename F>
-        constexpr auto MapError(F&& func) const& -> Expected<void, std::invoke_result_t<F, const E&>> {
-            using NewError = std::invoke_result_t<F, const E&>;
-            if (HasError()) [[unlikely]] {
-                return Expected<void, NewError>::Failure(std::invoke(std::forward<F>(func), std::get<E>(data_)));
-            }
-            return Expected<void, NewError>::Success();
-        }
-
-        template<typename F>
-        constexpr auto MapError(F&& func) && -> Expected<void, std::invoke_result_t<F, E&&>> {
-            using NewError = std::invoke_result_t<F, E&&>;
-            if (HasError()) [[unlikely]] {
-                return Expected<void, NewError>::Failure(std::invoke(std::forward<F>(func), std::move(std::get<E>(data_))));
-            }
-            return Expected<void, NewError>::Success();
-        }
-
-        [[nodiscard]] explicit constexpr operator bool() const noexcept {
-            return HasValue();
-        }
-
     private:
-        struct SuccessTag {};
-        Expected() = default;
-        std::variant<SuccessTag, E> data_;
+        bool m_hasValue;
+        Error m_error;
     };
 
 }
