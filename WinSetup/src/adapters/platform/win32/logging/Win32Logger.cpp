@@ -1,16 +1,17 @@
 ﻿// src/adapters/platform/win32/logging/Win32Logger.cpp
 #include "Win32Logger.h"
+#include "../core/Win32HandleFactory.h"
+#include <Windows.h>
 #include <chrono>
 
 namespace winsetup::adapters::platform {
 
     Win32Logger::Win32Logger(const std::wstring& logFilePath)
-        : m_hFile(INVALID_HANDLE_VALUE)
-        , m_shouldFlush(false)
+        : m_shouldFlush(false)
     {
         m_buffer.reserve(BUFFER_SIZE);
 
-        m_hFile = CreateFileW(
+        HANDLE hFile = CreateFileW(
             logFilePath.c_str(),
             GENERIC_WRITE,
             FILE_SHARE_READ,
@@ -20,15 +21,15 @@ namespace winsetup::adapters::platform {
             nullptr
         );
 
-        if (m_hFile != INVALID_HANDLE_VALUE) {
-            SetFilePointer(m_hFile, 0, nullptr, FILE_END);
+        if (hFile != INVALID_HANDLE_VALUE) {
+            SetFilePointer(hFile, 0, nullptr, FILE_END);
+            m_hFile = Win32HandleFactory::MakeHandle(hFile);
         }
     }
 
     Win32Logger::~Win32Logger() {
-        if (m_hFile != INVALID_HANDLE_VALUE) {
+        if (m_hFile) {
             FlushBuffer();
-            CloseHandle(m_hFile);
         }
     }
 
@@ -68,7 +69,7 @@ namespace winsetup::adapters::platform {
     }
 
     void Win32Logger::FlushBuffer() {
-        if (m_buffer.empty() || m_hFile == INVALID_HANDLE_VALUE) {
+        if (m_buffer.empty() || !m_hFile) {
             return;
         }
 
@@ -76,7 +77,7 @@ namespace winsetup::adapters::platform {
         DWORD bytesWritten = 0;
 
         WriteFile(
-            m_hFile,
+            Win32HandleFactory::ToWin32Handle(m_hFile),
             m_buffer.data(),
             static_cast<DWORD>(byteCount),
             &bytesWritten,

@@ -2,7 +2,7 @@
 #pragma once
 
 #include <abstractions/infrastructure/logging/ILogger.h>
-#include <windows.h>
+#include <domain/memory/UniqueHandle.h>
 #include <string>
 #include <mutex>
 #include <atomic>
@@ -33,7 +33,7 @@ namespace winsetup::adapters::platform {
         const wchar_t* GetLevelString(abstractions::LogLevel level) const noexcept;
         void FormatTimestamp(wchar_t* buffer, size_t bufferSize) const noexcept;
 
-        HANDLE m_hFile;
+        domain::UniqueHandle m_hFile;
         std::mutex m_mutex;
         std::wstring m_buffer;
         std::atomic<bool> m_shouldFlush;

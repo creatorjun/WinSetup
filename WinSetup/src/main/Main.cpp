@@ -1,13 +1,9 @@
 ﻿// src/main/Main.cpp
-
 #include <Windows.h>
+#include <application/core/DIContainer.h>
+#include <abstractions/infrastructure/logging/ILogger.h>
 #include "ServiceRegistration.h"
-#include "../application/core/DIContainer.h"
-#include "../adapters/platform/win32/logging/Win32Logger.h"
-#include "../abstractions/infrastructure/logging/ILogger.h"
 #include <memory>
-
-#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 using namespace winsetup;
 
@@ -22,37 +18,38 @@ int WINAPI wWinMain(
 
     auto container = std::make_shared<application::DIContainer>();
 
-    try {
-        main::RegisterServices(container);
-
-        auto logger = container->Resolve<abstractions::ILogger>();
-        logger->Info(L"WinSetup 시작");
-
-        logger->Info(L"WinSetup 정상 종료");
-        return 0;
-
-    }
-    catch (const std::exception& e) {
-        std::wstring errorMsg = L"초기화 실패: ";
-        std::string what(e.what());
-        errorMsg += std::wstring(what.begin(), what.end());
-
+    auto registrationResult = main::ServiceRegistration::RegisterAll(container);
+    if (!registrationResult.HasValue()) {
         MessageBoxW(
             nullptr,
-            errorMsg.c_str(),
-            L"WinSetup 오류",
+            registrationResult.GetError().GetMessage().c_str(),
+            L"Initialization Error",
             MB_OK | MB_ICONERROR
         );
-
-        return -1;
+        return 1;
     }
-    catch (...) {
+
+    auto loggerResult = container->Resolve<abstractions::ILogger>();
+    if (!loggerResult.HasValue()) {
         MessageBoxW(
             nullptr,
-            L"알 수 없는 오류가 발생했습니다.",
-            L"WinSetup 오류",
+            L"Failed to resolve ILogger",
+            L"Error",
             MB_OK | MB_ICONERROR
         );
-        return -1;
+        return 1;
     }
+
+    auto logger = loggerResult.Value();
+    logger->Info(L"WinSetup started successfully");
+
+    MSG msg = {};
+    while (GetMessage(&msg, nullptr, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    logger->Info(L"WinSetup shutting down");
+
+    return static_cast<int>(msg.wParam);
 }

@@ -1,5 +1,4 @@
 ﻿// src/domain/primitives/Error.h
-
 #pragma once
 
 #include <string>
@@ -29,6 +28,14 @@ namespace winsetup::domain {
 
     class Error {
     public:
+        Error()
+            : m_message(L"Unknown error")
+            , m_code(0)
+            , m_category(ErrorCategory::Unknown)
+            , m_timestamp(std::chrono::system_clock::now())
+        {
+        }
+
         Error(
             std::wstring message,
             uint32_t code = 0,

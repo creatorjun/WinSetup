@@ -26,6 +26,7 @@
     <ClCompile Include="src\adapters\persistence\config\IniParser.cpp" />
     <ClCompile Include="src\adapters\persistence\filesystem\Win32FileSystem.cpp" />
     <ClCompile Include="src\adapters\platform\win32\core\Win32ErrorHandler.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\core\Win32HandleFactory.cpp" />
     <ClCompile Include="src\adapters\platform\win32\core\Win32TypeMapper.cpp" />
     <ClCompile Include="src\adapters\platform\win32\logging\Win32Logger.cpp" />
     <ClCompile Include="src\adapters\platform\win32\storage\AsyncIOCTL.cpp" />
@@ -102,6 +103,8 @@
     <ClInclude Include="src\adapters\persistence\filesystem\Win32FileSystem.h" />
     <ClInclude Include="src\adapters\platform\win32\core\Win32Constants.h" />
     <ClInclude Include="src\adapters\platform\win32\core\Win32ErrorHandler.h" />
+    <ClInclude Include="src\adapters\platform\win32\core\Win32HandleDeleter.h" />
+    <ClInclude Include="src\adapters\platform\win32\core\Win32HandleFactory.h" />
     <ClInclude Include="src\adapters\platform\win32\core\Win32TypeMapper.h" />
     <ClInclude Include="src\adapters\platform\win32\logging\Win32Logger.h" />
     <ClInclude Include="src\adapters\platform\win32\storage\AsyncIOCTL.h" />

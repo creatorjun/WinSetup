@@ -8,7 +8,8 @@
 #include <functional>
 #include <any>
 #include <shared_mutex>
-#include <stdexcept>
+#include "../../domain/primitives/Expected.h"
+#include "../../domain/primitives/Error.h"
 
 namespace winsetup::application {
 
@@ -36,9 +37,27 @@ namespace winsetup::application {
             std::unique_lock lock(m_mutex);
 
             auto factory = [this]() -> std::shared_ptr<void> {
-                return std::make_shared<TImplementation>(
-                    Resolve<TDeps>()...
-                );
+                auto resolveDep = [this]<typename T>() -> std::shared_ptr<T> {
+                    auto result = Resolve<T>();
+                    if (!result.HasValue()) {
+                        return nullptr;
+                    }
+                    return result.Value();
+                };
+
+                auto deps = std::make_tuple(resolveDep.template operator() < TDeps > ()...);
+
+                bool allResolved = std::apply([](auto&&... args) {
+                    return (... && (args != nullptr));
+                    }, deps);
+
+                if (!allResolved) {
+                    return nullptr;
+                }
+
+                return std::apply([](auto&&... args) {
+                    return std::make_shared<TImplementation>(std::forward<decltype(args)>(args)...);
+                    }, deps);
                 };
 
             m_registrations[std::type_index(typeid(TInterface))] = { factory, lifetime };
@@ -59,7 +78,7 @@ namespace winsetup::application {
         }
 
         template<typename TInterface>
-        std::shared_ptr<TInterface> Resolve() {
+        [[nodiscard]] domain::Expected<std::shared_ptr<TInterface>> Resolve() {
             auto typeIndex = std::type_index(typeid(TInterface));
 
             {
@@ -67,7 +86,11 @@ namespace winsetup::application {
 
                 auto regIt = m_registrations.find(typeIndex);
                 if (regIt == m_registrations.end()) {
-                    throw std::runtime_error("Service not registered");
+                    return domain::Error{
+                        L"Service not registered: " + GetTypeName<TInterface>(),
+                        0,
+                        domain::ErrorCategory::System
+                    };
                 }
 
                 if (regIt->second.lifetime == ServiceLifetime::Singleton) {
@@ -81,6 +104,14 @@ namespace winsetup::application {
             std::unique_lock writeLock(m_mutex);
 
             auto regIt = m_registrations.find(typeIndex);
+            if (regIt == m_registrations.end()) {
+                return domain::Error{
+                    L"Service not registered: " + GetTypeName<TInterface>(),
+                    0,
+                    domain::ErrorCategory::System
+                };
+            }
+
             const auto& [factory, lifetime] = regIt->second;
 
             if (lifetime == ServiceLifetime::Singleton) {
@@ -90,15 +121,32 @@ namespace winsetup::application {
                 }
 
                 auto instance = factory();
+                if (!instance) {
+                    return domain::Error{
+                        L"Failed to create instance: " + GetTypeName<TInterface>(),
+                        0,
+                        domain::ErrorCategory::System
+                    };
+                }
+
                 m_singletons[typeIndex] = instance;
                 return std::static_pointer_cast<TInterface>(instance);
             }
 
-            return std::static_pointer_cast<TInterface>(factory());
+            auto instance = factory();
+            if (!instance) {
+                return domain::Error{
+                    L"Failed to create instance: " + GetTypeName<TInterface>(),
+                    0,
+                    domain::ErrorCategory::System
+                };
+            }
+
+            return std::static_pointer_cast<TInterface>(instance);
         }
 
         template<typename TInterface>
-        bool IsRegistered() const {
+        [[nodiscard]] bool IsRegistered() const {
             std::shared_lock lock(m_mutex);
             return m_registrations.find(std::type_index(typeid(TInterface))) != m_registrations.end();
         }
@@ -110,6 +158,17 @@ namespace winsetup::application {
         }
 
     private:
+        template<typename T>
+        static std::wstring GetTypeName() {
+            const char* name = typeid(T).name();
+            std::wstring wname;
+            wname.reserve(strlen(name));
+            for (size_t i = 0; name[i] != '\0'; ++i) {
+                wname.push_back(static_cast<wchar_t>(name[i]));
+            }
+            return wname;
+        }
+
         struct Registration {
             std::function<std::shared_ptr<void>()> factory;
             ServiceLifetime lifetime;
