@@ -2,7 +2,7 @@
 
 #include <string>
 #include <chrono>
-#include "../../abstractions/logging/ILogger.h"
+#include <abstractions/logging/ILogger.h>
 
 namespace winsetup::domain {
 

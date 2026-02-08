@@ -1,8 +1,8 @@
 #pragma once
 
 #include <memory>
-#include "../../domain/entities/ConfigData.h"
-#include "../../domain/primitives/Expected.h"
+#include <domain/entities/ConfigData.h>
+#include <domain/primitives/Expected.h>
 #include "IniParser.h"
 
 namespace winsetup::infrastructure {

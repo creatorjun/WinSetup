@@ -2,7 +2,7 @@
 
 #include <string>
 #include <optional>
-#include "../primitives/Expected.h"
+#include <domain/primitives/Expected.h>
 
 namespace winsetup::domain {
 

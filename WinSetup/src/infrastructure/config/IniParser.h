@@ -4,8 +4,8 @@
 #include <vector>
 #include <cwctype>
 #include <unordered_map>
-#include "../../domain/primitives/Expected.h"
-#include "../../domain/primitives/Error.h"
+#include <domain/primitives/Expected.h>
+#include <domain/primitives/Error.h>
 
 namespace winsetup::infrastructure {
 

@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include <atomic>
 #include <utility>
 #include <functional>
-#include <atomic>
 
 namespace winsetup::domain {
 

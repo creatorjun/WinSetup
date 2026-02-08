@@ -2,12 +2,12 @@
 
 #include <memory>
 #include <vector>
-#include "../../abstractions/storage/IDiskService.h"
-#include "../../abstractions/storage/IVolumeService.h"
-#include "../../abstractions/storage/IStorageScanner.h"
-#include "../../domain/primitives/Expected.h"
-#include "../../domain/entities/DiskInfo.h"
-#include "../../domain/entities/VolumeInfo.h"
+#include <abstractions/storage/IDiskService.h>
+#include <abstractions/storage/IVolumeService.h>
+#include <abstractions/storage/IStorageScanner.h>
+#include <domain/primitives/Expected.h>
+#include <domain/entities/DiskInfo.h>
+#include <domain/entities/VolumeInfo.h>
 
 namespace winsetup::application {
 

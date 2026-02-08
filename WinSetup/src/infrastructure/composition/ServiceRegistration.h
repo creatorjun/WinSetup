@@ -2,20 +2,20 @@
 
 #include <memory>
 #include "DependencyContainer.h"
-#include "../../abstractions/platform/ITextEncoder.h"
-#include "../../abstractions/platform/ISystemInfoService.h"
-#include "../../abstractions/storage/IDiskService.h"
-#include "../../abstractions/storage/IVolumeService.h"
-#include "../../abstractions/storage/IPartitionService.h"
-#include "../../abstractions/storage/IStorageScanner.h"
-#include "../../abstractions/logging/ILogger.h"
+#include <abstractions/platform/ITextEncoder.h>
+#include <abstractions/platform/ISystemInfoService.h>
+#include <abstractions/storage/IDiskService.h>
+#include <abstractions/storage/IVolumeService.h>
+#include <abstractions/storage/IPartitionService.h>
+#include <abstractions/storage/IStorageScanner.h>
+#include <abstractions/logging/ILogger.h>
 
-#include "../../adapters/platform/windows/encoding/Win32TextEncoder.h"
-#include "../../adapters/platform/windows/system/Win32SystemInfoService.h"
-#include "../../adapters/platform/windows/storage/Win32DiskService.h"
-#include "../../adapters/platform/windows/storage/Win32VolumeService.h"
-#include "../../adapters/platform/windows/storage/Win32PartitionService.h"
-#include "../../adapters/platform/windows/storage/Win32StorageScanner.h"
+#include <adapters/platform/windows/encoding/Win32TextEncoder.h>
+#include <adapters/platform/windows/system/Win32SystemInfoService.h>
+#include <adapters/platform/windows/storage/Win32DiskService.h>
+#include <adapters/platform/windows/storage/Win32VolumeService.h>
+#include <adapters/platform/windows/storage/Win32PartitionService.h>
+#include <adapters/platform/windows/storage/Win32StorageScanner.h>
 
 #include "../logging/WindowsLogger.h"
 
