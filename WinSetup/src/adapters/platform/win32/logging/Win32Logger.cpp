@@ -1,22 +1,36 @@
 ﻿// src/adapters/platform/win32/logging/Win32Logger.cpp
 
 #include "Win32Logger.h"
-#include <Windows.h>
 #include <chrono>
-#include <iomanip>
-#include <sstream>
+#include <format>
 
 namespace winsetup::adapters::platform {
 
     Win32Logger::Win32Logger(const std::wstring& logFilePath)
-        : m_logFilePath(logFilePath)
+        : m_hFile(INVALID_HANDLE_VALUE)
+        , m_shouldFlush(false)
     {
-        m_logFile.open(logFilePath, std::ios::out | std::ios::app);
+        m_buffer.reserve(BUFFER_SIZE);
+
+        m_hFile = CreateFileW(
+            logFilePath.c_str(),
+            GENERIC_WRITE,
+            FILE_SHARE_READ,
+            nullptr,
+            OPEN_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr
+        );
+
+        if (m_hFile != INVALID_HANDLE_VALUE) {
+            SetFilePointer(m_hFile, 0, nullptr, FILE_END);
+        }
     }
 
     Win32Logger::~Win32Logger() {
-        if (m_logFile.is_open()) {
-            m_logFile.close();
+        if (m_hFile != INVALID_HANDLE_VALUE) {
+            FlushBuffer();
+            CloseHandle(m_hFile);
         }
     }
 
@@ -25,42 +39,73 @@ namespace winsetup::adapters::platform {
         const std::wstring& message,
         const std::source_location& location)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        wchar_t timestamp[32];
+        FormatTimestamp(timestamp, 32);
 
-        std::wstring logEntry = L"[" + GetTimestamp() + L"] " +
-            L"[" + GetLevelString(level) + L"] " +
-            message + L"\n";
+        std::wstring entry;
+        entry.reserve(256);
+        entry += L"[";
+        entry += timestamp;
+        entry += L"] [";
+        entry += GetLevelString(level);
+        entry += L"] ";
+        entry += message;
+        entry += L"\r\n";
 
-        if (m_logFile.is_open()) {
-            m_logFile << logEntry;
-            m_logFile.flush();
+        OutputDebugStringW(entry.c_str());
+
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_buffer += entry;
+
+            if (m_buffer.size() >= FLUSH_THRESHOLD) {
+                FlushBuffer();
+            }
         }
-
-        OutputDebugStringW(logEntry.c_str());
     }
 
-    std::wstring Win32Logger::GetLevelString(abstractions::LogLevel level) const {
+    void Win32Logger::FlushBuffer() {
+        if (m_buffer.empty() || m_hFile == INVALID_HANDLE_VALUE) {
+            return;
+        }
+
+        const size_t byteCount = m_buffer.size() * sizeof(wchar_t);
+        DWORD bytesWritten = 0;
+
+        WriteFile(
+            m_hFile,
+            m_buffer.data(),
+            static_cast<DWORD>(byteCount),
+            &bytesWritten,
+            nullptr
+        );
+
+        m_buffer.clear();
+    }
+
+    const wchar_t* Win32Logger::GetLevelString(abstractions::LogLevel level) const noexcept {
         switch (level) {
         case abstractions::LogLevel::Trace:   return L"TRACE";
         case abstractions::LogLevel::Debug:   return L"DEBUG";
-        case abstractions::LogLevel::Info:    return L"INFO";
-        case abstractions::LogLevel::Warning: return L"WARN";
+        case abstractions::LogLevel::Info:    return L"INFO ";
+        case abstractions::LogLevel::Warning: return L"WARN ";
         case abstractions::LogLevel::Error:   return L"ERROR";
         case abstractions::LogLevel::Fatal:   return L"FATAL";
-        default:                              return L"UNKNOWN";
+        default:                              return L"UNKNW";
         }
     }
 
-    std::wstring Win32Logger::GetTimestamp() const {
-        auto now = std::chrono::system_clock::now();
-        auto time = std::chrono::system_clock::to_time_t(now);
+    void Win32Logger::FormatTimestamp(wchar_t* buffer, size_t bufferSize) const noexcept {
+        SYSTEMTIME st;
+        GetLocalTime(&st);
 
-        std::tm tm;
-        localtime_s(&tm, &time);
-
-        std::wostringstream oss;
-        oss << std::put_time(&tm, L"%Y-%m-%d %H:%M:%S");
-        return oss.str();
+        swprintf_s(
+            buffer,
+            bufferSize,
+            L"%04d-%02d-%02d %02d:%02d:%02d",
+            st.wYear, st.wMonth, st.wDay,
+            st.wHour, st.wMinute, st.wSecond
+        );
     }
 
 }

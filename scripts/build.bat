@@ -1,1 +1,0 @@
-@rem scripts/build.bat 

@@ -3,12 +3,10 @@
 #pragma once
 
 #include <windows.h>
-#include <basetsd.h>
 #include <commctrl.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <algorithm>
 
 namespace winsetup::adapters::ui {
 
@@ -25,33 +23,44 @@ namespace winsetup::adapters::ui {
 
         HWND Create(HWND hParent, const std::wstring& text, int x, int y, int width, int height, int id, HINSTANCE hInstance);
 
+        void SetFontSize(int size);
         void SetGroup(int groupId);
         void SetChecked(bool checked);
-        void Toggle();
         void SetEnabled(bool enabled);
         void SetText(const std::wstring& text);
-        void SetFontSize(int size);
 
-        [[nodiscard]] bool IsChecked() const { return isChecked; }
+        [[nodiscard]] bool IsChecked() const noexcept { return m_isChecked; }
         [[nodiscard]] bool IsEnabled() const;
-        [[nodiscard]] HWND Handle() const { return hwnd; }
-        [[nodiscard]] int GetGroup() const { return groupId; }
+        [[nodiscard]] int GetGroup() const noexcept { return m_groupId; }
         [[nodiscard]] std::wstring GetText() const;
+        [[nodiscard]] HWND Handle() const noexcept { return m_hwnd; }
 
     private:
+        struct RenderCache {
+            HBITMAP hBitmap = nullptr;
+            HDC hMemDC = nullptr;
+            int width = 0;
+            int height = 0;
+            bool isDirty = true;
+        };
+
         static LRESULT CALLBACK SubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
         void DrawButton(HDC hdc);
         void UncheckGroupMembers();
+        void InvalidateCache();
+        void CleanupCache();
 
-        HWND hwnd;
-        bool isChecked;
-        bool isHovering;
-        bool isPressed;
-        int groupId;
-        HFONT hCustomFont;
+        HWND m_hwnd;
+        bool m_isChecked;
+        bool m_isHovering;
+        bool m_isPressed;
+        bool m_wasEnabled;
+        int m_groupId;
+        HFONT m_hFont;
+        RenderCache m_cache;
 
-        static std::unordered_map<HWND, ToggleButton*> instances;
-        static std::unordered_map<int, std::vector<ToggleButton*>> groups;
+        static std::unordered_map<HWND, ToggleButton*> s_instances;
+        static std::unordered_map<int, std::vector<ToggleButton*>> s_groups;
     };
 
 }

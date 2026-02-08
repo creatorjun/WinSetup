@@ -2,10 +2,12 @@
 
 #pragma once
 
-#include "../../../../abstractions/infrastructure/logging/ILogger.h"
-#include <fstream>
-#include <mutex>
+#include <abstractions/infrastructure/logging/ILogger.h>
+#include <windows.h>
 #include <string>
+#include <mutex>
+#include <array>
+#include <atomic>
 
 namespace winsetup::adapters::platform {
 
@@ -14,6 +16,9 @@ namespace winsetup::adapters::platform {
         explicit Win32Logger(const std::wstring& logFilePath = L"WinSetup.log");
         ~Win32Logger() override;
 
+        Win32Logger(const Win32Logger&) = delete;
+        Win32Logger& operator=(const Win32Logger&) = delete;
+
         void Log(
             abstractions::LogLevel level,
             const std::wstring& message,
@@ -21,12 +26,18 @@ namespace winsetup::adapters::platform {
         ) override;
 
     private:
-        std::wstring GetLevelString(abstractions::LogLevel level) const;
-        std::wstring GetTimestamp() const;
+        static constexpr size_t BUFFER_SIZE = 8192;
+        static constexpr size_t FLUSH_THRESHOLD = 6144;
 
-        std::wofstream m_logFile;
+        void FlushBuffer();
+        void WriteToFile(const std::wstring& entry);
+        const wchar_t* GetLevelString(abstractions::LogLevel level) const noexcept;
+        void FormatTimestamp(wchar_t* buffer, size_t bufferSize) const noexcept;
+
+        HANDLE m_hFile;
         std::mutex m_mutex;
-        std::wstring m_logFilePath;
+        std::wstring m_buffer;
+        std::atomic<bool> m_shouldFlush;
     };
 
 }

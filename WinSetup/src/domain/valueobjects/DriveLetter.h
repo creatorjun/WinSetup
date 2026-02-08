@@ -3,7 +3,8 @@
 #pragma once
 
 #include <string>
-#include <optional>
+#include <stdexcept>
+#include <cctype>
 
 namespace winsetup::domain {
 
@@ -11,42 +12,40 @@ namespace winsetup::domain {
     public:
         DriveLetter() = default;
 
-        explicit DriveLetter(wchar_t letter)
-            : m_letter(Normalize(letter))
-        {
+        explicit DriveLetter(wchar_t letter) {
+            if (!IsValidLetter(letter)) {
+                throw std::logic_error("Invalid drive letter");
+            }
+            m_letter = ToUpper(letter);
         }
 
         explicit DriveLetter(const std::wstring& str) {
-            if (!str.empty()) {
-                m_letter = Normalize(str[0]);
+            if (str.empty()) {
+                throw std::logic_error("Empty drive letter string");
             }
+
+            wchar_t letter = str[0];
+            if (!IsValidLetter(letter)) {
+                throw std::logic_error("Invalid drive letter");
+            }
+            m_letter = ToUpper(letter);
+        }
+
+        [[nodiscard]] wchar_t Get() const noexcept { return m_letter; }
+        [[nodiscard]] std::wstring ToString() const {
+            if (m_letter == L'\0') {
+                return L"";
+            }
+            return std::wstring(1, m_letter) + L":";
         }
 
         [[nodiscard]] bool IsValid() const noexcept {
-            return m_letter.has_value() &&
-                m_letter.value() >= L'A' &&
-                m_letter.value() <= L'Z';
+            return m_letter != L'\0';
         }
 
-        [[nodiscard]] wchar_t GetLetter() const {
-            if (!IsValid()) {
-                throw std::logic_error("Invalid drive letter");
-            }
-            return m_letter.value();
-        }
-
-        [[nodiscard]] std::wstring ToString() const {
-            if (!IsValid()) {
-                return L"";
-            }
-            return std::wstring(1, m_letter.value());
-        }
-
-        [[nodiscard]] std::wstring ToPath() const {
-            if (!IsValid()) {
-                return L"";
-            }
-            return std::wstring(1, m_letter.value()) + L":\\";
+        [[nodiscard]] static bool IsValidLetter(wchar_t letter) noexcept {
+            wchar_t upper = ToUpper(letter);
+            return upper >= L'A' && upper <= L'Z';
         }
 
         bool operator==(const DriveLetter& other) const noexcept {
@@ -54,21 +53,22 @@ namespace winsetup::domain {
         }
 
         bool operator!=(const DriveLetter& other) const noexcept {
-            return !(*this == other);
+            return m_letter != other.m_letter;
+        }
+
+        bool operator<(const DriveLetter& other) const noexcept {
+            return m_letter < other.m_letter;
         }
 
     private:
-        static std::optional<wchar_t> Normalize(wchar_t letter) {
-            if (letter >= L'a' && letter <= L'z') {
-                return static_cast<wchar_t>(letter - L'a' + L'A');
+        [[nodiscard]] static wchar_t ToUpper(wchar_t c) noexcept {
+            if (c >= L'a' && c <= L'z') {
+                return c - (L'a' - L'A');
             }
-            if (letter >= L'A' && letter <= L'Z') {
-                return letter;
-            }
-            return std::nullopt;
+            return c;
         }
 
-        std::optional<wchar_t> m_letter;
+        wchar_t m_letter = L'\0';
     };
 
 }

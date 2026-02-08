@@ -3,7 +3,6 @@
 #pragma once
 
 #include <windows.h>
-#include <basetsd.h>
 #include <commctrl.h>
 #include <string>
 #include <unordered_map>
@@ -26,18 +25,30 @@ namespace winsetup::adapters::ui {
 
         [[nodiscard]] bool IsEnabled() const;
         [[nodiscard]] std::wstring GetText() const;
-        [[nodiscard]] HWND Handle() const { return hwnd; }
+        [[nodiscard]] HWND Handle() const noexcept { return m_hwnd; }
 
     private:
+        struct RenderCache {
+            HBITMAP hBitmap = nullptr;
+            HDC hMemDC = nullptr;
+            int width = 0;
+            int height = 0;
+            bool isDirty = true;
+        };
+
         static LRESULT CALLBACK SubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
         void DrawButton(HDC hdc);
+        void InvalidateCache();
+        void CleanupCache();
 
-        HWND hwnd;
-        bool isHovering;
-        bool isPressed;
-        HFONT hCustomFont;
+        HWND m_hwnd;
+        bool m_isHovering;
+        bool m_isPressed;
+        bool m_wasEnabled;
+        HFONT m_hFont;
+        RenderCache m_cache;
 
-        static std::unordered_map<HWND, SimpleButton*> instances;
+        static std::unordered_map<HWND, SimpleButton*> s_instances;
     };
 
 }
