@@ -27,12 +27,4 @@ namespace winsetup::domain {
         }
     }
 
-    [[nodiscard]] inline bool IsBootPartition(PartitionType type) noexcept {
-        return type == PartitionType::System || type == PartitionType::EFI;
-    }
-
-    [[nodiscard]] inline bool CanFormatPartition(PartitionType type) noexcept {
-        return type == PartitionType::Basic || type == PartitionType::Recovery;
-    }
-
 }

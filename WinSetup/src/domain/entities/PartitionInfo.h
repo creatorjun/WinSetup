@@ -2,9 +2,10 @@
 #pragma once
 
 #include <string>
-#include "../valueobjects/DiskSize.h"
-#include "../valueobjects/FileSystemType.h"
+#include <optional>
 #include "../valueobjects/PartitionType.h"
+#include "../valueobjects/FileSystemType.h"
+#include "../valueobjects/DiskSize.h"
 #include "../valueobjects/DriveLetter.h"
 
 namespace winsetup::domain {
@@ -44,8 +45,13 @@ namespace winsetup::domain {
                 m_size >= DiskSize::FromGB(20);
         }
 
+        [[nodiscard]] bool IsBootPartition() const noexcept {
+            return m_type == PartitionType::EFI ||
+                m_type == PartitionType::System;
+        }
+
         [[nodiscard]] bool IsBootable() const noexcept {
-            return IsBootPartition(m_type) && m_isActive;
+            return IsBootPartition() && m_isActive;
         }
 
     private:

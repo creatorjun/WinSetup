@@ -38,8 +38,7 @@ namespace winsetup::domain {
     }
 
     [[nodiscard]] inline bool IsWindowsCompatible(FileSystemType type) noexcept {
-        return type == FileSystemType::NTFS ||
-            type == FileSystemType::ReFS;
+        return type == FileSystemType::NTFS || type == FileSystemType::ReFS;
     }
 
 }
