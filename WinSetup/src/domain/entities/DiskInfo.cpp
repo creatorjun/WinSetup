@@ -1,1 +1,5 @@
-﻿// src\domain\entities\DiskInfo.cpp
+﻿// src/domain/entities/DiskInfo.cpp
+#include "DiskInfo.h"
+
+namespace winsetup::domain {
+}

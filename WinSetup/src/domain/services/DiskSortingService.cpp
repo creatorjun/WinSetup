@@ -1,55 +1,36 @@
 ﻿// src/domain/services/DiskSortingService.cpp
-#include <domain/services/DiskSortingService.h>
+#include "DiskSortingService.h"
+#include <algorithm>
+#include "../valueobjects/BusType.h"
+#include "../valueobjects/DiskType.h"
 
 namespace winsetup::domain {
 
-    void DiskSortingService::SortDisks(std::vector<DiskInfo>& disks, SortCriteria criteria) {
-        switch (criteria) {
-        case SortCriteria::ByTypeAndSize:
-            std::sort(disks.begin(), disks.end(), CompareByTypeAndSize);
-            break;
-        case SortCriteria::ByType:
-            std::sort(disks.begin(), disks.end(), CompareByType);
-            break;
-        case SortCriteria::BySize:
-            std::sort(disks.begin(), disks.end(), CompareBySize);
-            break;
-        case SortCriteria::ByIndex:
-            std::sort(disks.begin(), disks.end(), CompareByIndex);
-            break;
-        }
+    std::vector<DiskInfo> DiskSortingService::SortByPriority(std::vector<DiskInfo> disks) {
+        std::stable_sort(disks.begin(), disks.end(), [](const auto& a, const auto& b) {
+            int priorityA = GetPriority(a);
+            int priorityB = GetPriority(b);
+
+            if (priorityA != priorityB) {
+                return priorityA > priorityB;
+            }
+
+            return a.GetSize() > b.GetSize();
+            });
+
+        return disks;
     }
 
-    std::vector<DiskInfo> DiskSortingService::GetSortedDisks(
-        const std::vector<DiskInfo>& disks,
-        SortCriteria criteria)
-    {
-        std::vector<DiskInfo> sorted = disks;
-        SortDisks(sorted, criteria);
-        return sorted;
-    }
+    int DiskSortingService::GetPriority(const DiskInfo& disk) noexcept {
+        BusType busType = disk.GetBusType();
+        DiskType diskType = disk.GetDiskType();
 
-    bool DiskSortingService::CompareByTypeAndSize(const DiskInfo& a, const DiskInfo& b) noexcept {
-        const int priorityA = a.GetTypePriority();
-        const int priorityB = b.GetTypePriority();
+        if (busType == BusType::NVME) return 40;
+        if (diskType == DiskType::SSD) return 30;
+        if (busType == BusType::SATA) return 20;
+        if (diskType == DiskType::HDD) return 10;
 
-        if (priorityA != priorityB) {
-            return priorityA < priorityB;
-        }
-
-        return a.GetSize() > b.GetSize();
-    }
-
-    bool DiskSortingService::CompareByType(const DiskInfo& a, const DiskInfo& b) noexcept {
-        return a.GetTypePriority() < b.GetTypePriority();
-    }
-
-    bool DiskSortingService::CompareBySize(const DiskInfo& a, const DiskInfo& b) noexcept {
-        return a.GetSize() > b.GetSize();
-    }
-
-    bool DiskSortingService::CompareByIndex(const DiskInfo& a, const DiskInfo& b) noexcept {
-        return a.GetIndex() < b.GetIndex();
+        return 0;
     }
 
 }

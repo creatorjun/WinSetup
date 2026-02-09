@@ -554,5 +554,8 @@
     <ClInclude Include="src\abstractions\ui\IWindow.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="src\domain\valueobjects\DiskType.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

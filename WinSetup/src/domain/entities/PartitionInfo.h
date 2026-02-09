@@ -1,11 +1,11 @@
 ﻿// src/domain/entities/PartitionInfo.h
-
 #pragma once
 
 #include <string>
-#include <domain/valueobjects/PartitionType.h>
-#include <domain/valueobjects/FileSystemType.h>
-#include <domain/valueobjects/DiskSize.h>
+#include "../valueobjects/DiskSize.h"
+#include "../valueobjects/FileSystemType.h"
+#include "../valueobjects/PartitionType.h"
+#include "../valueobjects/DriveLetter.h"
 
 namespace winsetup::domain {
 
@@ -14,54 +14,48 @@ namespace winsetup::domain {
         PartitionInfo() = default;
 
         PartitionInfo(
-            int index,
+            uint32_t index,
             PartitionType type,
             DiskSize size,
-            uint64_t offset = 0
+            FileSystemType fileSystem
         )
             : m_index(index)
             , m_type(type)
             , m_size(size)
-            , m_offset(offset)
+            , m_fileSystem(fileSystem)
         {
         }
 
-        [[nodiscard]] int GetIndex() const noexcept { return m_index; }
+        [[nodiscard]] uint32_t GetIndex() const noexcept { return m_index; }
         [[nodiscard]] PartitionType GetType() const noexcept { return m_type; }
         [[nodiscard]] DiskSize GetSize() const noexcept { return m_size; }
-        [[nodiscard]] uint64_t GetOffset() const noexcept { return m_offset; }
         [[nodiscard]] FileSystemType GetFileSystem() const noexcept { return m_fileSystem; }
         [[nodiscard]] const std::wstring& GetLabel() const noexcept { return m_label; }
+        [[nodiscard]] const std::optional<DriveLetter>& GetDriveLetter() const noexcept { return m_driveLetter; }
+        [[nodiscard]] bool IsActive() const noexcept { return m_isActive; }
 
-        void SetIndex(int index) noexcept { m_index = index; }
-        void SetType(PartitionType type) noexcept { m_type = type; }
-        void SetSize(DiskSize size) noexcept { m_size = size; }
-        void SetOffset(uint64_t offset) noexcept { m_offset = offset; }
-        void SetFileSystem(FileSystemType fs) noexcept { m_fileSystem = fs; }
         void SetLabel(const std::wstring& label) { m_label = label; }
+        void SetDriveLetter(const DriveLetter& letter) { m_driveLetter = letter; }
+        void SetActive(bool active) noexcept { m_isActive = active; }
 
-        [[nodiscard]] bool IsValid() const noexcept {
-            return m_index >= 0 && m_size.ToBytes() > 0;
+        [[nodiscard]] bool CanContainWindows() const noexcept {
+            return m_type == PartitionType::Basic &&
+                IsWindowsCompatible(m_fileSystem) &&
+                m_size >= DiskSize::FromGB(20);
         }
 
-        [[nodiscard]] bool IsSystemPartition() const noexcept {
-            return m_type == PartitionType::System ||
-                m_type == PartitionType::EFI;
+        [[nodiscard]] bool IsBootable() const noexcept {
+            return IsBootPartition(m_type) && m_isActive;
         }
-
-        [[nodiscard]] double GetSizeGB() const noexcept {
-            return m_size.ToGB();
-        }
-
-        static constexpr int INVALID_INDEX = -1;
 
     private:
-        int m_index = INVALID_INDEX;
+        uint32_t m_index = 0;
         PartitionType m_type = PartitionType::Unknown;
         DiskSize m_size;
-        uint64_t m_offset = 0;
         FileSystemType m_fileSystem = FileSystemType::Unknown;
         std::wstring m_label;
+        std::optional<DriveLetter> m_driveLetter;
+        bool m_isActive = false;
     };
 
 }

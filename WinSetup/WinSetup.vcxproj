@@ -195,6 +195,7 @@
     <ClInclude Include="src\domain\specifications\VolumeSpecifications.h" />
     <ClInclude Include="src\domain\valueobjects\BusType.h" />
     <ClInclude Include="src\domain\valueobjects\DiskSize.h" />
+    <ClInclude Include="src\domain\valueobjects\DiskType.h" />
     <ClInclude Include="src\domain\valueobjects\DriveLetter.h" />
     <ClInclude Include="src\domain\valueobjects\FileSystemType.h" />
     <ClInclude Include="src\domain\valueobjects\PartitionType.h" />

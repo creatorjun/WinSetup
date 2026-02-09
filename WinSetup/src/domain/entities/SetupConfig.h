@@ -1,5 +1,4 @@
 ﻿// src/domain/entities/SetupConfig.h
-
 #pragma once
 
 #include <string>
@@ -7,86 +6,37 @@
 
 namespace winsetup::domain {
 
-    struct InstallType {
-        int index = 0;
-        std::wstring name;
-        std::wstring description;
-        int estimatedSeconds = 300;
-
-        [[nodiscard]] bool IsValid() const noexcept {
-            return index >= 0 && !name.empty();
-        }
-    };
-
-    struct TimeInfo {
-        std::wstring modelName;
-        int estimatedSeconds = 0;
-
-        [[nodiscard]] bool IsValid() const noexcept {
-            return !modelName.empty() && estimatedSeconds > 0;
-        }
-    };
-
     class SetupConfig {
     public:
         SetupConfig() = default;
 
-        void AddInstallType(const InstallType& type) {
-            m_installTypes.push_back(type);
-        }
+        [[nodiscard]] const std::wstring& GetWimPath() const noexcept { return m_wimPath; }
+        [[nodiscard]] int GetWimIndex() const noexcept { return m_wimIndex; }
+        [[nodiscard]] uint32_t GetTargetDiskIndex() const noexcept { return m_targetDiskIndex; }
+        [[nodiscard]] const std::wstring& GetComputerName() const noexcept { return m_computerName; }
+        [[nodiscard]] bool GetAutoReboot() const noexcept { return m_autoReboot; }
+        [[nodiscard]] const std::vector<std::wstring>& GetDriverPaths() const noexcept { return m_driverPaths; }
 
-        void AddTimeInfo(const TimeInfo& info) {
-            m_timeInfos.push_back(info);
-        }
+        void SetWimPath(const std::wstring& path) { m_wimPath = path; }
+        void SetWimPath(std::wstring&& path) noexcept { m_wimPath = std::move(path); }
+        void SetWimIndex(int index) noexcept { m_wimIndex = index; }
+        void SetTargetDiskIndex(uint32_t index) noexcept { m_targetDiskIndex = index; }
+        void SetComputerName(const std::wstring& name) { m_computerName = name; }
+        void SetComputerName(std::wstring&& name) noexcept { m_computerName = std::move(name); }
+        void SetAutoReboot(bool reboot) noexcept { m_autoReboot = reboot; }
+        void AddDriverPath(const std::wstring& path) { m_driverPaths.push_back(path); }
 
-        [[nodiscard]] const std::vector<InstallType>& GetInstallTypes() const noexcept {
-            return m_installTypes;
-        }
-
-        [[nodiscard]] const std::vector<TimeInfo>& GetTimeInfos() const noexcept {
-            return m_timeInfos;
-        }
-
-        [[nodiscard]] const InstallType* FindInstallTypeByIndex(int index) const {
-            for (const auto& type : m_installTypes) {
-                if (type.index == index) {
-                    return &type;
-                }
-            }
-            return nullptr;
-        }
-
-        [[nodiscard]] const TimeInfo* FindTimeInfo(const std::wstring& modelName) const {
-            for (const auto& info : m_timeInfos) {
-                if (info.modelName == modelName) {
-                    return &info;
-                }
-            }
-            return nullptr;
-        }
-
-        [[nodiscard]] int CalculateEstimatedTime(int installTypeIndex, const std::wstring& motherboardModel) const {
-            const auto* installType = FindInstallTypeByIndex(installTypeIndex);
-            if (!installType) {
-                return 300;
-            }
-
-            const auto* timeInfo = FindTimeInfo(motherboardModel);
-            if (timeInfo) {
-                return timeInfo->estimatedSeconds;
-            }
-
-            return installType->estimatedSeconds;
-        }
-
-        void Clear() {
-            m_installTypes.clear();
-            m_timeInfos.clear();
+        [[nodiscard]] bool IsValid() const noexcept {
+            return !m_wimPath.empty() && m_wimIndex >= 0;
         }
 
     private:
-        std::vector<InstallType> m_installTypes;
-        std::vector<TimeInfo> m_timeInfos;
+        std::wstring m_wimPath;
+        int m_wimIndex = -1;
+        uint32_t m_targetDiskIndex = 0;
+        std::wstring m_computerName;
+        bool m_autoReboot = false;
+        std::vector<std::wstring> m_driverPaths;
     };
 
 }

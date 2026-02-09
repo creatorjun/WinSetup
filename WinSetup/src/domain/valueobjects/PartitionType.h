@@ -1,5 +1,4 @@
 ﻿// src/domain/valueobjects/PartitionType.h
-
 #pragma once
 
 #include <string>
@@ -7,25 +6,33 @@
 namespace winsetup::domain {
 
     enum class PartitionType {
-        Unknown,
-        System,
-        EFI,
-        MSR,
-        Basic,
-        Recovery,
-        OEM
+        Unknown = 0,
+        System = 1,
+        EFI = 2,
+        MSR = 3,
+        Basic = 4,
+        Recovery = 5,
+        OEM = 6
     };
 
-    inline std::wstring PartitionTypeToString(PartitionType type) {
+    [[nodiscard]] inline std::wstring PartitionTypeToString(PartitionType type) noexcept {
         switch (type) {
-        case PartitionType::System:   return L"System";
-        case PartitionType::EFI:      return L"EFI";
-        case PartitionType::MSR:      return L"MSR";
-        case PartitionType::Basic:    return L"Basic";
+        case PartitionType::System: return L"System";
+        case PartitionType::EFI: return L"EFI";
+        case PartitionType::MSR: return L"MSR";
+        case PartitionType::Basic: return L"Basic";
         case PartitionType::Recovery: return L"Recovery";
-        case PartitionType::OEM:      return L"OEM";
-        default:                      return L"Unknown";
+        case PartitionType::OEM: return L"OEM";
+        default: return L"Unknown";
         }
+    }
+
+    [[nodiscard]] inline bool IsBootPartition(PartitionType type) noexcept {
+        return type == PartitionType::System || type == PartitionType::EFI;
+    }
+
+    [[nodiscard]] inline bool CanFormatPartition(PartitionType type) noexcept {
+        return type == PartitionType::Basic || type == PartitionType::Recovery;
     }
 
 }

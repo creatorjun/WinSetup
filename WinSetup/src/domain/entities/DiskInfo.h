@@ -3,10 +3,10 @@
 
 #include <string>
 #include <vector>
-#include <algorithm>
-#include "VolumeInfo.h"
-#include <domain/valueobjects/BusType.h>
-#include <domain/valueobjects/DiskSize.h>
+#include "../valueobjects/DiskSize.h"
+#include "../valueobjects/BusType.h"
+#include "../valueobjects/DiskType.h"
+#include "PartitionInfo.h"
 
 namespace winsetup::domain {
 
@@ -14,96 +14,84 @@ namespace winsetup::domain {
     public:
         DiskInfo() = default;
 
-        DiskInfo(int index, const std::wstring& type, DiskSize size)
+        DiskInfo(
+            uint32_t index,
+            DiskSize size,
+            BusType busType,
+            DiskType diskType
+        )
             : m_index(index)
-            , m_typeString(type)
-            , m_typeEnum(ParseDiskType(type))
             , m_size(size)
+            , m_busType(busType)
+            , m_diskType(diskType)
         {
         }
 
-        [[nodiscard]] int GetIndex() const noexcept { return m_index; }
-        [[nodiscard]] const std::wstring& GetType() const noexcept { return m_typeString; }
-        [[nodiscard]] DiskTypeEnum GetTypeEnum() const noexcept { return m_typeEnum; }
-        [[nodiscard]] int GetTypePriority() const noexcept {
-            return static_cast<int>(m_typeEnum);
-        }
+        [[nodiscard]] uint32_t GetIndex() const noexcept { return m_index; }
         [[nodiscard]] DiskSize GetSize() const noexcept { return m_size; }
-        [[nodiscard]] const std::vector<VolumeInfo>& GetVolumes() const noexcept {
-            return m_volumes;
-        }
+        [[nodiscard]] BusType GetBusType() const noexcept { return m_busType; }
+        [[nodiscard]] DiskType GetDiskType() const noexcept { return m_diskType; }
+        [[nodiscard]] const std::wstring& GetModel() const noexcept { return m_model; }
+        [[nodiscard]] const std::wstring& GetSerialNumber() const noexcept { return m_serialNumber; }
+        [[nodiscard]] const std::vector<PartitionInfo>& GetPartitions() const noexcept { return m_partitions; }
+        [[nodiscard]] bool IsRemovable() const noexcept { return m_isRemovable; }
+        [[nodiscard]] bool IsBootDrive() const noexcept { return m_isBootDrive; }
 
-        void SetIndex(int index) noexcept { m_index = index; }
-
-        void SetType(const std::wstring& type) {
-            m_typeString = type;
-            m_typeEnum = ParseDiskType(type);
-        }
-
+        void SetIndex(uint32_t index) noexcept { m_index = index; }
         void SetSize(DiskSize size) noexcept { m_size = size; }
+        void SetBusType(BusType type) noexcept { m_busType = type; }
+        void SetDiskType(DiskType type) noexcept { m_diskType = type; }
+        void SetType(DiskType type) noexcept { m_diskType = type; }
+        void SetModel(const std::wstring& model) { m_model = model; }
+        void SetModel(std::wstring&& model) noexcept { m_model = std::move(model); }
+        void SetSerialNumber(const std::wstring& serial) { m_serialNumber = serial; }
+        void SetSerialNumber(std::wstring&& serial) noexcept { m_serialNumber = std::move(serial); }
+        void SetPartitions(const std::vector<PartitionInfo>& partitions) { m_partitions = partitions; }
+        void SetPartitions(std::vector<PartitionInfo>&& partitions) noexcept { m_partitions = std::move(partitions); }
+        void SetRemovable(bool removable) noexcept { m_isRemovable = removable; }
+        void SetBootDrive(bool bootDrive) noexcept { m_isBootDrive = bootDrive; }
 
-        void AddVolume(const VolumeInfo& volume) {
-            m_volumes.push_back(volume);
-        }
-
-        void AddVolume(VolumeInfo&& volume) {
-            m_volumes.push_back(std::move(volume));
-        }
-
-        void SetVolumes(std::vector<VolumeInfo>&& volumes) noexcept {
-            m_volumes = std::move(volumes);
-        }
-
-        void ClearVolumes() {
-            m_volumes.clear();
-        }
-
-        void ReserveVolumes(size_t capacity) {
-            m_volumes.reserve(capacity);
-        }
+        void AddPartition(const PartitionInfo& partition) { m_partitions.push_back(partition); }
+        void AddPartition(PartitionInfo&& partition) { m_partitions.push_back(std::move(partition)); }
 
         [[nodiscard]] bool IsValid() const noexcept {
-            return m_index >= 0 && m_size.ToBytes() > 0;
+            return m_size.ToBytes() > 0;
         }
 
         [[nodiscard]] bool IsSSD() const noexcept {
-            return m_typeEnum == DiskTypeEnum::NVME ||
-                m_typeEnum == DiskTypeEnum::SSD;
+            return m_diskType == DiskType::SSD;
         }
 
         [[nodiscard]] bool IsHDD() const noexcept {
-            return m_typeEnum == DiskTypeEnum::HDD;
+            return m_diskType == DiskType::HDD;
+        }
+
+        [[nodiscard]] bool IsNVMe() const noexcept {
+            return m_busType == BusType::NVME;
+        }
+
+        [[nodiscard]] bool HasPartitions() const noexcept {
+            return !m_partitions.empty();
         }
 
         [[nodiscard]] bool HasEnoughSpace(DiskSize required) const noexcept {
             return m_size >= required;
         }
 
-        [[nodiscard]] size_t GetVolumeCount() const noexcept {
-            return m_volumes.size();
-        }
-
-        [[nodiscard]] const VolumeInfo* FindVolumeByLetter(std::wstring_view letter) const {
-            auto it = std::find_if(m_volumes.begin(), m_volumes.end(),
-                [letter](const VolumeInfo& vol) {
-                    return vol.GetLetter() == letter;
-                });
-
-            return it != m_volumes.end() ? &(*it) : nullptr;
-        }
-
         [[nodiscard]] double GetSizeGB() const noexcept {
             return m_size.ToGB();
         }
 
-        static constexpr int INVALID_DISK_NUMBER = -1;
-
     private:
-        int m_index = INVALID_DISK_NUMBER;
-        std::wstring m_typeString;
-        DiskTypeEnum m_typeEnum = DiskTypeEnum::UNKNOWN;
+        uint32_t m_index = 0;
         DiskSize m_size;
-        std::vector<VolumeInfo> m_volumes;
+        BusType m_busType = BusType::Unknown;
+        DiskType m_diskType = DiskType::Unknown;
+        std::wstring m_model;
+        std::wstring m_serialNumber;
+        std::vector<PartitionInfo> m_partitions;
+        bool m_isRemovable = false;
+        bool m_isBootDrive = false;
     };
 
 }

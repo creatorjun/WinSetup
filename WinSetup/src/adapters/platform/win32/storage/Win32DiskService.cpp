@@ -74,9 +74,8 @@ namespace winsetup::adapters::platform {
             };
         }
 
-        DISK_GEOMETRY_EX geometry = {};
+        DISK_GEOMETRY_EX geometry;
         DWORD bytesReturned = 0;
-
         BOOL result = DeviceIoControl(
             Win32HandleFactory::ToWin32Handle(handle),
             IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
@@ -99,7 +98,8 @@ namespace winsetup::adapters::platform {
         domain::DiskInfo diskInfo;
         diskInfo.SetIndex(diskIndex);
         diskInfo.SetSize(domain::DiskSize::FromBytes(geometry.DiskSize.QuadPart));
-        diskInfo.SetType(L"HDD");
+        diskInfo.SetDiskType(domain::DiskType::HDD);
+        diskInfo.SetBusType(domain::BusType::Unknown);
 
         return diskInfo;
     }
@@ -108,19 +108,17 @@ namespace winsetup::adapters::platform {
         if (m_logger) {
             m_logger->Info(Win32StringHelper::FormatMessage(L"Cleaning disk %u...", diskIndex));
         }
-
         return domain::Expected<void>();
     }
 
     domain::Expected<void> Win32DiskService::CreatePartitionLayout(
         uint32_t diskIndex,
-        const abstractions::PartitionLayout& layout)
-    {
+        const abstractions::PartitionLayout& layout
+    ) {
         if (m_logger) {
             m_logger->Info(Win32StringHelper::FormatMessage(
                 L"Creating partition layout on disk %u...", diskIndex));
         }
-
         return domain::Expected<void>();
     }
 
@@ -128,34 +126,29 @@ namespace winsetup::adapters::platform {
         uint32_t diskIndex,
         uint32_t partitionIndex,
         domain::FileSystemType fileSystem,
-        bool quickFormat)
-    {
+        bool quickFormat
+    ) {
         if (m_logger) {
             m_logger->Info(Win32StringHelper::FormatMessage(
                 L"Formatting partition %u on disk %u...", partitionIndex, diskIndex));
         }
-
         return domain::Expected<void>();
     }
 
-    domain::Expected<abstractions::PartitionLayout> Win32DiskService::GetCurrentLayout(
-        uint32_t diskIndex)
-    {
+    domain::Expected<abstractions::PartitionLayout> Win32DiskService::GetCurrentLayout(uint32_t diskIndex) {
         abstractions::PartitionLayout layout;
         layout.style = abstractions::PartitionLayout::Style::GPT;
-
         return layout;
     }
 
     domain::Expected<void> Win32DiskService::RestoreLayout(
         uint32_t diskIndex,
-        const abstractions::PartitionLayout& layout)
-    {
+        const abstractions::PartitionLayout& layout
+    ) {
         if (m_logger) {
             m_logger->Info(Win32StringHelper::FormatMessage(
                 L"Restoring layout on disk %u...", diskIndex));
         }
-
         return domain::Expected<void>();
     }
 

@@ -1,94 +1,62 @@
 ﻿// src/domain/services/PathNormalizer.cpp
-#include <domain/services/PathNormalizer.h>
+#include "PathNormalizer.h"
 #include <algorithm>
 
 namespace winsetup::domain {
 
-    std::wstring PathNormalizer::Normalize(const std::wstring& path) {
+    Expected<std::wstring> PathNormalizer::NormalizePath(const std::wstring& path) {
         if (path.empty()) {
-            return path;
+            return Error{ L"Path is empty", 0, ErrorCategory::Unknown };
         }
 
-        std::wstring normalized;
-        normalized.reserve(path.length());
+        std::wstring normalized = path;
+        std::replace(normalized.begin(), normalized.end(), L'/', L'\\');
 
-        wchar_t prev = L'\0';
-        for (wchar_t c : path) {
-            if (c == ALT_SEPARATOR) {
-                c = SEPARATOR;
-            }
-
-            if (c == SEPARATOR && prev == SEPARATOR) {
-                continue;
-            }
-
-            normalized += c;
-            prev = c;
-        }
-
-        if (normalized.length() > 3 && normalized.back() == SEPARATOR) {
-            normalized.pop_back();
+        while (normalized.find(L"\\\\") != std::wstring::npos) {
+            size_t pos = normalized.find(L"\\\\");
+            normalized.erase(pos, 1);
         }
 
         return normalized;
     }
 
-    std::wstring PathNormalizer::Combine(const std::wstring& path1, const std::wstring& path2) {
-        if (path1.empty()) return path2;
-        if (path2.empty()) return path1;
-
-        std::wstring result;
-        result.reserve(path1.length() + path2.length() + 1);
-
-        result = path1;
-        if (result.back() != SEPARATOR && result.back() != ALT_SEPARATOR) {
-            result += SEPARATOR;
+    Expected<std::wstring> PathNormalizer::ToAbsolutePath(const std::wstring& path) {
+        auto normalized = NormalizePath(path);
+        if (!normalized.HasValue()) {
+            return normalized;
         }
 
-        size_t start = (path2.front() == SEPARATOR || path2.front() == ALT_SEPARATOR) ? 1 : 0;
-        result.append(path2, start, std::wstring::npos);
+        std::wstring result = normalized.Value();
 
-        return Normalize(result);
+        if (result.length() >= 2 && result[1] == L':') {
+            return result;
+        }
+
+        return Error{ L"Cannot convert to absolute path", 0, ErrorCategory::Unknown };
     }
 
-    std::wstring PathNormalizer::GetDirectory(const std::wstring& path) {
-        auto pos = path.find_last_of(SEPARATOR);
-        if (pos == std::wstring::npos) {
-            return L"";
-        }
-        return path.substr(0, pos);
+    bool PathNormalizer::IsValidWindowsPath(const std::wstring& path) noexcept {
+        if (path.empty()) return false;
+        if (path.length() < 3) return false;
+        if (path[1] != L':') return false;
+        if (path[2] != L'\\') return false;
+
+        wchar_t drive = path[0];
+        return (drive >= L'A' && drive <= L'Z') || (drive >= L'a' && drive <= L'z');
     }
 
-    std::wstring PathNormalizer::GetFileName(const std::wstring& path) {
-        auto pos = path.find_last_of(SEPARATOR);
-        if (pos == std::wstring::npos) {
-            return path;
+    std::wstring PathNormalizer::RemoveTrailingSlash(std::wstring path) {
+        if (!path.empty() && path.back() == L'\\') {
+            path.pop_back();
         }
-        return path.substr(pos + 1);
+        return path;
     }
 
-    std::wstring PathNormalizer::GetExtension(const std::wstring& path) {
-        auto fileName = GetFileName(path);
-        auto pos = fileName.find_last_of(L'.');
-        if (pos == std::wstring::npos || pos == 0) {
-            return L"";
+    std::wstring PathNormalizer::AddTrailingSlash(std::wstring path) {
+        if (!path.empty() && path.back() != L'\\') {
+            path += L'\\';
         }
-        return fileName.substr(pos);
-    }
-
-    bool PathNormalizer::IsAbsolute(const std::wstring& path) noexcept {
-        if (path.length() < 2) {
-            return false;
-        }
-        return (path[1] == L':') || (path[0] == SEPARATOR && path[1] == SEPARATOR);
-    }
-
-    bool PathNormalizer::HasTrailingSeparator(const std::wstring& path) noexcept {
-        if (path.empty()) {
-            return false;
-        }
-        wchar_t last = path.back();
-        return last == SEPARATOR || last == ALT_SEPARATOR;
+        return path;
     }
 
 }
