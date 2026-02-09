@@ -1,11 +1,10 @@
 ﻿// src/adapters/platform/win32/storage/Win32DiskService.cpp
 #include "Win32DiskService.h"
-#include <adapters/platform/win32/core/Win32ErrorHandler.h>
-#include <adapters/platform/win32/core/Win32HandleFactory.h>
-
+#include "../core/Win32HandleFactory.h"
+#include "../core/Win32ErrorHandler.h"
+#include "../core/Win32StringHelper.h"
 #include <Windows.h>
 #include <winioctl.h>
-#include <sstream>
 
 namespace winsetup::adapters::platform {
 
@@ -18,9 +17,7 @@ namespace winsetup::adapters::platform {
     }
 
     domain::UniqueHandle Win32DiskService::OpenDiskHandle(uint32_t diskIndex) {
-        std::wstringstream ss;
-        ss << L"\\\\.\\PhysicalDrive" << diskIndex;
-        std::wstring path = ss.str();
+        std::wstring path = Win32StringHelper::FormatDiskPath(diskIndex);
 
         HANDLE hDisk = CreateFileW(
             path.c_str(),
@@ -45,6 +42,7 @@ namespace winsetup::adapters::platform {
         }
 
         std::vector<domain::DiskInfo> disks;
+        disks.reserve(8);
 
         for (uint32_t i = 0; i < 32; ++i) {
             auto handle = OpenDiskHandle(i);
@@ -59,9 +57,8 @@ namespace winsetup::adapters::platform {
         }
 
         if (m_logger) {
-            std::wstringstream ss;
-            ss << L"Found " << disks.size() << L" disks";
-            m_logger->Info(ss.str());
+            std::wstring msg = Win32StringHelper::ConcatWithCount(L"Found ", disks.size(), L" disks");
+            m_logger->Info(msg);
         }
 
         return disks;
@@ -70,10 +67,8 @@ namespace winsetup::adapters::platform {
     domain::Expected<domain::DiskInfo> Win32DiskService::GetDiskInfo(uint32_t diskIndex) {
         auto handle = OpenDiskHandle(diskIndex);
         if (!handle) {
-            std::wstringstream ss;
-            ss << L"Failed to open disk " << diskIndex;
             return domain::Error{
-                ss.str(),
+                Win32StringHelper::FormatMessage(L"Failed to open disk %u", diskIndex),
                 GetLastError(),
                 domain::ErrorCategory::Disk
             };
@@ -94,10 +89,8 @@ namespace winsetup::adapters::platform {
         );
 
         if (!result) {
-            std::wstringstream ss;
-            ss << L"Failed to get geometry for disk " << diskIndex;
             return domain::Error{
-                ss.str(),
+                Win32StringHelper::FormatMessage(L"Failed to get geometry for disk %u", diskIndex),
                 GetLastError(),
                 domain::ErrorCategory::Disk
             };
@@ -113,9 +106,7 @@ namespace winsetup::adapters::platform {
 
     domain::Expected<void> Win32DiskService::CleanDisk(uint32_t diskIndex) {
         if (m_logger) {
-            std::wstringstream ss;
-            ss << L"Cleaning disk " << diskIndex << L"...";
-            m_logger->Info(ss.str());
+            m_logger->Info(Win32StringHelper::FormatMessage(L"Cleaning disk %u...", diskIndex));
         }
 
         return domain::Expected<void>();
@@ -126,9 +117,8 @@ namespace winsetup::adapters::platform {
         const abstractions::PartitionLayout& layout)
     {
         if (m_logger) {
-            std::wstringstream ss;
-            ss << L"Creating partition layout on disk " << diskIndex << L"...";
-            m_logger->Info(ss.str());
+            m_logger->Info(Win32StringHelper::FormatMessage(
+                L"Creating partition layout on disk %u...", diskIndex));
         }
 
         return domain::Expected<void>();
@@ -141,10 +131,8 @@ namespace winsetup::adapters::platform {
         bool quickFormat)
     {
         if (m_logger) {
-            std::wstringstream ss;
-            ss << L"Formatting partition " << partitionIndex
-                << L" on disk " << diskIndex << L"...";
-            m_logger->Info(ss.str());
+            m_logger->Info(Win32StringHelper::FormatMessage(
+                L"Formatting partition %u on disk %u...", partitionIndex, diskIndex));
         }
 
         return domain::Expected<void>();
@@ -164,9 +152,8 @@ namespace winsetup::adapters::platform {
         const abstractions::PartitionLayout& layout)
     {
         if (m_logger) {
-            std::wstringstream ss;
-            ss << L"Restoring layout on disk " << diskIndex << L"...";
-            m_logger->Info(ss.str());
+            m_logger->Info(Win32StringHelper::FormatMessage(
+                L"Restoring layout on disk %u...", diskIndex));
         }
 
         return domain::Expected<void>();

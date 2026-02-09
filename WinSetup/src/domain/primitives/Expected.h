@@ -169,14 +169,51 @@ namespace winsetup::domain {
     public:
         Expected()
             : m_hasValue(true)
-            , m_error()
         {
         }
 
         Expected(Error error)
             : m_hasValue(false)
-            , m_error(std::move(error))
         {
+            new (&m_storage) Error(std::move(error));
+        }
+
+        ~Expected() {
+            if (!m_hasValue) {
+                reinterpret_cast<Error*>(&m_storage)->~Error();
+            }
+        }
+
+        Expected(const Expected& other)
+            : m_hasValue(other.m_hasValue)
+        {
+            if (!m_hasValue) {
+                new (&m_storage) Error(*reinterpret_cast<const Error*>(&other.m_storage));
+            }
+        }
+
+        Expected(Expected&& other) noexcept
+            : m_hasValue(other.m_hasValue)
+        {
+            if (!m_hasValue) {
+                new (&m_storage) Error(std::move(*reinterpret_cast<Error*>(&other.m_storage)));
+            }
+        }
+
+        Expected& operator=(const Expected& other) {
+            if (this != &other) {
+                this->~Expected();
+                new (this) Expected(other);
+            }
+            return *this;
+        }
+
+        Expected& operator=(Expected&& other) noexcept {
+            if (this != &other) {
+                this->~Expected();
+                new (this) Expected(std::move(other));
+            }
+            return *this;
         }
 
         [[nodiscard]] bool HasValue() const noexcept {
@@ -184,13 +221,13 @@ namespace winsetup::domain {
         }
 
         [[nodiscard]] const Error& GetError() const noexcept {
-            return m_error;
+            return *reinterpret_cast<const Error*>(&m_storage);
         }
 
         template<typename F>
         Expected& OnError(F&& func)& {
             if (!m_hasValue) {
-                func(m_error);
+                func(*reinterpret_cast<Error*>(&m_storage));
             }
             return *this;
         }
@@ -205,7 +242,7 @@ namespace winsetup::domain {
 
     private:
         bool m_hasValue;
-        Error m_error;
+        alignas(Error) unsigned char m_storage[sizeof(Error)];
     };
 
 }

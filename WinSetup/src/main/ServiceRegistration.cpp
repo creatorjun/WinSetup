@@ -8,11 +8,6 @@
 #include <adapters/platform/win32/storage/Win32DiskService.h>
 #include <adapters/platform/win32/storage/Win32VolumeService.h>
 #include <adapters/platform/win32/system/Win32SystemInfoService.h>
-#include <application/services/EventBus.h>
-#include <application/usecases/system/AnalyzeSystemUseCase.h>
-#include <application/usecases/system/LoadConfigurationUseCase.h>
-#include <application/usecases/disk/EnumerateDisksUseCase.h>
-#include <application/usecases/disk/AnalyzeDisksUseCase.h>
 
 namespace winsetup::main {
 
@@ -27,20 +22,12 @@ namespace winsetup::main {
             };
         }
 
-        try {
-            RegisterInfrastructure(*container);
-            RegisterServices(*container);
-            RegisterUseCases(*container);
-            RegisterUI(*container);
-            return domain::Expected<void>();
-        }
-        catch (...) {
-            return domain::Error{
-                L"Failed to register services",
-                0,
-                domain::ErrorCategory::System
-            };
-        }
+        RegisterInfrastructure(*container);
+        RegisterServices(*container);
+        RegisterUseCases(*container);
+        RegisterUI(*container);
+
+        return domain::Expected<void>();
     }
 
     void ServiceRegistration::RegisterInfrastructure(application::DIContainer& container) {

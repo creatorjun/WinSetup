@@ -204,6 +204,9 @@
     <ClCompile Include="src\adapters\platform\win32\core\Win32HandleFactory.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\core\Win32StringHelper.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\main\ServiceRegistration.h">
@@ -501,6 +504,18 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\adapters\platform\win32\core\Win32HandleFactory.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\core\Win32StringHelper.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\services\storage\IDiskService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\services\storage\IVolumeService.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\services\platform\ISystemInfoService.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
