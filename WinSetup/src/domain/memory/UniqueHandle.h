@@ -7,22 +7,18 @@
 namespace winsetup::domain {
 
     using NativeHandle = void*;
+    using HandleDeleterFunc = void(*)(NativeHandle) noexcept;
 
     inline constexpr NativeHandle InvalidHandleValue() noexcept {
         return reinterpret_cast<NativeHandle>(static_cast<intptr_t>(-1));
     }
 
-    using HandleDeleterFunc = void(*)(NativeHandle) noexcept;
-
     class UniqueHandle {
     public:
-        UniqueHandle() noexcept
-            : m_handle(InvalidHandleValue())
-            , m_deleter(nullptr)
-        {
-        }
-
-        explicit UniqueHandle(NativeHandle handle, HandleDeleterFunc deleter) noexcept
+        explicit UniqueHandle(
+            NativeHandle handle = nullptr,
+            HandleDeleterFunc deleter = nullptr
+        ) noexcept
             : m_handle(handle)
             , m_deleter(deleter)
         {
@@ -36,7 +32,7 @@ namespace winsetup::domain {
         UniqueHandle& operator=(const UniqueHandle&) = delete;
 
         UniqueHandle(UniqueHandle&& other) noexcept
-            : m_handle(std::exchange(other.m_handle, InvalidHandleValue()))
+            : m_handle(std::exchange(other.m_handle, nullptr))
             , m_deleter(std::exchange(other.m_deleter, nullptr))
         {
         }
@@ -44,7 +40,7 @@ namespace winsetup::domain {
         UniqueHandle& operator=(UniqueHandle&& other) noexcept {
             if (this != &other) {
                 Close();
-                m_handle = std::exchange(other.m_handle, InvalidHandleValue());
+                m_handle = std::exchange(other.m_handle, nullptr);
                 m_deleter = std::exchange(other.m_deleter, nullptr);
             }
             return *this;
@@ -56,31 +52,25 @@ namespace winsetup::domain {
 
         [[nodiscard]] NativeHandle Release() noexcept {
             m_deleter = nullptr;
-            return std::exchange(m_handle, InvalidHandleValue());
+            return std::exchange(m_handle, nullptr);
         }
 
-        void Reset(NativeHandle handle = InvalidHandleValue(), HandleDeleterFunc deleter = nullptr) noexcept {
+        void Reset(NativeHandle handle = nullptr, HandleDeleterFunc deleter = nullptr) noexcept {
             Close();
             m_handle = handle;
             m_deleter = deleter;
         }
 
-        [[nodiscard]] bool IsValid() const noexcept {
-            return m_handle != InvalidHandleValue() && m_handle != nullptr;
-        }
-
         [[nodiscard]] explicit operator bool() const noexcept {
-            return IsValid();
-        }
-
-        [[nodiscard]] NativeHandle* AddressOf() noexcept {
-            return &m_handle;
+            return m_handle != nullptr && m_handle != InvalidHandleValue();
         }
 
     private:
         void Close() noexcept {
-            if (IsValid() && m_deleter) {
+            if (m_handle && m_handle != InvalidHandleValue() && m_deleter) {
                 m_deleter(m_handle);
+                m_handle = nullptr;
+                m_deleter = nullptr;
             }
         }
 
@@ -90,13 +80,10 @@ namespace winsetup::domain {
 
     class UniqueLibrary {
     public:
-        UniqueLibrary() noexcept
-            : m_handle(nullptr)
-            , m_deleter(nullptr)
-        {
-        }
-
-        explicit UniqueLibrary(NativeHandle handle, HandleDeleterFunc deleter) noexcept
+        explicit UniqueLibrary(
+            NativeHandle handle = nullptr,
+            HandleDeleterFunc deleter = nullptr
+        ) noexcept
             : m_handle(handle)
             , m_deleter(deleter)
         {
@@ -133,18 +120,16 @@ namespace winsetup::domain {
             return std::exchange(m_handle, nullptr);
         }
 
-        [[nodiscard]] bool IsValid() const noexcept {
-            return m_handle != nullptr;
-        }
-
         [[nodiscard]] explicit operator bool() const noexcept {
-            return IsValid();
+            return m_handle != nullptr;
         }
 
     private:
         void Close() noexcept {
-            if (IsValid() && m_deleter) {
+            if (m_handle && m_deleter) {
                 m_deleter(m_handle);
+                m_handle = nullptr;
+                m_deleter = nullptr;
             }
         }
 
@@ -154,13 +139,10 @@ namespace winsetup::domain {
 
     class UniqueFindHandle {
     public:
-        UniqueFindHandle() noexcept
-            : m_handle(InvalidHandleValue())
-            , m_deleter(nullptr)
-        {
-        }
-
-        explicit UniqueFindHandle(NativeHandle handle, HandleDeleterFunc deleter) noexcept
+        explicit UniqueFindHandle(
+            NativeHandle handle = nullptr,
+            HandleDeleterFunc deleter = nullptr
+        ) noexcept
             : m_handle(handle)
             , m_deleter(deleter)
         {
@@ -174,7 +156,7 @@ namespace winsetup::domain {
         UniqueFindHandle& operator=(const UniqueFindHandle&) = delete;
 
         UniqueFindHandle(UniqueFindHandle&& other) noexcept
-            : m_handle(std::exchange(other.m_handle, InvalidHandleValue()))
+            : m_handle(std::exchange(other.m_handle, nullptr))
             , m_deleter(std::exchange(other.m_deleter, nullptr))
         {
         }
@@ -182,7 +164,7 @@ namespace winsetup::domain {
         UniqueFindHandle& operator=(UniqueFindHandle&& other) noexcept {
             if (this != &other) {
                 Close();
-                m_handle = std::exchange(other.m_handle, InvalidHandleValue());
+                m_handle = std::exchange(other.m_handle, nullptr);
                 m_deleter = std::exchange(other.m_deleter, nullptr);
             }
             return *this;
@@ -194,21 +176,19 @@ namespace winsetup::domain {
 
         [[nodiscard]] NativeHandle Release() noexcept {
             m_deleter = nullptr;
-            return std::exchange(m_handle, InvalidHandleValue());
-        }
-
-        [[nodiscard]] bool IsValid() const noexcept {
-            return m_handle != InvalidHandleValue();
+            return std::exchange(m_handle, nullptr);
         }
 
         [[nodiscard]] explicit operator bool() const noexcept {
-            return IsValid();
+            return m_handle != nullptr && m_handle != InvalidHandleValue();
         }
 
     private:
         void Close() noexcept {
-            if (IsValid() && m_deleter) {
+            if (m_handle && m_handle != InvalidHandleValue() && m_deleter) {
                 m_deleter(m_handle);
+                m_handle = nullptr;
+                m_deleter = nullptr;
             }
         }
 

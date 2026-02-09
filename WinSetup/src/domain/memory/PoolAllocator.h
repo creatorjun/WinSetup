@@ -2,93 +2,89 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
-#include <mutex>
 #include <memory>
+#include <mutex>
 
 namespace winsetup::domain {
 
     template<typename T, size_t BlockSize = 4096>
     class PoolAllocator {
     public:
-        PoolAllocator() {
-            m_blocks.reserve(4);
-            AllocateBlock();
-        }
+        using value_type = T;
+        using pointer = T*;
+        using const_pointer = const T*;
+        using reference = T&;
+        using const_reference = const T&;
+        using size_type = size_t;
+        using difference_type = ptrdiff_t;
 
-        ~PoolAllocator() {
-            for (auto* block : m_blocks) {
-                ::operator delete(block);
+        PoolAllocator() noexcept = default;
+
+        template<typename U>
+        PoolAllocator(const PoolAllocator<U, BlockSize>&) noexcept {}
+
+        [[nodiscard]] pointer allocate(size_type n) {
+            if (n == 0) {
+                return nullptr;
             }
-        }
 
-        PoolAllocator(const PoolAllocator&) = delete;
-        PoolAllocator& operator=(const PoolAllocator&) = delete;
+            if (n > BlockSize) {
+                return static_cast<pointer>(::operator new(n * sizeof(T)));
+            }
 
-        T* Allocate() {
             std::lock_guard lock(m_mutex);
 
             if (m_freeList.empty()) {
                 AllocateBlock();
             }
 
-            T* ptr = m_freeList.back();
+            pointer result = m_freeList.back();
             m_freeList.pop_back();
-            return ptr;
+            return result;
         }
 
-        void Deallocate(T* ptr) noexcept {
-            if (!ptr) return;
+        void deallocate(pointer p, size_type n) noexcept {
+            if (!p) {
+                return;
+            }
+
+            if (n > BlockSize) {
+                ::operator delete(p);
+                return;
+            }
 
             std::lock_guard lock(m_mutex);
-            m_freeList.push_back(ptr);
+            m_freeList.push_back(p);
         }
 
-        template<typename... Args>
-        T* Construct(Args&&... args) {
-            T* ptr = Allocate();
-            try {
-                new (ptr) T(std::forward<Args>(args)...);
-                return ptr;
-            }
-            catch (...) {
-                Deallocate(ptr);
-                throw;
-            }
+        template<typename U, typename... Args>
+        void construct(U* p, Args&&... args) {
+            new (p) U(std::forward<Args>(args)...);
         }
 
-        void Destroy(T* ptr) noexcept {
-            if (!ptr) return;
-            ptr->~T();
-            Deallocate(ptr);
-        }
-
-        [[nodiscard]] size_t GetBlockCount() const noexcept {
-            return m_blocks.size();
-        }
-
-        [[nodiscard]] size_t GetFreeCount() const noexcept {
-            std::lock_guard lock(m_mutex);
-            return m_freeList.size();
+        template<typename U>
+        void destroy(U* p) {
+            p->~U();
         }
 
     private:
         void AllocateBlock() {
-            constexpr size_t elementSize = sizeof(T) > sizeof(void*) ? sizeof(T) : sizeof(void*);
-            constexpr size_t elementsPerBlock = BlockSize / elementSize;
+            auto block = std::make_unique<std::byte[]>(BlockSize * sizeof(T));
 
-            void* block = ::operator new(BlockSize);
-            m_blocks.push_back(block);
-
-            char* ptr = static_cast<char*>(block);
-            for (size_t i = 0; i < elementsPerBlock; ++i) {
-                m_freeList.push_back(reinterpret_cast<T*>(ptr + i * elementSize));
+            for (size_t i = 0; i < BlockSize; ++i) {
+                m_freeList.push_back(
+                    reinterpret_cast<pointer>(block.get() + i * sizeof(T))
+                );
             }
+
+            m_blocks.push_back(std::move(block));
         }
 
-        std::vector<void*> m_blocks;
-        std::vector<T*> m_freeList;
-        mutable std::mutex m_mutex;
+        std::vector<pointer> m_freeList;
+        std::vector<std::unique_ptr<std::byte[]>> m_blocks;
+        std::mutex m_mutex;
     };
 
 }

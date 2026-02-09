@@ -1,170 +1,98 @@
-﻿클린 아키텍처 의존성 규칙에 따라 **다음 구현 우선순위**를 제안합니다:
+﻿다음 구현 추천 순서입니다:
 
-***
+## 🎯 우선순위 1: Domain 계층 완성 (기반 확립)
 
-## 📊 다음 구현 우선순위
+1. **Value Objects** - 타입 안전성 확보
+   - `DiskSize.h/cpp` - 디스크 크기 계산
+   - `BusType.h` - NVMe/SATA/USB 구분
+   - `FileSystemType.h` - NTFS/FAT32/exFAT
+   - `PartitionType.h` - System/EFI/MSR/Data
+   - `DriveLetter.h/cpp` - 드라이브 문자 검증
 
-### 🎯 **1단계: Domain Entities & ValueObjects** (가장 우선)
-**이유:** 모든 계층에서 사용되는 데이터 구조 정의
+2. **Entities** - 도메인 모델 완성
+   - `VolumeInfo.h/cpp` - 볼륨 정보
+   - `PartitionInfo.h/cpp` - 파티션 정보
+   - `SystemInfo.h/cpp` - 시스템 전체 정보
+   - `SetupConfig.h/cpp` - 설정 정보
 
-```
-src/domain/
-├── valueobjects/
-│   ├── BusType.h              # enum (NVME, SATA, HDD 등)
-│   ├── DiskSize.h/.cpp        # 크기 계산 (GB 변환)
-│   ├── FileSystemType.h       # enum (NTFS, FAT32, exFAT)
-│   ├── PartitionType.h        # enum (System, EFI, MSR, Basic)
-│   └── DriveLetter.h/.cpp     # 드라이브 문자 검증
-│
-└── entities/
-    ├── DiskInfo.h/.cpp        # 디스크 정보 (Index, Type, Size, Volumes)
-    ├── VolumeInfo.h/.cpp      # 볼륨 정보 (Letter, Label, FileSystem)
-    ├── PartitionInfo.h/.cpp   # 파티션 정보 (Offset, Size, Type)
-    ├── SystemInfo.h/.cpp      # 시스템 정보 (Mainboard, Disks)
-    └── SetupConfig.h/.cpp     # Config.ini 데이터
-```
+3. **Domain Services** - 비즈니스 로직
+   - `DiskSortingService.h/cpp` - 디스크 정렬 (NVMe > SSD > HDD)
+   - `PartitionAnalyzer.h/cpp` - 파티션 분석
+   - `PathNormalizer.h/cpp` - 경로 정규화
 
-**핵심 이유:**
-- ✅ 외부 의존성 0 (순수 C++)
-- ✅ 모든 상위 계층에서 참조
-- ✅ 타입 안전성 보장
+## 🎯 우선순위 2: Win32 저수준 구현 (핵심 기능)
 
-***
+4. **IOCTLWrapper** - 디스크 제어
+   - `IOCTLWrapper.h/cpp` - IOCTL 래퍼 (동기)
+   - `AsyncIOCTL.h/cpp` - IOCTL 비동기 처리
 
-### 🎯 **2단계: Abstractions - Core Interfaces**
-**이유:** Domain을 사용하는 인터페이스 정의
+5. **DiskTransaction** - 트랜잭션
+   - `DiskTransaction.h/cpp` - 원자성 보장 + 롤백
 
-```
-src/abstractions/
-├── repositories/
-│   ├── IConfigRepository.h    # Config.ini 읽기/쓰기
-│   ├── IDiskRepository.h      # 디스크 정보 저장소
-│   └── IVolumeRepository.h    # 볼륨 정보 저장소
-│
-└── services/
-    ├── storage/
-    │   ├── IDiskService.h          # 디스크 조작 (Clean, Partition, Format)
-    │   ├── IVolumeService.h        # 볼륨 조작 (Assign Letter)
-    │   ├── IStorageScanner.h       # 디스크/볼륨 열거
-    │   └── IPartitionService.h     # 파티션 생성/삭제
-    │
-    └── platform/
-        ├── ISystemInfoService.h    # SMBIOS 읽기
-        └── ITextEncoder.h          # UTF-8 ↔ Wide 변환
-```
+6. **Win32TypeMapper** - 타입 변환
+   - `Win32TypeMapper.h/cpp` - Win32 ↔ Domain 변환
 
-**핵심 이유:**
-- ✅ 구현과 인터페이스 분리
-- ✅ 테스트 가능성 확보 (Mock 생성)
+7. **Win32ErrorHandler** - 에러 처리
+   - `Win32ErrorHandler.h/cpp` - GetLastError() → Error 변환
 
-***
+## 🎯 우선순위 3: Use Cases (애플리케이션 로직)
 
-### 🎯 **3단계: Adapters - Win32 기본 서비스**
-**이유:** 인터페이스의 실제 구현
+8. **System Use Cases**
+   - `AnalyzeSystemUseCase.h/cpp` - 시스템 분석
+   - `LoadConfigurationUseCase.h/cpp` - 설정 로드
 
-```
-src/adapters/platform/win32/
-├── core/
-│   ├── Win32TypeMapper.h/.cpp      # DWORD → domain 타입 변환
-│   └── Win32ErrorHandler.h/.cpp    # GetLastError → Error 변환
-│
-├── system/
-│   ├── Win32SystemInfoService.h/.cpp   # SMBIOS 파싱
-│   └── SMBIOSParser.h/.cpp             # 펌웨어 테이블 읽기
-│
-└── storage/
-    ├── IOCTLWrapper.h/.cpp             # IOCTL 호출 래퍼
-    └── Win32DiskService.h/.cpp         # 디스크 서비스 구현 (기본)
-```
+9. **Disk Use Cases**
+   - `EnumerateDisksUseCase.h/cpp` - 디스크 열거
+   - `AnalyzeDisksUseCase.h/cpp` - 디스크 분석
+   - `SelectTargetDisksUseCase.h/cpp` - 대상 디스크 선택
 
-**핵심 이유:**
-- ✅ 저수준 Win32 API 캡슐화
-- ✅ Domain 타입으로 변환
-- ✅ Expected<T> 반환
+10. **Install Use Cases**
+    - `InstallWindowsUseCase.h/cpp` - Windows 설치 오케스트레이션
+    - `ApplyImageUseCase.h/cpp` - WIM 이미지 적용
+    - `InjectDriversUseCase.h/cpp` - 드라이버 주입
 
-***
+## 🎯 우선순위 4: Event System (관찰 가능성)
 
-### 🎯 **4단계: Adapters - 고급 스토리지 기능**
-**이유:** 핵심 성능 최적화 구현
+11. **Domain Events**
+    - `DomainEvent.h/cpp` - 이벤트 베이스
+    - `DiskAnalyzedEvent.h` - 디스크 분석 완료
+    - `InstallProgressEvent.h` - 설치 진행률
 
-```
-src/adapters/platform/win32/storage/
-├── AsyncIOCTL.h/.cpp          # OVERLAPPED 비동기 I/O
-├── MFTScanner.h/.cpp          # FSCTL_ENUM_USN_DATA로 MFT 읽기
-├── DiskTransaction.h/.cpp     # 트랜잭션 + 롤백
-└── DiskLayoutBuilder.h/.cpp   # GPT/MBR 레이아웃 생성
-```
+12. **Event Infrastructure**
+    - `EventBus.h/cpp` - 이벤트 버스
+    - `Dispatcher.h/cpp` - 이벤트 디스패처
 
-**핵심 이유:**
-- ⚡ 성능 최적화 (병렬 IOCTL, MFT 직접 읽기)
-- 🔒 안전성 (트랜잭션)
+## 🎯 우선순위 5: UI 구현 (사용자 인터페이스)
 
-***
+13. **Win32 UI Components**
+    - `Win32MainWindow.h/cpp` - 메인 윈도우
+    - `Win32ProgressBar.h/cpp` - 진행률 표시
+    - `SimpleButton.h/cpp` - 버튼 컨트롤
+    - `ToggleButton.h/cpp` - 토글 버튼
 
-### 🎯 **5단계: Application - Use Cases**
-**이유:** 비즈니스 워크플로우 구현
+## 🎯 우선순위 6: 고급 기능
+
+14. **Imaging Adapters**
+    - `WimlibAdapter.h/cpp` - wimlib 래퍼
+    - `WimlibOptimizer.h/cpp` - WIM 최적화
+
+15. **Persistence**
+    - `IniConfigRepository.h/cpp` - INI 파일 저장소
+    - `Win32FileSystem.h/cpp` - 파일 시스템 추상화
+
+16. **Threading**
+    - `Win32ThreadPool.h/cpp` - 스레드 풀
+    - `TaskScheduler.h/cpp` - 태스크 스케줄러
+
+## 📋 권장 구현 순서 요약
 
 ```
-src/application/usecases/
-├── system/
-│   ├── AnalyzeSystemUseCase.h/.cpp     # Step 1: SMBIOS + Config
-│   └── LoadConfigurationUseCase.h/.cpp
-│
-├── disk/
-│   ├── EnumerateDisksUseCase.h/.cpp    # Step 2: 디스크 열거
-│   ├── AnalyzeDisksUseCase.h/.cpp      # MFT 분석
-│   └── SelectTargetDisksUseCase.h/.cpp
-│
-└── install/
-    ├── InstallWindowsUseCase.h/.cpp    # Step 4: 전체 설치 흐름
-    ├── ApplyImageUseCase.h/.cpp        # wimlib 적용
-    └── InjectDriversUseCase.h/.cpp     # DismApi 주입
+1단계: Domain 완성 (1-3)           ← 타입 안전성 확보
+2단계: Win32 저수준 (4-7)          ← 디스크 제어 구현
+3단계: Use Cases (8-10)            ← 비즈니스 로직
+4단계: Event System (11-12)        ← 옵저버 패턴
+5단계: UI (13)                      ← 사용자 인터페이스
+6단계: 고급 기능 (14-16)           ← 이미징, 멀티스레딩
 ```
 
-**핵심 이유:**
-- 📋 비즈니스 로직 중앙화
-- 🔄 재사용 가능
-- ✅ 단위 테스트 가능
-
-***
-
-### 🎯 **6단계: UI 통합**
-**이유:** 모든 백엔드 완성 후
-
-```
-src/adapters/ui/win32/
-├── Win32MainWindow.h/.cpp     # 메인 윈도우
-├── panels/
-│   ├── TypeButtonPanel.h/.cpp
-│   ├── LogPanel.h/.cpp
-│   └── StartStopPanel.h/.cpp
-│
-└── viewmodels/
-    └── MainViewModel.h/.cpp   # UI ↔ UseCase 연결
-```
-
-***
-
-## 🎯 **추천 구현 순서**
-
-```
-1️⃣ Domain Entities (DiskInfo, VolumeInfo, SystemInfo)
-   → 데이터 구조 확정
-
-2️⃣ Abstractions Interfaces (IDiskService, IStorageScanner)
-   → 계약 정의
-
-3️⃣ Adapters Win32 기본 (IOCTLWrapper, Win32DiskService)
-   → 실제 동작 구현
-
-4️⃣ Adapters 고급 (AsyncIOCTL, MFTScanner)
-   → 최적화 추가
-
-5️⃣ Application Use Cases (EnumerateDisksUseCase)
-   → 비즈니스 로직
-
-6️⃣ UI Integration
-   → 사용자 인터페이스
-```
-
-***
+**다음 대화에서 어떤 그룹부터 구현할까요?** (1-3번 Domain 완성을 추천합니다)

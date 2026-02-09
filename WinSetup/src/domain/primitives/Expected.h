@@ -3,7 +3,7 @@
 
 #include <utility>
 #include <type_traits>
-#include <optional>
+#include <stdexcept>
 #include "Error.h"
 
 namespace winsetup::domain {
@@ -74,32 +74,37 @@ namespace winsetup::domain {
             return m_hasValue;
         }
 
-        [[nodiscard]] T& Value() & noexcept {
+        [[nodiscard]] T& Value()& {
+            if (!m_hasValue) {
+                throw std::logic_error("Expected does not contain value");
+            }
             return m_value;
         }
 
-        [[nodiscard]] const T& Value() const& noexcept {
+        [[nodiscard]] const T& Value() const& {
+            if (!m_hasValue) {
+                throw std::logic_error("Expected does not contain value");
+            }
             return m_value;
         }
 
-        [[nodiscard]] T&& Value() && noexcept {
+        [[nodiscard]] T&& Value()&& {
+            if (!m_hasValue) {
+                throw std::logic_error("Expected does not contain value");
+            }
             return std::move(m_value);
         }
 
-        [[nodiscard]] const Error& GetError() const noexcept {
+        [[nodiscard]] const Error& GetError() const {
+            if (m_hasValue) {
+                throw std::logic_error("Expected does not contain error");
+            }
             return m_error;
         }
 
-        [[nodiscard]] std::optional<T> ToOptional() const {
-            if (m_hasValue) {
-                return m_value;
-            }
-            return std::nullopt;
-        }
-
         template<typename F>
-        [[nodiscard]] auto Map(F&& func) -> Expected<std::invoke_result_t<F, T>> {
-            using U = std::invoke_result_t<F, T>;
+        [[nodiscard]] auto Map(F&& func) -> Expected<decltype(func(std::declval<T>()))> {
+            using U = decltype(func(std::declval<T>()));
 
             if (m_hasValue) {
                 return Expected<U>(func(m_value));
@@ -110,8 +115,8 @@ namespace winsetup::domain {
         }
 
         template<typename F>
-        [[nodiscard]] auto FlatMap(F&& func) -> std::invoke_result_t<F, T> {
-            using Result = std::invoke_result_t<F, T>;
+        [[nodiscard]] auto FlatMap(F&& func) -> decltype(func(std::declval<T>())) {
+            using Result = decltype(func(std::declval<T>()));
 
             if (m_hasValue) {
                 return func(m_value);
@@ -148,14 +153,6 @@ namespace winsetup::domain {
             return *this;
         }
 
-        template<typename F>
-        Expected& OnSuccess(F&& func)& {
-            if (m_hasValue) {
-                func(m_value);
-            }
-            return *this;
-        }
-
     private:
         union {
             T m_value;
@@ -167,82 +164,36 @@ namespace winsetup::domain {
     template<>
     class Expected<void> {
     public:
-        Expected()
-            : m_hasValue(true)
-        {
-        }
+        Expected() : m_hasValue(true) {}
 
         Expected(Error error)
             : m_hasValue(false)
+            , m_error(std::move(error))
         {
-            new (&m_storage) Error(std::move(error));
-        }
-
-        ~Expected() {
-            if (!m_hasValue) {
-                reinterpret_cast<Error*>(&m_storage)->~Error();
-            }
-        }
-
-        Expected(const Expected& other)
-            : m_hasValue(other.m_hasValue)
-        {
-            if (!m_hasValue) {
-                new (&m_storage) Error(*reinterpret_cast<const Error*>(&other.m_storage));
-            }
-        }
-
-        Expected(Expected&& other) noexcept
-            : m_hasValue(other.m_hasValue)
-        {
-            if (!m_hasValue) {
-                new (&m_storage) Error(std::move(*reinterpret_cast<Error*>(&other.m_storage)));
-            }
-        }
-
-        Expected& operator=(const Expected& other) {
-            if (this != &other) {
-                this->~Expected();
-                new (this) Expected(other);
-            }
-            return *this;
-        }
-
-        Expected& operator=(Expected&& other) noexcept {
-            if (this != &other) {
-                this->~Expected();
-                new (this) Expected(std::move(other));
-            }
-            return *this;
         }
 
         [[nodiscard]] bool HasValue() const noexcept {
             return m_hasValue;
         }
 
-        [[nodiscard]] const Error& GetError() const noexcept {
-            return *reinterpret_cast<const Error*>(&m_storage);
+        [[nodiscard]] const Error& GetError() const {
+            if (m_hasValue) {
+                throw std::logic_error("Expected does not contain error");
+            }
+            return m_error;
         }
 
         template<typename F>
         Expected& OnError(F&& func)& {
             if (!m_hasValue) {
-                func(*reinterpret_cast<Error*>(&m_storage));
-            }
-            return *this;
-        }
-
-        template<typename F>
-        Expected& OnSuccess(F&& func)& {
-            if (m_hasValue) {
-                func();
+                func(m_error);
             }
             return *this;
         }
 
     private:
         bool m_hasValue;
-        alignas(Error) unsigned char m_storage[sizeof(Error)];
+        Error m_error;
     };
 
 }

@@ -8,6 +8,9 @@
 #include <functional>
 #include <any>
 #include <shared_mutex>
+#include <string>
+#include <codecvt>
+#include <locale>
 #include "../../domain/primitives/Expected.h"
 #include "../../domain/primitives/Error.h"
 
@@ -145,12 +148,6 @@ namespace winsetup::application {
             return std::static_pointer_cast<TInterface>(instance);
         }
 
-        template<typename TInterface>
-        [[nodiscard]] bool IsRegistered() const {
-            std::shared_lock lock(m_mutex);
-            return m_registrations.find(std::type_index(typeid(TInterface))) != m_registrations.end();
-        }
-
         void Clear() {
             std::unique_lock lock(m_mutex);
             m_singletons.clear();
@@ -158,21 +155,26 @@ namespace winsetup::application {
         }
 
     private:
-        template<typename T>
-        static std::wstring GetTypeName() {
-            const char* name = typeid(T).name();
-            std::wstring wname;
-            wname.reserve(strlen(name));
-            for (size_t i = 0; name[i] != '\0'; ++i) {
-                wname.push_back(static_cast<wchar_t>(name[i]));
-            }
-            return wname;
-        }
-
         struct Registration {
             std::function<std::shared_ptr<void>()> factory;
             ServiceLifetime lifetime;
         };
+
+        template<typename T>
+        [[nodiscard]] static std::wstring GetTypeName() {
+            const char* name = typeid(T).name();
+            size_t len = 0;
+            while (name[len] != '\0') {
+                ++len;
+            }
+
+            std::wstring result;
+            result.reserve(len);
+            for (size_t i = 0; i < len; ++i) {
+                result.push_back(static_cast<wchar_t>(static_cast<unsigned char>(name[i])));
+            }
+            return result;
+        }
 
         std::unordered_map<std::type_index, Registration> m_registrations;
         std::unordered_map<std::type_index, std::shared_ptr<void>> m_singletons;
