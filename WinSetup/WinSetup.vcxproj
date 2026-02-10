@@ -101,7 +101,7 @@
     <ClInclude Include="src\abstractions\repositories\IVolumeRepository.h" />
     <ClInclude Include="src\abstractions\services\platform\ISystemInfoService.h" />
     <ClInclude Include="src\abstractions\services\platform\ITextEncoder.h" />
-    <ClInclude Include="src\abstractions\services\platform\IThreadPool.h" />
+    <ClInclude Include="src\abstractions\infrastructure\async\IThreadPool.h" />
     <ClInclude Include="src\abstractions\services\storage\IDiskService.h" />
     <ClInclude Include="src\abstractions\services\storage\IDriverService.h" />
     <ClInclude Include="src\abstractions\services\storage\IImagingService.h" />
@@ -206,7 +206,9 @@
   <ItemGroup>
     <None Include="docs\API_REFERENCE.md" />
     <None Include="docs\IMPLEMENTATION_GUIDE.md" />
+    <None Include="docs\OPTIMIZATION_SUMMARY.md" />
     <None Include="docs\PERFORMANCE_TUNING.md" />
+    <None Include="src\lib\libwim-15.dll" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="src\lib\libwim.lib" />
