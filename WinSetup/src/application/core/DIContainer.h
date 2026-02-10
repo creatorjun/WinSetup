@@ -26,18 +26,18 @@ namespace winsetup::application {
     public:
         template<typename TInterface, typename TImplementation>
         void Register(ServiceLifetime lifetime = ServiceLifetime::Singleton) {
-            std::unique_lock lock(m_mutex);
+            std::unique_lock lock(mMutex);
 
             auto factory = [this]() -> std::shared_ptr<void> {
                 return std::make_shared<TImplementation>();
                 };
 
-            m_registrations[std::type_index(typeid(TInterface))] = { factory, lifetime };
+            mregistrations[std::type_index(typeid(TInterface))] = { factory, lifetime };
         }
 
         template<typename TInterface, typename TImplementation, typename... TDeps>
         void RegisterWithDependencies(ServiceLifetime lifetime = ServiceLifetime::Singleton) {
-            std::unique_lock lock(m_mutex);
+            std::unique_lock lock(mMutex);
 
             auto factory = [this]() -> std::shared_ptr<void> {
                 auto resolveDep = [this]<typename T>() -> std::shared_ptr<T> {
@@ -63,21 +63,21 @@ namespace winsetup::application {
                     }, deps);
                 };
 
-            m_registrations[std::type_index(typeid(TInterface))] = { factory, lifetime };
+            mregistrations[std::type_index(typeid(TInterface))] = { factory, lifetime };
         }
 
         template<typename TInterface>
         void RegisterInstance(std::shared_ptr<TInterface> instance) {
-            std::unique_lock lock(m_mutex);
+            std::unique_lock lock(mMutex);
 
             auto typeIndex = std::type_index(typeid(TInterface));
-            m_singletons[typeIndex] = instance;
+            msingletons[typeIndex] = instance;
 
             auto factory = [instance]() -> std::shared_ptr<void> {
                 return instance;
                 };
 
-            m_registrations[typeIndex] = { factory, ServiceLifetime::Singleton };
+            mregistrations[typeIndex] = { factory, ServiceLifetime::Singleton };
         }
 
         template<typename TInterface>
@@ -85,10 +85,10 @@ namespace winsetup::application {
             auto typeIndex = std::type_index(typeid(TInterface));
 
             {
-                std::shared_lock readLock(m_mutex);
+                std::shared_lock readLock(mMutex);
 
-                auto regIt = m_registrations.find(typeIndex);
-                if (regIt == m_registrations.end()) {
+                auto regIt = mregistrations.find(typeIndex);
+                if (regIt == mregistrations.end()) {
                     return domain::Error{
                         L"Service not registered: " + GetTypeName<TInterface>(),
                         0,
@@ -96,18 +96,20 @@ namespace winsetup::application {
                     };
                 }
 
-                if (regIt->second.lifetime == ServiceLifetime::Singleton) {
-                    auto singletonIt = m_singletons.find(typeIndex);
-                    if (singletonIt != m_singletons.end()) {
+                const auto& [factory, lifetime] = regIt->second;
+
+                if (lifetime == ServiceLifetime::Singleton) {
+                    auto singletonIt = msingletons.find(typeIndex);
+                    if (singletonIt != msingletons.end()) {
                         return std::static_pointer_cast<TInterface>(singletonIt->second);
                     }
                 }
             }
 
-            std::unique_lock writeLock(m_mutex);
+            std::unique_lock writeLock(mMutex);
 
-            auto regIt = m_registrations.find(typeIndex);
-            if (regIt == m_registrations.end()) {
+            auto regIt = mregistrations.find(typeIndex);
+            if (regIt == mregistrations.end()) {
                 return domain::Error{
                     L"Service not registered: " + GetTypeName<TInterface>(),
                     0,
@@ -118,8 +120,8 @@ namespace winsetup::application {
             const auto& [factory, lifetime] = regIt->second;
 
             if (lifetime == ServiceLifetime::Singleton) {
-                auto singletonIt = m_singletons.find(typeIndex);
-                if (singletonIt != m_singletons.end()) {
+                auto singletonIt = msingletons.find(typeIndex);
+                if (singletonIt != msingletons.end()) {
                     return std::static_pointer_cast<TInterface>(singletonIt->second);
                 }
 
@@ -132,7 +134,7 @@ namespace winsetup::application {
                     };
                 }
 
-                m_singletons[typeIndex] = instance;
+                msingletons[typeIndex] = instance;
                 return std::static_pointer_cast<TInterface>(instance);
             }
 
@@ -149,9 +151,9 @@ namespace winsetup::application {
         }
 
         void Clear() {
-            std::unique_lock lock(m_mutex);
-            m_singletons.clear();
-            m_registrations.clear();
+            std::unique_lock lock(mMutex);
+            msingletons.clear();
+            mregistrations.clear();
         }
 
     private:
@@ -165,7 +167,7 @@ namespace winsetup::application {
             const char* name = typeid(T).name();
             size_t len = 0;
             while (name[len] != '\0') {
-                ++len;
+                len++;
             }
 
             std::wstring result;
@@ -176,9 +178,9 @@ namespace winsetup::application {
             return result;
         }
 
-        std::unordered_map<std::type_index, Registration> m_registrations;
-        std::unordered_map<std::type_index, std::shared_ptr<void>> m_singletons;
-        mutable std::shared_mutex m_mutex;
+        std::unordered_map<std::type_index, Registration> mregistrations;
+        std::unordered_map<std::type_index, std::shared_ptr<void>> msingletons;
+        mutable std::shared_mutex mMutex;
     };
 
 }
