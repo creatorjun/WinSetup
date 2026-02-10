@@ -5,7 +5,6 @@
 #include <domain/memory/UniqueHandle.h>
 #include <string>
 #include <mutex>
-#include <atomic>
 
 namespace winsetup::adapters::platform {
 
@@ -26,17 +25,18 @@ namespace winsetup::adapters::platform {
         void Flush();
 
     private:
-        static constexpr size_t BUFFER_SIZE = 16384;
-        static constexpr size_t FLUSH_THRESHOLD = 12288;
-
-        void FlushBuffer();
+        void FlushBufferUnsafe();
         const wchar_t* GetLevelString(abstractions::LogLevel level) const noexcept;
         void FormatTimestamp(wchar_t* buffer, size_t bufferSize) const noexcept;
+        bool EnsureFileOpen();
 
         domain::UniqueHandle m_hFile;
         std::mutex m_mutex;
         std::wstring m_buffer;
-        std::atomic<bool> m_shouldFlush;
+        std::wstring m_logFilePath;
+
+        static constexpr size_t BUFFER_SIZE = 16384;
+        static constexpr size_t FLUSH_THRESHOLD = 8192;
     };
 
 }

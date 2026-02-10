@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <application/core/DIContainer.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
+#include <adapters/ui/win32/Win32MainWindow.h>
 #include "ServiceRegistration.h"
 #include <memory>
 
@@ -41,7 +42,24 @@ int WINAPI wWinMain(
     }
 
     auto logger = loggerResult.Value();
-    logger->Info(L"WinSetup started successfully");
+    logger->Info(L"========================================");
+    logger->Info(L"WinSetup Application Starting");
+    logger->Info(L"========================================");
+
+    auto mainWindow = std::make_unique<adapters::ui::Win32MainWindow>(logger);
+
+    if (!mainWindow->Create(hInstance, nShowCmd)) {
+        logger->Fatal(L"Failed to create main window");
+        MessageBoxW(
+            nullptr,
+            L"Failed to create main window",
+            L"Error",
+            MB_OK | MB_ICONERROR
+        );
+        return 1;
+    }
+
+    logger->Info(L"Main window created, entering message loop");
 
     MSG msg = {};
     while (GetMessage(&msg, nullptr, 0, 0)) {
@@ -49,7 +67,9 @@ int WINAPI wWinMain(
         DispatchMessage(&msg);
     }
 
-    logger->Info(L"WinSetup shutting down");
+    logger->Info(L"========================================");
+    logger->Info(L"WinSetup Application Shutting Down");
+    logger->Info(L"========================================");
 
     return static_cast<int>(msg.wParam);
 }
