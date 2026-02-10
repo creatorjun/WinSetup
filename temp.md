@@ -1,28 +1,180 @@
-﻿1️⃣ Win32TypeMapper (최우선)
-Windows API 타입을 도메인 타입으로 변환하는 핵심 어댑터
+﻿계획서와 실제 구현을 철저히 비교 분석한 결과를 보고드립니다.
 
-BusType, DiskType 등을 Windows의 STORAGE_BUS_TYPE, MEDIA_TYPE에서 변환
+## 📋 구현 검토 결과
 
-Win32DiskService가 실제 디스크 정보를 제대로 가져오려면 필수
+### ✅ **계획서 대비 제대로 구현된 부분**
 
-2️⃣ VolumeInfo 엔티티
-Win32VolumeService에서 사용
+#### 1. **Domain Layer - 핵심 엔티티**
+- ✅ `DiskInfo` - 완벽 구현
+- ✅ `VolumeInfo` - 완벽 구현  
+- ✅ `PartitionInfo` - 완벽 구현
+- ✅ `SystemInfo` - 완벽 구현 (방금 추가)
+- ✅ `SetupConfig` - 구현됨
 
-볼륨 정보 관리 (드라이브 레터, 파일 시스템, 크기 등)
+#### 2. **Domain Layer - Primitives**
+- ✅ `Expected<T>` - Monadic 연산 구현
+- ✅ `Error` - 구조화된 에러 완성
+- ✅ `UniqueHandle` / `UniqueLibrary` / `UniqueFindHandle` - RAII 완성
 
-이미 헤더 파일에 정의되어 있지만 cpp 구현 필요
+#### 3. **Domain Layer - Services**
+- ✅ `DiskSortingService` - 완성
+- ✅ `PartitionAnalyzer` - 완성
 
-3️⃣ SystemInfo 엔티티
-시스템 전체 정보를 담는 집합체
+#### 4. **Adapters Layer - Win32**
+- ✅ `Win32TypeMapper` - 완벽한 타입 변환
+- ✅ `Win32Logger` - 버퍼링 + 파일/콘솔/디버그 출력
+- ✅ `Win32DiskService` - 기본 골격
+- ✅ `Win32VolumeService` - 기본 골격
+- ✅ `Win32SystemInfoService` - 기본 골격
 
-디스크/볼륨 정보를 모아서 관리
+#### 5. **Application Layer**
+- ✅ `DIContainer` - 의존성 주입 완성
+- ✅ Use Cases 골격 구현
 
-UseCase에서 사용할 핵심 데이터 구조
+***
 
-4️⃣ Use Cases 구현
-EnumerateDisksUseCase - 디스크 목록 조회
+### ⚠️ **계획서보다 구현이 미흡한 부분 (심각도 순)**
 
-AnalyzeDisksUseCase - 디스크 분석
+#### 🔴 **Critical - 핵심 저수준 최적화 미구현**
 
-AnalyzeSystemUseCase - 시스템 분석
+1. **MFTScanner - MFT 직접 읽기 (계획서 핵심 기능)**
+   ```
+   계획서: FSCTL_ENUM_USN_DATA로 MFT 직접 읽기, O(1) 파일 존재 확인
+   실제: 헤더만 있고 구현체(.cpp) 없음
+   영향: 볼륨 분석 성능 목표 "10개 < 1초" 달성 불가
+   ```
 
+2. **AsyncIOCTL - 진정한 비동기 I/O (계획서 핵심 기능)**
+   ```
+   계획서: OVERLAPPED 구조체 + CreateThread로 진정한 비동기
+   실제: 헤더만 있고 구현체(.cpp) 없음
+   영향: 디스크 열거 성능 목표 "10개 < 3초" 달성 불가
+   ```
+
+3. **DiskTransaction - 트랜잭션 롤백 (계획서 핵심 기능)**
+   ```
+   계획서: 백업 레이아웃 저장 → 실패 시 자동 롤백
+   실제: 헤더만 있고 구현체(.cpp) 없음
+   영향: 안정성 목표 95/100 달성 불가
+   ```
+
+4. **WimlibOptimizer - 이미징 최적화 (계획서 핵심 기능)**
+   ```
+   계획서: 코어 제한, 메모리 풀, VirtualAlloc 최적화
+   실제: 헤더만 있고 구현체(.cpp) 없음
+   영향: Config.ini 예상 시간 준수 불가
+   ```
+
+5. **SMBIOSParser - SMBIOS 파싱 (계획서 핵심 기능)**
+   ```
+   계획서: GetSystemFirmwareTable로 메인보드/BIOS 정보
+   실제: 헤더만 있고 구현체(.cpp) 없음
+   영향: SystemInfo 정확한 하드웨어 정보 수집 불가
+   ```
+
+#### 🟡 **Medium - 중요 구현 누락**
+
+6. **Win32DiskService - IOCTL 실제 구현 부족**
+   ```
+   계획서: IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, IOCTL_DISK_SET_PARTITION_INFO 등 15개+
+   실제: GetDiskInfo 일부만 구현, CleanDisk/CreatePartitionLayout/FormatPartition 빈 껍데기
+   영향: 실제 디스크 작업 불가
+   ```
+
+7. **Win32VolumeService - 볼륨 작업 미구현**
+   ```
+   계획서: FindFirstVolume, FindNextVolume, GetVolumeInformation
+   실제: EnumerateVolumes/GetVolumeInfo 빈 껍데기만 반환
+   영향: 볼륨 정보 수집 불가
+   ```
+
+8. **Task<T> - 코루틴 구현 누락**
+   ```
+   계획서: 표준 C++20 코루틴 완전 구현
+   실제: 헤더만 있고 .cpp 파일 없음
+   영향: 비동기 UseCase 실행 불가
+   ```
+
+9. **EventBus - 이벤트 버스 구현 누락**
+   ```
+   계획서: Publish/Subscribe 패턴 완성
+   실제: 헤더만 있고 .cpp 파일 없음
+   영향: 도메인 이벤트 처리 불가
+   ```
+
+#### 🟢 **Low - 보완 필요**
+
+10. **Win32SystemInfoService - 하드웨어 정보 하드코딩**
+    ```
+    계획서: GetSystemFirmwareTable 사용
+    실제: "Unknown Motherboard", 8GB 하드코딩
+    영향: 정확한 시스템 분석 불가
+    ```
+
+11. **PoolAllocator - 메모리 풀 구현 누락**
+    ```
+    계획서: 4096 블록 크기 메모리 풀
+    실제: 헤더만 있고 .cpp 없음
+    영향: 성능 최적화 누락
+    ```
+
+12. **DiskLayoutBuilder - 파티션 레이아웃 빌더 누락**
+    ```
+    계획서: GPT/MBR 레이아웃 빌드
+    실제: 헤더만 있고 .cpp 없음
+    영향: 파티션 생성 자동화 불가
+    ```
+
+***
+
+### 📊 **구현 완성도 평가**
+
+| 계층 | 계획서 목표 | 실제 구현 | 완성도 |
+|------|------------|----------|--------|
+| **Domain Entities** | 5개 | 5개 완성 | ✅ 100% |
+| **Domain Primitives** | Expected, Error, RAII | 완성 | ✅ 100% |
+| **Domain Services** | 3개 | 2개 완성 | ✅ 67% |
+| **Adapters - 저수준** | 8개 핵심 구현 | **2개만 완성** | 🔴 **25%** |
+| **Adapters - Win32** | IOCTL 완전 구현 | 기본 골격만 | 🟡 **40%** |
+| **Application** | DIContainer + Task | DIContainer만 | 🟡 **50%** |
+| **전체** | - | - | 🟡 **약 60%** |
+
+***
+
+### 🎯 **우선순위 구현 로드맵**
+
+#### **Phase A (Critical) - 1주**
+1. ✅ `SystemInfo` 완성 (방금 완료)
+2. 🔴 `MFTScanner.cpp` 구현 - 볼륨 고속 스캔
+3. 🔴 `AsyncIOCTL.cpp` 구현 - 비동기 IOCTL
+4. 🔴 `DiskTransaction.cpp` 구현 - 트랜잭션 롤백
+5. 🔴 `SMBIOSParser.cpp` 구현 - 하드웨어 정보
+
+#### **Phase B (High) - 1주**
+6. 🔴 `Win32DiskService` IOCTL 완전 구현
+7. 🔴 `Win32VolumeService` 완전 구현
+8. 🔴 `WimlibOptimizer.cpp` 구현
+9. 🟡 `Task.cpp` 코루틴 완성
+
+#### **Phase C (Medium) - 3일**
+10. 🟡 `EventBus.cpp` 완성
+11. 🟡 `DiskLayoutBuilder.cpp` 완성
+12. 🟡 `PoolAllocator.cpp` 완성
+
+***
+
+### 💡 **핵심 결론**
+
+**현재 상태:**
+- ✅ **Domain Layer (엔티티/기본 타입)**: 계획서 수준 달성
+- ✅ **아키텍처 구조**: 클린 아키텍처 계층 분리 완벽
+- 🔴 **저수준 최적화**: 계획서 핵심 5개 기능 **모두 미구현**
+- 🟡 **Win32 실제 구현**: 골격만 있고 IOCTL 로직 부족
+
+**계획서 대비 부족한 점:**
+1. 성능 최적화 핵심(MFT, AsyncIOCTL) **완전 누락**
+2. 안정성 핵심(Transaction) **완전 누락**
+3. 실제 동작 로직(Win32 Services) **40% 미구현**
+
+**권장 조치:**
+현재는 **"아키텍처 골격은 완벽, 실제 동작 엔진은 미완성"** 상태입니다. Phase A의 Critical 항목 5개를 최우선으로 구현해야 계획서 수준에 도달합니다.
