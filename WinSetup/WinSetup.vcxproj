@@ -202,6 +202,11 @@
     <ClInclude Include="src\main\ServiceRegistration.h" />
     <ClInclude Include="src\resources\resource.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="docs\API_REFERENCE.md" />
+    <None Include="docs\IMPLEMENTATION_GUIDE.md" />
+    <None Include="docs\PERFORMANCE_TUNING.md" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

@@ -558,4 +558,9 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="docs\API_REFERENCE.md" />
+    <None Include="docs\IMPLEMENTATION_GUIDE.md" />
+    <None Include="docs\PERFORMANCE_TUNING.md" />
+  </ItemGroup>
 </Project>

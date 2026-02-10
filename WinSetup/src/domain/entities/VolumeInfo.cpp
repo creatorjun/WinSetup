@@ -2,4 +2,5 @@
 #include "VolumeInfo.h"
 
 namespace winsetup::domain {
+
 }

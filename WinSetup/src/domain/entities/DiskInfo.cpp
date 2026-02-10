@@ -2,4 +2,5 @@
 #include "DiskInfo.h"
 
 namespace winsetup::domain {
+
 }

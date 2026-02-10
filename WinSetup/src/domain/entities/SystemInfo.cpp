@@ -2,4 +2,5 @@
 #include "SystemInfo.h"
 
 namespace winsetup::domain {
+
 }
