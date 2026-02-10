@@ -199,6 +199,7 @@
     <ClInclude Include="src\domain\valueobjects\DriveLetter.h" />
     <ClInclude Include="src\domain\valueobjects\FileSystemType.h" />
     <ClInclude Include="src\domain\valueobjects\PartitionType.h" />
+    <ClInclude Include="src\lib\wimlib.h" />
     <ClInclude Include="src\main\ServiceRegistration.h" />
     <ClInclude Include="src\resources\resource.h" />
   </ItemGroup>
@@ -206,6 +207,9 @@
     <None Include="docs\API_REFERENCE.md" />
     <None Include="docs\IMPLEMENTATION_GUIDE.md" />
     <None Include="docs\PERFORMANCE_TUNING.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="src\lib\libwim.lib" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
@@ -305,7 +309,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;WIMLIB_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
@@ -327,7 +331,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;WIMLIB_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
