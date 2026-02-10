@@ -4,6 +4,7 @@
 #include <abstractions/services/storage/IDiskService.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
 #include <domain/memory/UniqueHandle.h>
+#include <Windows.h>
 #include <memory>
 #include <vector>
 
@@ -49,7 +50,14 @@ namespace winsetup::adapters::platform {
     private:
         [[nodiscard]] domain::UniqueHandle OpenDiskHandle(uint32_t diskIndex);
 
-        std::shared_ptr<abstractions::ILogger> m_logger;
+        [[nodiscard]] domain::Expected<DISK_GEOMETRY_EX> GetDiskGeometry(HANDLE hDisk);
+
+        [[nodiscard]] domain::Expected<std::wstring> GetPartitionVolumePath(
+            uint32_t diskIndex,
+            uint32_t partitionIndex
+        );
+
+        std::shared_ptr<abstractions::ILogger> mLogger;
     };
 
 }
