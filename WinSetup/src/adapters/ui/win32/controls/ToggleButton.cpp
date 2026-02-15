@@ -106,8 +106,8 @@ namespace winsetup::adapters::ui {
     }
 
     void ToggleButton::CleanupCache() {
-        m_cache.hBitmap = domain::UniqueHandle();
-        m_cache.hMemDC = domain::UniqueHandle();
+        m_cache.hBitmap = adapters::platform::UniqueHandle();
+        m_cache.hMemDC = adapters::platform::UniqueHandle();
         m_cache.isDirty = true;
     }
 

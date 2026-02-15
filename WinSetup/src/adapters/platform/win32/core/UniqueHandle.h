@@ -1,10 +1,10 @@
-﻿// src/domain/memory/UniqueHandle.h
+// src/adapters/platform/win32/core/UniqueHandle.h
 #pragma once
 
 #include <utility>
 #include <cstdint>
 
-namespace winsetup::domain {
+namespace winsetup::adapters::platform {
 
     using NativeHandle = void*;
     using HandleDeleterFunc = void(*)(NativeHandle) noexcept;

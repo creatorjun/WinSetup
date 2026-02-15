@@ -1,9 +1,9 @@
 ﻿// src/adapters/platform/win32/storage/Win32VolumeService.h
 #pragma once
 
-#include "../../../../abstractions/services/storage/IVolumeService.h"
-#include "../../../../abstractions/infrastructure/logging/ILogger.h"
-#include "../../../../domain/memory/UniqueHandle.h"
+#include <abstractions/services/storage/IVolumeService.h>
+#include <abstractions/infrastructure/logging/ILogger.h>
+#include <adapters/platform/win32/core/UniqueHandle.h>
 #include <memory>
 #include <Windows.h>
 

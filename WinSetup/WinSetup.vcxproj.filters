@@ -165,9 +165,6 @@
     <ClCompile Include="src\domain\memory\PoolAllocator.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\domain\memory\UniqueHandle.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="src\domain\primitives\Error.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -205,6 +202,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\adapters\platform\win32\core\Win32StringHelper.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\platform\win32\core\UniqueHandle.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -443,15 +443,6 @@
     <ClInclude Include="src\domain\memory\PoolAllocator.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\domain\memory\UniqueFindHandle.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\domain\memory\UniqueHandle.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\domain\memory\UniqueLibrary.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="src\domain\primitives\Error.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -558,6 +549,15 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\abstractions\services\platform\IThreadPool.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\core\UniqueHandle.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\core\UniqueLibrary.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\platform\win32\core\UniqueFindHandle.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

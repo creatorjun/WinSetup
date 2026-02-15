@@ -3,7 +3,7 @@
 
 #include <abstractions/services/storage/IDiskService.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
-#include <domain/memory/UniqueHandle.h>
+#include <adapters/platform/win32/core/UniqueHandle.h>
 #include <Windows.h>
 #include <memory>
 #include <vector>
@@ -48,7 +48,7 @@ namespace winsetup::adapters::platform {
             ) override;
 
     private:
-        [[nodiscard]] domain::UniqueHandle OpenDiskHandle(uint32_t diskIndex);
+        [[nodiscard]] adapters::platform::UniqueHandle OpenDiskHandle(uint32_t diskIndex);
 
         [[nodiscard]] domain::Expected<DISK_GEOMETRY_EX> GetDiskGeometry(HANDLE hDisk);
 

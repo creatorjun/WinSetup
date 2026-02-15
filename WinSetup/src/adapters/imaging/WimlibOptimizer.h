@@ -3,7 +3,7 @@
 
 #include <abstractions/services/storage/IImagingService.h>
 #include <domain/primitives/Expected.h>
-#include <domain/memory/UniqueHandle.h>
+#include <adapters/platform/win32/core/UniqueHandle.h>
 #include <cstdint>
 #include <memory>
 #include <atomic>
@@ -142,7 +142,7 @@ namespace winsetup::adapters {
         std::atomic<bool> mInitialized;
         std::atomic<uint64_t> mPeakMemory;
 
-        domain::UniqueHandle mJobObject;
+        platform::UniqueHandle mJobObject;
 
         static constexpr uint32_t MIN_CHUNK_SIZE_KB = 32;
         static constexpr uint32_t MAX_CHUNK_SIZE_KB = 32768;

@@ -1,9 +1,9 @@
-﻿// src/domain/memory/UniqueLibrary.h
+// src/adapters/platform/win32/core/UniqueLibrary.h
 #pragma once
 
 #include "UniqueHandle.h"
 
-namespace winsetup::domain {
+namespace winsetup::adapters::platform {
 
     class UniqueLibrary {
     public:

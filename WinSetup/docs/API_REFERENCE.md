@@ -21,7 +21,18 @@
 
 4. [Adapters 계층 API](#adapters-계층-api)
    - [Win32 Platform](#win32-platform)
+     - [NativeHandle](#nativehandle)
+     - [HandleDeleterFunc](#handledeleterfunc)
+     - [InvalidHandleValue](#invalidhandlevalue)
+     - [UniqueHandle](#uniquehandle)
+     - [UniqueLibrary](#uniquelibrary)
+     - [UniqueFindHandle](#uniquefindhandle)
+     - [Win32HandleFactory](#win32handlefactory)
+     - [Win32Logger](#win32logger)
+     - [Win32StringHelper](#win32stringhelper)
    - [Storage](#storage)
+     - [DiskTransaction](#disktransaction)
+     - [MFTScanner](#mftscanner)
    - [Imaging](#imaging)
 
 ---
@@ -1525,136 +1536,443 @@ auto result = task.GetResult();
 
 ### Win32 Platform
 
+#### NativeHandle
+
+**네임스페이스**: `winsetup::adapters::platform`
+
+**설명**: 플랫폼 독립적인 핸들 타입 별칭.
+
+```cpp
+using NativeHandle = void*;
+```
+
+**용도**: Windows HANDLE을 추상화하여 타입 안전성을 제공합니다.
+
+---
+
+#### HandleDeleterFunc
+
+**네임스페이스**: `winsetup::adapters::platform`
+
+**설명**: 핸들 해제 함수 포인터 타입.
+
+```cpp
+using HandleDeleterFunc = void(*)(NativeHandle) noexcept;
+```
+
+**예제**:
+```cpp
+void CustomDeleter(NativeHandle handle) noexcept {
+    if (handle) {
+        CloseCustomHandle(static_cast<CustomHandleType>(handle));
+    }
+}
+
+UniqueHandle customHandle(myHandle, CustomDeleter);
+```
+
+---
+
+#### InvalidHandleValue
+
+**네임스페이스**: `winsetup::adapters::platform`
+
+**설명**: 무효한 핸들 값을 반환합니다.
+
+```cpp
+inline constexpr NativeHandle InvalidHandleValue() noexcept;
+```
+
+**반환값**: `INVALID_HANDLE_VALUE`에 해당하는 값 (`(void*)-1`)
+
+**예제**:
+```cpp
+if (handle.Get() == InvalidHandleValue()) {
+    logger->Error(L"Invalid handle");
+}
+```
+
+---
+
 #### UniqueHandle
 
-**네임스페이스**: `winsetup::adapters::win32`
+**네임스페이스**: `winsetup::adapters::platform`
 
-**설명**: HANDLE의 RAII 래퍼.
+**설명**: Windows HANDLE의 RAII 래퍼. 자동으로 리소스를 해제합니다.
 
 **생성자**:
 ```cpp
-explicit UniqueHandle(HANDLE handle = INVALID_HANDLE_VALUE) noexcept;
+explicit UniqueHandle(
+    NativeHandle handle = nullptr,
+    HandleDeleterFunc deleter = nullptr
+) noexcept;
 ```
+
+**파라미터**:
+- `handle`: 네이티브 핸들
+- `deleter`: 핸들 해제 함수
 
 **주요 메서드**:
 
 ##### Get
 ```cpp
-[[nodiscard]] HANDLE Get() const noexcept;
+[[nodiscard]] NativeHandle Get() const noexcept;
 ```
 핸들을 가져옵니다.
 
+**반환값**: 네이티브 핸들
+
 ##### Release
 ```cpp
-[[nodiscard]] HANDLE Release() noexcept;
+[[nodiscard]] NativeHandle Release() noexcept;
 ```
-소유권을 포기하고 핸들을 반환합니다.
+소유권을 포기하고 핸들을 반환합니다. 이후 자동 해제되지 않습니다.
+
+**반환값**: 네이티브 핸들
 
 ##### Reset
 ```cpp
-void Reset(HANDLE handle = INVALID_HANDLE_VALUE) noexcept;
+void Reset(
+    NativeHandle handle = nullptr,
+    HandleDeleterFunc deleter = nullptr
+) noexcept;
 ```
-새 핸들로 교체합니다.
+기존 핸들을 해제하고 새 핸들로 교체합니다.
+
+**파라미터**:
+- `handle`: 새 핸들
+- `deleter`: 새 해제 함수
+
+##### operator bool
+```cpp
+[[nodiscard]] explicit operator bool() const noexcept;
+```
+핸들이 유효한지 확인합니다.
+
+**반환값**: 유효하면 `true`, 그렇지 않으면 `false`
 
 **예제**:
 ```cpp
-UniqueHandle hDisk(CreateFile(
-    L"\\\\.\\PhysicalDrive0",
-    GENERIC_READ,
-    FILE_SHARE_READ,
-    nullptr,
-    OPEN_EXISTING,
-    0,
-    nullptr
-));
+auto hDisk = Win32HandleFactory::MakeHandle(
+    CreateFileW(
+        L"\\\\.\\PhysicalDrive0",
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr,
+        OPEN_EXISTING,
+        0,
+        nullptr
+    )
+);
 
 if (hDisk) {
-    // 핸들 사용
-    DeviceIoControl(hDisk.Get(), ...);
+    DWORD bytesReturned;
+    DeviceIoControl(
+        Win32HandleFactory::ToWin32Handle(hDisk),
+        IOCTL_DISK_GET_DRIVE_GEOMETRY,
+        nullptr, 0,
+        &geometry, sizeof(geometry),
+        &bytesReturned,
+        nullptr
+    );
 }
 // 자동으로 CloseHandle 호출됨
 ```
 
 ---
 
-#### Win32HandleFactory
+#### UniqueLibrary
 
-**네임스페이스**: `winsetup::adapters::win32`
+**네임스페이스**: `winsetup::adapters::platform`
 
-**설명**: Win32 핸들 생성 팩토리.
+**설명**: Windows DLL 핸들(HMODULE)의 RAII 래퍼.
 
-**주요 메서드**:
-
-##### OpenDisk
+**생성자**:
 ```cpp
-[[nodiscard]] static Expected<UniqueHandle> OpenDisk(
-    uint32_t diskIndex,
-    DWORD accessFlags = GENERIC_READ | GENERIC_WRITE
-);
+explicit UniqueLibrary(
+    NativeHandle handle = nullptr,
+    HandleDeleterFunc deleter = nullptr
+) noexcept;
 ```
-디스크를 엽니다.
 
-**파라미터**:
-- `diskIndex`: 디스크 인덱스
-- `accessFlags`: 접근 플래그
-
-**반환값**: 핸들 또는 에러
+**주요 메서드**: UniqueHandle과 동일하나 `FreeLibrary`로 해제됩니다.
 
 **예제**:
 ```cpp
-auto handleResult = Win32HandleFactory::OpenDisk(0);
-if (handleResult.HasValue()) {
-    UniqueHandle hDisk = std::move(handleResult.Value());
-    // 핸들 사용
+auto hLib = Win32HandleFactory::MakeLibrary(
+    LoadLibraryW(L"wimgapi.dll")
+);
+
+if (hLib) {
+    auto proc = GetProcAddress(
+        Win32HandleFactory::ToWin32Module(hLib),
+        "WIMCreateFile"
+    );
 }
+// 자동으로 FreeLibrary 호출됨
 ```
 
-##### OpenVolume
+---
+
+#### UniqueFindHandle
+
+**네임스페이스**: `winsetup::adapters::platform`
+
+**설명**: Windows 파일 검색 핸들의 RAII 래퍼.
+
+**생성자**:
 ```cpp
-[[nodiscard]] static Expected<UniqueHandle> OpenVolume(
-    const std::wstring& volumePath,
-    DWORD accessFlags = GENERIC_READ
-);
+explicit UniqueFindHandle(
+    NativeHandle handle = nullptr,
+    HandleDeleterFunc deleter = nullptr
+) noexcept;
 ```
-볼륨을 엽니다.
+
+**주요 메서드**: UniqueHandle과 동일하나 `FindClose`로 해제됩니다.
+
+**예제**:
+```cpp
+WIN32_FIND_DATAW findData;
+auto hFind = Win32HandleFactory::MakeFindHandle(
+    FindFirstFileW(L"C:\\Windows\\*", &findData)
+);
+
+if (hFind) {
+    do {
+        std::wcout << findData.cFileName << std::endl;
+    } while (FindNextFileW(
+        Win32HandleFactory::ToWin32FindHandle(hFind),
+        &findData
+    ));
+}
+// 자동으로 FindClose 호출됨
+```
+
+---
+
+#### Win32HandleFactory
+
+**네임스페이스**: `winsetup::adapters::platform`
+
+**설명**: Win32 핸들 생성 및 변환 팩토리. RAII 래퍼 생성과 네이티브 핸들 변환을 제공합니다.
+
+**정적 팩토리 메서드**:
+
+##### MakeHandle
+```cpp
+[[nodiscard]] static UniqueHandle MakeHandle(HANDLE h) noexcept;
+```
+일반 HANDLE을 UniqueHandle로 래핑합니다 (CloseHandle로 해제).
+
+**파라미터**:
+- `h`: Windows HANDLE
+
+**반환값**: UniqueHandle
+
+**예제**:
+```cpp
+HANDLE hRaw = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+auto hEvent = Win32HandleFactory::MakeHandle(hRaw);
+```
+
+##### MakeLibrary
+```cpp
+[[nodiscard]] static UniqueLibrary MakeLibrary(HMODULE h) noexcept;
+```
+HMODULE을 UniqueLibrary로 래핑합니다 (FreeLibrary로 해제).
+
+##### MakeFindHandle
+```cpp
+[[nodiscard]] static UniqueFindHandle MakeFindHandle(HANDLE h) noexcept;
+```
+파일 검색 핸들을 UniqueFindHandle로 래핑합니다 (FindClose로 해제).
+
+##### MakeFindVolumeHandle
+```cpp
+[[nodiscard]] static UniqueFindHandle MakeFindVolumeHandle(HANDLE h) noexcept;
+```
+볼륨 검색 핸들을 UniqueFindHandle로 래핑합니다 (FindVolumeClose로 해제).
+
+##### MakeGdiObject
+```cpp
+[[nodiscard]] static UniqueHandle MakeGdiObject(HGDIOBJ h) noexcept;
+```
+GDI 객체를 UniqueHandle로 래핑합니다 (DeleteObject로 해제).
+
+##### MakeDC
+```cpp
+[[nodiscard]] static UniqueHandle MakeDC(HDC h) noexcept;
+```
+Device Context를 UniqueHandle로 래핑합니다 (DeleteDC로 해제).
+
+**변환 메서드**:
+
+##### ToWin32Handle
+```cpp
+[[nodiscard]] static HANDLE ToWin32Handle(const UniqueHandle& handle) noexcept;
+```
+UniqueHandle을 Windows HANDLE로 변환합니다.
+
+##### ToWin32Module
+```cpp
+[[nodiscard]] static HMODULE ToWin32Module(const UniqueLibrary& lib) noexcept;
+```
+UniqueLibrary를 HMODULE로 변환합니다.
+
+##### ToWin32FindHandle
+```cpp
+[[nodiscard]] static HANDLE ToWin32FindHandle(const UniqueFindHandle& handle) noexcept;
+```
+UniqueFindHandle을 HANDLE로 변환합니다.
+
+##### ToWin32GdiObject / ToWin32Font / ToWin32Brush / ToWin32Pen / ToWin32Bitmap
+```cpp
+[[nodiscard]] static HGDIOBJ ToWin32GdiObject(const UniqueHandle& handle) noexcept;
+[[nodiscard]] static HFONT ToWin32Font(const UniqueHandle& handle) noexcept;
+[[nodiscard]] static HBRUSH ToWin32Brush(const UniqueHandle& handle) noexcept;
+[[nodiscard]] static HPEN ToWin32Pen(const UniqueHandle& handle) noexcept;
+[[nodiscard]] static HBITMAP ToWin32Bitmap(const UniqueHandle& handle) noexcept;
+```
+GDI 객체를 각 타입으로 변환합니다.
+
+##### ToWin32DC
+```cpp
+[[nodiscard]] static HDC ToWin32DC(const UniqueHandle& handle) noexcept;
+```
+Device Context로 변환합니다.
+
+**완전한 예제**:
+```cpp
+// 디스크 핸들 생성 및 사용
+auto hDisk = Win32HandleFactory::MakeHandle(
+    CreateFileW(
+        L"\\\\.\\PhysicalDrive0",
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_NO_BUFFERING,
+        nullptr
+    )
+);
+
+if (!hDisk) {
+    logger->Error(L"Failed to open disk");
+    return;
+}
+
+DISK_GEOMETRY geometry;
+DWORD bytesReturned;
+
+BOOL success = DeviceIoControl(
+    Win32HandleFactory::ToWin32Handle(hDisk),
+    IOCTL_DISK_GET_DRIVE_GEOMETRY,
+    nullptr, 0,
+    &geometry, sizeof(geometry),
+    &bytesReturned,
+    nullptr
+);
+
+if (success) {
+    std::wcout << L"Cylinders: " << geometry.Cylinders.QuadPart << std::endl;
+}
+
+// hDisk는 스코프를 벗어나면 자동으로 CloseHandle 호출
+```
+
+---
+
+#### Win32Logger
+
+**네임스페이스**: `winsetup::adapters::platform`
+
+**설명**: 파일 기반 로거 구현. 비동기 버퍼링을 지원합니다.
+
+**생성자**:
+```cpp
+explicit Win32Logger(const std::wstring& logFilePath = L"log/log.txt");
+```
+
+**파라미터**:
+- `logFilePath`: 로그 파일 경로 (기본값: `log/log.txt`)
+
+**동작**:
+- 프로그램 시작 시 기존 로그 파일을 **덮어씁니다** (이전 로그 삭제)
+- `log` 디렉터리가 없으면 자동으로 생성합니다
+- 에러/치명적 로그는 즉시 디스크에 기록됩니다
+
+**주요 메서드**:
+
+##### Log
+```cpp
+void Log(
+    abstractions::LogLevel level,
+    const std::wstring& message,
+    const std::source_location& location
+) override;
+```
+로그를 기록합니다.
+
+##### Flush
+```cpp
+void Flush();
+```
+버퍼를 즉시 디스크에 기록합니다.
+
+**예제**:
+```cpp
+// 기본 경로 사용 (log/log.txt)
+auto logger = std::make_shared<Win32Logger>();
+
+// 사용자 정의 경로
+auto customLogger = std::make_shared<Win32Logger>(L"C:\\Setup\\install.log");
+
+logger->Info(L"Application started");
+logger->Error(L"Critical error occurred");  // 즉시 디스크에 기록
+logger->Flush();  // 버퍼 강제 플러시
+```
 
 ---
 
 #### Win32StringHelper
 
-**네임스페이스**: `winsetup::adapters::win32`
+**네임스페이스**: `winsetup::adapters::platform`
 
 **설명**: 문자열 변환 및 조작 유틸리티.
 
 **주요 메서드**:
 
-##### UTF8ToWide
+##### FormatDiskPath
 ```cpp
-[[nodiscard]] static Expected<std::wstring> UTF8ToWide(
-    const std::string& utf8
-);
+[[nodiscard]] static std::wstring FormatDiskPath(uint32_t diskIndex);
 ```
-UTF-8 문자열을 UTF-16으로 변환합니다.
-
-##### WideToUTF8
-```cpp
-[[nodiscard]] static Expected<std::string> WideToUTF8(
-    const std::wstring& wide
-);
-```
-UTF-16 문자열을 UTF-8로 변환합니다.
-
-##### FormatErrorMessage
-```cpp
-[[nodiscard]] static std::wstring FormatErrorMessage(DWORD errorCode);
-```
-Win32 에러 코드를 메시지로 변환합니다.
+디스크 인덱스를 경로 문자열로 변환합니다.
 
 **예제**:
 ```cpp
-DWORD error = GetLastError();
-std::wstring message = Win32StringHelper::FormatErrorMessage(error);
-logger->Error(message);
+std::wstring path = Win32StringHelper::FormatDiskPath(0);
+// "\\\\.\\PhysicalDrive0"
+```
+
+##### FormatMessage
+```cpp
+[[nodiscard]] static std::wstring FormatMessage(
+    const wchar_t* format,
+    uint32_t value
+);
+```
+포맷 문자열로 메시지를 생성합니다.
+
+##### UInt64ToString
+```cpp
+[[nodiscard]] static std::wstring UInt64ToString(uint64_t value);
+```
+정수를 문자열로 변환합니다.
+
+**예제**:
+```cpp
+uint64_t size = 500ULL * 1024 * 1024 * 1024;
+std::wstring sizeStr = Win32StringHelper::UInt64ToString(size);
 ```
 
 ---
@@ -1663,9 +1981,9 @@ logger->Error(message);
 
 #### DiskTransaction
 
-**네임스페이스**: `winsetup::adapters::win32`
+**네임스페이스**: `winsetup::adapters::platform`
 
-**설명**: Step 기반 디스크 트랜잭션.
+**설명**: Step 기반 디스크 트랜잭션. 롤백 가능한 디스크 작업을 제공합니다.
 
 **생성자**:
 ```cpp
@@ -1684,7 +2002,7 @@ DiskTransaction(
     std::function<Expected<void>()> operation
 );
 ```
-트랜잭션을 실행합니다.
+트랜잭션을 실행합니다. 실패 시 자동으로 롤백됩니다.
 
 ##### AddCleanDiskStep
 ```cpp
@@ -1712,7 +2030,7 @@ void AddFormatPartitionStep(
 ```cpp
 [[nodiscard]] Expected<void> ExecuteSteps();
 ```
-추가된 모든 단계를 실행합니다.
+추가된 모든 단계를 순서대로 실행합니다.
 
 **예제**:
 ```cpp
@@ -1741,9 +2059,9 @@ if (!result.HasValue()) {
 
 #### MFTScanner
 
-**네임스페이스**: `winsetup::adapters::win32`
+**네임스페이스**: `winsetup::adapters::platform`
 
-**설명**: NTFS MFT를 직접 읽어 고속 파일 스캔.
+**설명**: NTFS MFT를 직접 읽어 고속 파일 스캔을 수행합니다.
 
 **주요 메서드**:
 
@@ -1780,11 +2098,11 @@ if (result.HasValue()) {
 
 ### Imaging
 
-#### WimlibAdapter
+#### WimlibOptimizer
 
 **네임스페이스**: `winsetup::adapters`
 
-**설명**: wimlib 라이브러리 어댑터.
+**설명**: wimlib 라이브러리 어댑터 및 최적화 기능 제공.
 
 **주요 메서드**는 `IImagingService` 인터페이스와 동일하므로 위의 [IImagingService](#iimagingservice) 섹션을 참고하세요.
 
@@ -1801,7 +2119,7 @@ WIM 이미지를 최적화하고 재압축합니다.
 
 **예제**:
 ```cpp
-auto result = wimlibAdapter->OptimizeImage(
+auto result = wimlibOptimizer->OptimizeImage(
     L"D:\\install.wim",
     CompressionType::LZMS
 );
@@ -1821,58 +2139,74 @@ if (result.HasValue()) {
 #include "main/ServiceRegistration.h"
 
 int wmain() {
+    using namespace winsetup;
+    
     // 1. 서비스 등록
-    DIContainer container;
+    application::DIContainer container;
     RegisterAllServices(container);
     
-    // 2. 로거 초기화
-    auto logger = container.Resolve<ILogger>();
-    logger->Info(L"Starting WinSetup");
+    // 2. 로거 초기화 (log/log.txt에 기록, 매 실행마다 초기화)
+    auto logger = container.Resolve<abstractions::ILogger>();
+    logger->Info(L"Starting WinSetup v1.0");
     
     // 3. 구성 로드
-    auto configRepo = container.Resolve<IConfigRepository>();
+    auto configRepo = container.Resolve<abstractions::IConfigRepository>();
     auto configResult = configRepo->Load(L"config.ini");
     if (!configResult.HasValue()) {
-        logger->Fatal(L"Failed to load configuration");
+        logger->Fatal(L"Failed to load configuration: " + 
+                      configResult.GetError().GetMessage());
         return 1;
     }
     const auto& config = configResult.Value();
     
     // 4. 디스크 분석
-    auto analyzeUseCase = container.Resolve<AnalyzeDisksUseCase>();
+    logger->Info(L"Analyzing disks...");
+    auto analyzeUseCase = container.Resolve<application::AnalyzeDisksUseCase>();
     auto analysisResult = analyzeUseCase->Execute();
+    
     if (!analysisResult.HasValue()) {
-        logger->Fatal(L"Disk analysis failed");
+        logger->Fatal(L"Disk analysis failed: " + 
+                      analysisResult.GetError().GetMessage());
         return 1;
     }
     
     const auto& analysis = analysisResult.Value();
+    logger->Info(L"Found " + std::to_wstring(analysis.totalDisks) + 
+                 L" disks, " + std::to_wstring(analysis.installableDisks.size()) + 
+                 L" installable");
+    
     if (analysis.installableDisks.empty()) {
-        logger->Fatal(L"No suitable disk found");
+        logger->Fatal(L"No suitable disk found for installation");
         return 1;
     }
     
-    // 5. 사용자에게 디스크 선택 UI 표시
+    // 5. 첫 번째 설치 가능 디스크 선택 (실제로는 UI에서 선택)
     const auto& targetDisk = analysis.installableDisks;
-    logger->Info(L"Selected disk: " + targetDisk.GetModelName());
+    logger->Info(L"Selected disk: " + targetDisk.GetModelName() + 
+                 L" (" + targetDisk.GetSize().ToString() + L")");
     
     // 6. Windows 설치 실행
-    auto installUseCase = container.Resolve<InstallWindowsUseCase>();
+    logger->Info(L"Starting Windows installation...");
+    auto installUseCase = container.Resolve<application::InstallWindowsUseCase>();
     auto installTask = installUseCase->Execute(config, targetDisk);
     
+    // 태스크 완료 대기
     while (!installTask.IsDone()) {
         installTask.Resume();
-        // UI 업데이트 등
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     
     auto installResult = installTask.GetResult();
     if (!installResult.HasValue()) {
         logger->Fatal(L"Installation failed: " + 
                       installResult.GetError().GetMessage());
+        logger->Flush();  // 에러 로그 즉시 기록
         return 1;
     }
     
-    logger->Info(L"Installation completed successfully");
+    logger->Info(L"Installation completed successfully!");
+    logger->Flush();
+    
     return 0;
 }
 ```
@@ -1880,5 +2214,5 @@ int wmain() {
 ---
 
 **문서 버전**: 1.0  
-**최종 업데이트**: 2026년 2월 15일  
+**최종 업데이트**: 2026년 2월 16일  
 **작성자**: 한준희

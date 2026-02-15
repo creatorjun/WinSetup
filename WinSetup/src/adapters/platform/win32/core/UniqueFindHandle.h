@@ -1,9 +1,9 @@
-﻿// src/domain/memory/UniqueFindHandle.h
+// src/adapters/platform/win32/core/UniqueFindHandle.h
 #pragma once
 
 #include "UniqueHandle.h"
 
-namespace winsetup::domain {
+namespace winsetup::adapters::platform {
 
     class UniqueFindHandle {
     public:

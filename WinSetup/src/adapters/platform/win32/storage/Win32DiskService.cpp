@@ -94,7 +94,7 @@ namespace winsetup::adapters::platform {
         }
     }
 
-    domain::UniqueHandle Win32DiskService::OpenDiskHandle(uint32_t diskIndex) {
+    adapters::platform::UniqueHandle Win32DiskService::OpenDiskHandle(uint32_t diskIndex) {
         std::wstring path = FormatDiskPath(diskIndex);
 
         HANDLE hDisk = CreateFileW(
@@ -108,7 +108,7 @@ namespace winsetup::adapters::platform {
         );
 
         if (hDisk == INVALID_HANDLE_VALUE) {
-            return domain::UniqueHandle();
+            return adapters::platform::UniqueHandle();
         }
 
         return Win32HandleFactory::MakeHandle(hDisk);
@@ -515,7 +515,7 @@ namespace winsetup::adapters::platform {
             };
         }
 
-        domain::UniqueHandle volumeHandle = Win32HandleFactory::MakeHandle(hVolume);
+        adapters::platform::UniqueHandle volumeHandle = Win32HandleFactory::MakeHandle(hVolume);
 
         DWORD bytesReturned = 0;
         BOOL result = DeviceIoControl(

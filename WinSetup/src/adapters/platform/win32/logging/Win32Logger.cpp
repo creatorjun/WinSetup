@@ -10,9 +10,8 @@ namespace winsetup::adapters::platform {
         : m_logFilePath(logFilePath)
     {
         m_buffer.reserve(BUFFER_SIZE);
-        EnsureFileOpen();
 
-        if (m_hFile) {
+        if (EnsureFileOpen() && m_hFile) {
             std::wstring initMsg = L"[INIT] Win32Logger initialized\r\n";
             DWORD bytesWritten = 0;
             WriteFile(
@@ -31,9 +30,36 @@ namespace winsetup::adapters::platform {
         FlushBufferUnsafe();
     }
 
+    bool Win32Logger::EnsureDirectoryExists() {
+        size_t lastSlash = m_logFilePath.find_last_of(L"\\/");
+        if (lastSlash == std::wstring::npos) {
+            return true;
+        }
+
+        std::wstring dirPath = m_logFilePath.substr(0, lastSlash);
+
+        DWORD attribs = GetFileAttributesW(dirPath.c_str());
+        if (attribs != INVALID_FILE_ATTRIBUTES) {
+            return (attribs & FILE_ATTRIBUTE_DIRECTORY) != 0;
+        }
+
+        if (!CreateDirectoryW(dirPath.c_str(), nullptr)) {
+            DWORD error = GetLastError();
+            if (error != ERROR_ALREADY_EXISTS) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     bool Win32Logger::EnsureFileOpen() {
         if (m_hFile) {
             return true;
+        }
+
+        if (!EnsureDirectoryExists()) {
+            return false;
         }
 
         HANDLE hFile = CreateFileW(
@@ -41,7 +67,7 @@ namespace winsetup::adapters::platform {
             GENERIC_WRITE,
             FILE_SHARE_READ,
             nullptr,
-            OPEN_ALWAYS,
+            CREATE_ALWAYS,
             FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH,
             nullptr
         );

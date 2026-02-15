@@ -159,7 +159,7 @@ namespace winsetup::application {
     private:
         struct Registration {
             std::function<std::shared_ptr<void>()> factory;
-            ServiceLifetime lifetime;
+            ServiceLifetime lifetime = ServiceLifetime::Singleton;
         };
 
         template<typename T>

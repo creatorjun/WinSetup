@@ -1,8 +1,8 @@
 ﻿// src/adapters/platform/win32/storage/AsyncIOCTL.h
 #pragma once
 
-#include "../../../../domain/primitives/Expected.h"
-#include "../../../../domain/memory/UniqueHandle.h"
+#include <domain/primitives/Expected.h>
+#include "../core/UniqueHandle.h"
 #include <Windows.h>
 #include <functional>
 #include <vector>
@@ -86,7 +86,7 @@ namespace winsetup::adapters::platform {
             std::vector<BYTE> inputBuffer;
             std::vector<BYTE> outputBuffer;
             OVERLAPPED overlapped;
-            domain::UniqueHandle hEvent;
+            UniqueHandle hEvent;
             AsyncIOCTLCallback callback;
             std::atomic<AsyncIOCTLState> state;
             DWORD bytesTransferred;
@@ -121,7 +121,7 @@ namespace winsetup::adapters::platform {
         std::vector<std::shared_ptr<AsyncOperation>> mOperations;
         mutable std::mutex mOperationsMutex;
 
-        std::vector<domain::UniqueHandle> mWorkerThreads;
+        std::vector<UniqueHandle> mWorkerThreads;
         std::atomic<bool> mShutdown;
 
         static constexpr size_t DEFAULT_WORKER_THREADS = 4;

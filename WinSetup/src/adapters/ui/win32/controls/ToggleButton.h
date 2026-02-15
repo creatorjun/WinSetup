@@ -1,7 +1,7 @@
 // src/adapters/ui/win32/controls/ToggleButton.h
 #pragma once
 
-#include <domain/memory/UniqueHandle.h>
+#include <adapters/platform/win32/core/UniqueHandle.h>
 #include <windows.h>
 #include <commctrl.h>
 #include <string>
@@ -37,8 +37,8 @@ namespace winsetup::adapters::ui {
 
     private:
         struct RenderCache {
-            domain::UniqueHandle hBitmap;
-            domain::UniqueHandle hMemDC;
+            adapters::platform::UniqueHandle hBitmap;
+            adapters::platform::UniqueHandle hMemDC;
             int width = 0;
             int height = 0;
             bool isDirty = true;
@@ -57,7 +57,7 @@ namespace winsetup::adapters::ui {
         bool m_isPressed;
         bool m_wasEnabled;
         int m_groupId;
-        domain::UniqueHandle m_hFont;
+        adapters::platform::UniqueHandle m_hFont;
         RenderCache m_cache;
 
         static std::unordered_map<HWND, ToggleButton*> s_instances;

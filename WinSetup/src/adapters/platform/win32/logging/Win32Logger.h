@@ -2,7 +2,7 @@
 #pragma once
 
 #include <abstractions/infrastructure/logging/ILogger.h>
-#include <domain/memory/UniqueHandle.h>
+#include "../core/UniqueHandle.h"
 #include <string>
 #include <mutex>
 
@@ -10,7 +10,7 @@ namespace winsetup::adapters::platform {
 
     class Win32Logger : public abstractions::ILogger {
     public:
-        explicit Win32Logger(const std::wstring& logFilePath = L"WinSetup.log");
+        explicit Win32Logger(const std::wstring& logFilePath = L"log/log.txt");
         ~Win32Logger() override;
 
         Win32Logger(const Win32Logger&) = delete;
@@ -31,9 +31,10 @@ namespace winsetup::adapters::platform {
         [[nodiscard]] const wchar_t* GetLevelString(abstractions::LogLevel level) const noexcept;
         void FormatTimestamp(wchar_t* buffer, size_t bufferSize) const noexcept;
         [[nodiscard]] bool EnsureFileOpen();
+        [[nodiscard]] bool EnsureDirectoryExists();
         [[nodiscard]] bool ShouldFlushImmediately(abstractions::LogLevel level) const noexcept;
 
-        domain::UniqueHandle m_hFile;
+        UniqueHandle m_hFile;
         std::mutex m_mutex;
         std::wstring m_buffer;
         std::wstring m_logFilePath;
