@@ -560,13 +560,15 @@
     <ClInclude Include="src\lib\wimlib.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="src\abstractions\services\platform\IThreadPool.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\API_REFERENCE.md" />
     <None Include="docs\IMPLEMENTATION_GUIDE.md" />
     <None Include="docs\PERFORMANCE_TUNING.md" />
     <None Include="docs\OPTIMIZATION_SUMMARY.md" />
-    <None Include="src\lib\libwim-15.dll" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="src\lib\libwim.lib" />
