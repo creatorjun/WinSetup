@@ -1,5 +1,6 @@
 // src/adapters/ui/win32/controls/ToggleButton.cpp
 #include "ToggleButton.h"
+#include <adapters/platform/win32/core/Win32HandleFactory.h>
 #include <algorithm>
 #include <vector>
 
@@ -29,7 +30,7 @@ namespace winsetup::adapters::ui {
         , m_isPressed(false)
         , m_wasEnabled(true)
         , m_groupId(-1)
-        , m_hFont(nullptr)
+        , m_hFont()
     {
     }
 
@@ -39,9 +40,7 @@ namespace winsetup::adapters::ui {
             s_instances.erase(m_hwnd);
         }
         CleanupCache();
-        if (m_hFont) {
-            DeleteObject(m_hFont);
-        }
+
         if (m_groupId != -1) {
             auto& group = s_groups[m_groupId];
             auto it = std::find(group.begin(), group.end(), this);
@@ -75,14 +74,12 @@ namespace winsetup::adapters::ui {
     }
 
     void ToggleButton::SetFontSize(int size) {
-        if (m_hFont) {
-            DeleteObject(m_hFont);
-        }
-        m_hFont = CreateFontW(
+        HFONT hFont = CreateFontW(
             size, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
             CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, FONT_NAME
         );
+        m_hFont = platform::Win32HandleFactory::MakeGdiObject(hFont);
         InvalidateCache();
     }
 
@@ -109,14 +106,8 @@ namespace winsetup::adapters::ui {
     }
 
     void ToggleButton::CleanupCache() {
-        if (m_cache.hBitmap) {
-            DeleteObject(m_cache.hBitmap);
-            m_cache.hBitmap = nullptr;
-        }
-        if (m_cache.hMemDC) {
-            DeleteDC(m_cache.hMemDC);
-            m_cache.hMemDC = nullptr;
-        }
+        m_cache.hBitmap = domain::UniqueHandle();
+        m_cache.hMemDC = domain::UniqueHandle();
         m_cache.isDirty = true;
     }
 
@@ -204,18 +195,25 @@ namespace winsetup::adapters::ui {
                     }
 
                     if (!pButton->m_cache.hMemDC) {
-                        pButton->m_cache.hMemDC = CreateCompatibleDC(hdc);
-                        pButton->m_cache.hBitmap = CreateCompatibleBitmap(hdc, rc.right, rc.bottom);
-                        SelectObject(pButton->m_cache.hMemDC, pButton->m_cache.hBitmap);
+                        HDC hMemDC = CreateCompatibleDC(hdc);
+                        HBITMAP hBitmap = CreateCompatibleBitmap(hdc, rc.right, rc.bottom);
+
+                        pButton->m_cache.hMemDC = platform::Win32HandleFactory::MakeDC(hMemDC);
+                        pButton->m_cache.hBitmap = platform::Win32HandleFactory::MakeGdiObject(hBitmap);
+
+                        SelectObject(platform::Win32HandleFactory::ToWin32DC(pButton->m_cache.hMemDC),
+                            platform::Win32HandleFactory::ToWin32Bitmap(pButton->m_cache.hBitmap));
                         pButton->m_cache.width = rc.right;
                         pButton->m_cache.height = rc.bottom;
                     }
 
-                    pButton->DrawButton(pButton->m_cache.hMemDC);
+                    pButton->DrawButton(platform::Win32HandleFactory::ToWin32DC(pButton->m_cache.hMemDC));
                     pButton->m_cache.isDirty = false;
                 }
 
-                BitBlt(hdc, 0, 0, rc.right, rc.bottom, pButton->m_cache.hMemDC, 0, 0, SRCCOPY);
+                BitBlt(hdc, 0, 0, rc.right, rc.bottom,
+                    platform::Win32HandleFactory::ToWin32DC(pButton->m_cache.hMemDC),
+                    0, 0, SRCCOPY);
 
                 EndPaint(hWnd, &ps);
                 return 0;
@@ -262,22 +260,21 @@ namespace winsetup::adapters::ui {
             textColor = NORMAL_TEXT;
         }
 
-        HBRUSH hBrush = CreateSolidBrush(bgColor);
-        FillRect(hdc, &rc, hBrush);
-        DeleteObject(hBrush);
+        auto hBrush = platform::Win32HandleFactory::MakeGdiObject(CreateSolidBrush(bgColor));
+        FillRect(hdc, &rc, platform::Win32HandleFactory::ToWin32Brush(hBrush));
 
-        HPEN hPen = CreatePen(PS_SOLID, 1, BORDER_COLOR);
-        HPEN hOldPen = static_cast<HPEN>(SelectObject(hdc, hPen));
+        auto hPen = platform::Win32HandleFactory::MakeGdiObject(CreatePen(PS_SOLID, 1, BORDER_COLOR));
+        HPEN hOldPen = static_cast<HPEN>(SelectObject(hdc, platform::Win32HandleFactory::ToWin32Pen(hPen)));
         SelectObject(hdc, GetStockObject(NULL_BRUSH));
         Rectangle(hdc, rc.left, rc.top, rc.right, rc.bottom);
         SelectObject(hdc, hOldPen);
-        DeleteObject(hPen);
 
         std::wstring text = GetText();
         if (!text.empty()) {
             SetBkMode(hdc, TRANSPARENT);
             SetTextColor(hdc, textColor);
-            HFONT hFont = m_hFont ? m_hFont : reinterpret_cast<HFONT>(SendMessage(m_hwnd, WM_GETFONT, 0, 0));
+            HFONT hFont = m_hFont ? platform::Win32HandleFactory::ToWin32Font(m_hFont)
+                : reinterpret_cast<HFONT>(SendMessage(m_hwnd, WM_GETFONT, 0, 0));
             HGDIOBJ hOldFont = SelectObject(hdc, hFont);
             DrawTextW(hdc, text.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             SelectObject(hdc, hOldFont);

@@ -55,6 +55,11 @@ namespace winsetup::adapters::platform {
         return true;
     }
 
+    bool Win32Logger::ShouldFlushImmediately(abstractions::LogLevel level) const noexcept {
+        return level == abstractions::LogLevel::Error ||
+            level == abstractions::LogLevel::Fatal;
+    }
+
     void Win32Logger::Log(
         abstractions::LogLevel level,
         const std::wstring& message,
@@ -74,6 +79,8 @@ namespace winsetup::adapters::platform {
 
         OutputDebugStringW(entry.c_str());
 
+        bool forceFlush = ShouldFlushImmediately(level);
+
         {
             std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -81,16 +88,18 @@ namespace winsetup::adapters::platform {
                 return;
             }
 
-            DWORD bytesWritten = 0;
-            WriteFile(
-                Win32HandleFactory::ToWin32Handle(m_hFile),
-                entry.data(),
-                static_cast<DWORD>(entry.size() * sizeof(wchar_t)),
-                &bytesWritten,
-                nullptr
-            );
+            WriteBufferedEntry(entry, forceFlush);
+        }
+    }
 
-            FlushFileBuffers(Win32HandleFactory::ToWin32Handle(m_hFile));
+    void Win32Logger::WriteBufferedEntry(const std::wstring& entry, bool forceFlush) {
+        m_buffer += entry;
+
+        bool shouldFlush = forceFlush ||
+            (m_buffer.size() >= FLUSH_THRESHOLD);
+
+        if (shouldFlush) {
+            FlushBufferUnsafe();
         }
     }
 
@@ -100,10 +109,22 @@ namespace winsetup::adapters::platform {
     }
 
     void Win32Logger::FlushBufferUnsafe() {
-        if (!m_hFile) {
+        if (!m_hFile || m_buffer.empty()) {
             return;
         }
+
+        DWORD bytesWritten = 0;
+        WriteFile(
+            Win32HandleFactory::ToWin32Handle(m_hFile),
+            m_buffer.data(),
+            static_cast<DWORD>(m_buffer.size() * sizeof(wchar_t)),
+            &bytesWritten,
+            nullptr
+        );
+
         FlushFileBuffers(Win32HandleFactory::ToWin32Handle(m_hFile));
+
+        m_buffer.clear();
     }
 
     const wchar_t* Win32Logger::GetLevelString(abstractions::LogLevel level) const noexcept {
@@ -111,6 +132,7 @@ namespace winsetup::adapters::platform {
         case abstractions::LogLevel::Trace:   return L"TRACE";
         case abstractions::LogLevel::Debug:   return L"DEBUG";
         case abstractions::LogLevel::Info:    return L"INFO ";
+        case abstractions::LogLevel::Warning: return L"WARN ";
         case abstractions::LogLevel::Error:   return L"ERROR";
         case abstractions::LogLevel::Fatal:   return L"FATAL";
         default:                              return L"UNKNW";

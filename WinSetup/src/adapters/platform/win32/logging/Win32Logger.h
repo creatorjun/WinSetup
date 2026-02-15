@@ -26,9 +26,12 @@ namespace winsetup::adapters::platform {
 
     private:
         void FlushBufferUnsafe();
-        const wchar_t* GetLevelString(abstractions::LogLevel level) const noexcept;
+        void WriteBufferedEntry(const std::wstring& entry, bool forceFlush);
+
+        [[nodiscard]] const wchar_t* GetLevelString(abstractions::LogLevel level) const noexcept;
         void FormatTimestamp(wchar_t* buffer, size_t bufferSize) const noexcept;
-        bool EnsureFileOpen();
+        [[nodiscard]] bool EnsureFileOpen();
+        [[nodiscard]] bool ShouldFlushImmediately(abstractions::LogLevel level) const noexcept;
 
         domain::UniqueHandle m_hFile;
         std::mutex m_mutex;
