@@ -3,11 +3,13 @@
 #include <abstractions/infrastructure/logging/ILogger.h>
 #include <abstractions/services/storage/IDiskService.h>
 #include <abstractions/services/storage/IVolumeService.h>
+#include <abstractions/services/storage/IImagingService.h>
 #include <abstractions/services/platform/ISystemInfoService.h>
 #include <adapters/platform/win32/logging/Win32Logger.h>
 #include <adapters/platform/win32/storage/Win32DiskService.h>
 #include <adapters/platform/win32/storage/Win32VolumeService.h>
 #include <adapters/platform/win32/system/Win32SystemInfoService.h>
+#include <adapters/imaging/WimlibOptimizer.h>
 
 namespace winsetup::main {
 
@@ -53,6 +55,11 @@ namespace winsetup::main {
             abstractions::ISystemInfoService,
             adapters::platform::Win32SystemInfoService,
             abstractions::ILogger
+        >(application::ServiceLifetime::Singleton);
+
+        container.Register<
+            abstractions::IImagingService,
+            adapters::WimlibOptimizer
         >(application::ServiceLifetime::Singleton);
     }
 

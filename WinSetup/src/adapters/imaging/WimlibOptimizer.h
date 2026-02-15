@@ -1,20 +1,22 @@
 ﻿// src/adapters/imaging/WimlibOptimizer.h
 #pragma once
 
-#include "../../lib/wimlib.h"
-#include "../../domain/primitives/Expected.h"
+#include <abstractions/services/storage/IImagingService.h>
+#include <domain/primitives/Expected.h>
+#include <domain/memory/UniqueHandle.h>
 #include <cstdint>
 #include <memory>
 #include <atomic>
-#include <Windows.h>
+
+struct WIMStruct;
 
 namespace winsetup::adapters {
 
     enum class OptimizationLevel {
-        Fast = 1,           // 빠른 압축 (낮은 압축률)
-        Normal = 6,         // 기본 균형
-        Best = 12,          // 최고 압축률 (느림)
-        Ultra = 20          // 초고압축 (매우 느림)
+        Fast = 1,
+        Normal = 6,
+        Best = 12,
+        Ultra = 20
     };
 
     struct WimlibOptimizerConfig {
@@ -27,9 +29,9 @@ namespace winsetup::adapters {
 
         WimlibOptimizerConfig()
             : level(OptimizationLevel::Normal)
-            , maxThreads(0)  // 0 = 자동 (CPU 코어 수)
-            , memoryLimitMB(2048)  // 2GB
-            , chunkSizeKB(32)  // 32KB
+            , maxThreads(0)
+            , memoryLimitMB(2048)
+            , chunkSizeKB(32)
             , enableSolidCompression(false)
             , enableDeduplication(true)
         {
@@ -55,16 +57,44 @@ namespace winsetup::adapters {
         }
     };
 
-    class WimlibOptimizer {
+    class WimlibOptimizer : public abstractions::IImagingService {
     public:
         WimlibOptimizer();
         explicit WimlibOptimizer(const WimlibOptimizerConfig& config);
-        ~WimlibOptimizer();
+        ~WimlibOptimizer() override;
 
         WimlibOptimizer(const WimlibOptimizer&) = delete;
         WimlibOptimizer& operator=(const WimlibOptimizer&) = delete;
 
         [[nodiscard]] domain::Expected<void> Initialize();
+
+        [[nodiscard]] domain::Expected<void> ApplyImage(
+            const std::wstring& wimPath,
+            uint32_t imageIndex,
+            const std::wstring& targetPath,
+            abstractions::ProgressCallback progressCallback = nullptr
+        ) override;
+
+        [[nodiscard]] domain::Expected<void> CaptureImage(
+            const std::wstring& sourcePath,
+            const std::wstring& wimPath,
+            const std::wstring& imageName,
+            const std::wstring& imageDescription,
+            abstractions::CompressionType compression = abstractions::CompressionType::LZX,
+            abstractions::ProgressCallback progressCallback = nullptr
+        ) override;
+
+        [[nodiscard]] domain::Expected<std::vector<abstractions::ImageInfo>>
+            GetImageInfo(const std::wstring& wimPath) override;
+
+        [[nodiscard]] domain::Expected<void> OptimizeImage(
+            const std::wstring& wimPath,
+            abstractions::CompressionType compression = abstractions::CompressionType::LZX
+        ) override;
+
+        void SetCompressionLevel(uint32_t level) override;
+        void SetThreadCount(uint32_t threads) override;
+        void SetMemoryLimit(uint64_t memoryMB) override;
 
         void SetConfig(const WimlibOptimizerConfig& config);
 
@@ -74,7 +104,7 @@ namespace winsetup::adapters {
 
         [[nodiscard]] domain::Expected<void> OptimizeCapture(
             WIMStruct* wim,
-            int compressionType = WIMLIB_COMPRESSION_TYPE_LZX
+            int compressionType
         );
 
         [[nodiscard]] domain::Expected<void> OptimizeExtract(
@@ -85,37 +115,19 @@ namespace winsetup::adapters {
             return mLastStats;
         }
 
-        void SetProgressCallback(
-            wimlib_progress_func_t callback,
-            void* context
-        );
+        void SetProgressCallback(void* callback, void* context);
 
         [[nodiscard]] uint32_t CalculateOptimalThreadCount() const;
-
         [[nodiscard]] uint64_t CalculateOptimalMemoryLimit() const;
-
-        [[nodiscard]] uint32_t CalculateOptimalChunkSize(
-            uint64_t estimatedSizeBytes
-        ) const;
+        [[nodiscard]] uint32_t CalculateOptimalChunkSize(uint64_t estimatedSizeBytes) const;
 
     private:
         [[nodiscard]] domain::Expected<void> AllocateMemoryPool();
-
         void ReleaseMemoryPool();
-
         [[nodiscard]] domain::Expected<void> ConfigureThreadPool();
-
-        [[nodiscard]] domain::Expected<void> ApplyCompressionSettings(
-            WIMStruct* wim,
-            int compressionType
-        );
-
-        [[nodiscard]] domain::Expected<void> ApplyExtractionSettings(
-            WIMStruct* wim
-        );
-
-        void UpdateStats(const wimlib_progress_info& info);
-
+        [[nodiscard]] domain::Expected<void> ApplyCompressionSettings(WIMStruct* wim, int compressionType);
+        [[nodiscard]] domain::Expected<void> ApplyExtractionSettings(WIMStruct* wim);
+        void UpdateStats(const void* info);
         [[nodiscard]] uint64_t GetCurrentMemoryUsage() const;
 
         WimlibOptimizerConfig mConfig;
@@ -124,13 +136,13 @@ namespace winsetup::adapters {
         void* mMemoryPool;
         size_t mMemoryPoolSize;
 
-        wimlib_progress_func_t mProgressCallback;
+        void* mProgressCallback;
         void* mProgressContext;
 
         std::atomic<bool> mInitialized;
         std::atomic<uint64_t> mPeakMemory;
 
-        HANDLE mJobObject;
+        domain::UniqueHandle mJobObject;
 
         static constexpr uint32_t MIN_CHUNK_SIZE_KB = 32;
         static constexpr uint32_t MAX_CHUNK_SIZE_KB = 32768;
@@ -177,7 +189,6 @@ namespace winsetup::adapters {
             auto initResult = optimizer->Initialize();
             if (!initResult.HasValue()) {
             }
-
             return optimizer;
         }
 

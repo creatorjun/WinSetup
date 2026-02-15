@@ -1,13 +1,15 @@
 ﻿// src/adapters/imaging/WimlibOptimizer.cpp
 #pragma warning(push)
 #pragma warning(disable: 4200)
-#include "../../lib/wimlib.h"
+#include <lib/wimlib.h>
 #pragma warning(pop)
 
 #include "WimlibOptimizer.h"
+#include <adapters/platform/win32/core/Win32HandleFactory.h>
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <Windows.h>
 #include <psapi.h>
 
 #undef min
@@ -24,7 +26,7 @@ namespace winsetup::adapters {
         , mProgressContext(nullptr)
         , mInitialized(false)
         , mPeakMemory(0)
-        , mJobObject(nullptr)
+        , mJobObject()
     {
     }
 
@@ -37,17 +39,12 @@ namespace winsetup::adapters {
         , mProgressContext(nullptr)
         , mInitialized(false)
         , mPeakMemory(0)
-        , mJobObject(nullptr)
+        , mJobObject()
     {
     }
 
     WimlibOptimizer::~WimlibOptimizer() {
         ReleaseMemoryPool();
-
-        if (mJobObject) {
-            CloseHandle(mJobObject);
-            mJobObject = nullptr;
-        }
     }
 
     domain::Expected<void> WimlibOptimizer::Initialize() {
@@ -73,24 +70,90 @@ namespace winsetup::adapters {
             return threadResult;
         }
 
-        mJobObject = CreateJobObjectW(nullptr, nullptr);
-        if (mJobObject) {
+        HANDLE hJob = CreateJobObjectW(nullptr, nullptr);
+        if (hJob) {
+            mJobObject = platform::Win32HandleFactory::MakeHandle(hJob);
+
             JOBOBJECT_EXTENDED_LIMIT_INFORMATION jobInfo{};
             jobInfo.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_JOB_MEMORY;
             jobInfo.JobMemoryLimit = mConfig.memoryLimitMB * 1024 * 1024;
 
             SetInformationJobObject(
-                mJobObject,
+                platform::Win32HandleFactory::ToWin32Handle(mJobObject),
                 JobObjectExtendedLimitInformation,
                 &jobInfo,
                 sizeof(jobInfo)
             );
 
-            AssignProcessToJobObject(mJobObject, GetCurrentProcess());
+            AssignProcessToJobObject(
+                platform::Win32HandleFactory::ToWin32Handle(mJobObject),
+                GetCurrentProcess()
+            );
         }
 
         mInitialized.store(true);
         return domain::Expected<void>();
+    }
+
+    domain::Expected<void> WimlibOptimizer::ApplyImage(
+        const std::wstring& wimPath,
+        uint32_t imageIndex,
+        const std::wstring& targetPath,
+        abstractions::ProgressCallback progressCallback)
+    {
+        return domain::Error{
+            L"ApplyImage not implemented yet",
+            0,
+            domain::ErrorCategory::Imaging
+        };
+    }
+
+    domain::Expected<void> WimlibOptimizer::CaptureImage(
+        const std::wstring& sourcePath,
+        const std::wstring& wimPath,
+        const std::wstring& imageName,
+        const std::wstring& imageDescription,
+        abstractions::CompressionType compression,
+        abstractions::ProgressCallback progressCallback)
+    {
+        return domain::Error{
+            L"CaptureImage not implemented yet",
+            0,
+            domain::ErrorCategory::Imaging
+        };
+    }
+
+    domain::Expected<std::vector<abstractions::ImageInfo>> WimlibOptimizer::GetImageInfo(
+        const std::wstring& wimPath)
+    {
+        return domain::Error{
+            L"GetImageInfo not implemented yet",
+            0,
+            domain::ErrorCategory::Imaging
+        };
+    }
+
+    domain::Expected<void> WimlibOptimizer::OptimizeImage(
+        const std::wstring& wimPath,
+        abstractions::CompressionType compression)
+    {
+        return domain::Error{
+            L"OptimizeImage not implemented yet",
+            0,
+            domain::ErrorCategory::Imaging
+        };
+    }
+
+    void WimlibOptimizer::SetCompressionLevel(uint32_t level) {
+        mConfig.level = static_cast<OptimizationLevel>(level);
+    }
+
+    void WimlibOptimizer::SetThreadCount(uint32_t threads) {
+        mConfig.maxThreads = threads;
+    }
+
+    void WimlibOptimizer::SetMemoryLimit(uint64_t memoryMB) {
+        mConfig.memoryLimitMB = memoryMB;
     }
 
     void WimlibOptimizer::SetConfig(const WimlibOptimizerConfig& config) {
@@ -119,7 +182,8 @@ namespace winsetup::adapters {
         }
 
         if (mProgressCallback) {
-            wimlib_register_progress_function(wim, mProgressCallback, mProgressContext);
+            auto callback = reinterpret_cast<wimlib_progress_func_t>(mProgressCallback);
+            wimlib_register_progress_function(wim, callback, mProgressContext);
         }
 
         auto endTime = std::chrono::high_resolution_clock::now();
@@ -148,7 +212,8 @@ namespace winsetup::adapters {
         }
 
         if (mProgressCallback) {
-            wimlib_register_progress_function(wim, mProgressCallback, mProgressContext);
+            auto callback = reinterpret_cast<wimlib_progress_func_t>(mProgressCallback);
+            wimlib_register_progress_function(wim, callback, mProgressContext);
         }
 
         auto endTime = std::chrono::high_resolution_clock::now();
@@ -161,10 +226,7 @@ namespace winsetup::adapters {
         return domain::Expected<void>();
     }
 
-    void WimlibOptimizer::SetProgressCallback(
-        wimlib_progress_func_t callback,
-        void* context
-    ) {
+    void WimlibOptimizer::SetProgressCallback(void* callback, void* context) {
         mProgressCallback = callback;
         mProgressContext = context;
     }
@@ -341,7 +403,7 @@ namespace winsetup::adapters {
         return domain::Expected<void>();
     }
 
-    void WimlibOptimizer::UpdateStats(const wimlib_progress_info& info) {
+    void WimlibOptimizer::UpdateStats(const void* info) {
         uint64_t currentMemory = GetCurrentMemoryUsage();
 
         uint64_t expected = mPeakMemory.load();
