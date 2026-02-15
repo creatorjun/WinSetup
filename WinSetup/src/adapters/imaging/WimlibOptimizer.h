@@ -3,7 +3,7 @@
 
 #include <abstractions/services/storage/IImagingService.h>
 #include <domain/primitives/Expected.h>
-#include <adapters/platform/win32/core/UniqueHandle.h>
+#include <adapters/platform/win32/memory/UniqueHandle.h>
 #include <cstdint>
 #include <memory>
 #include <atomic>

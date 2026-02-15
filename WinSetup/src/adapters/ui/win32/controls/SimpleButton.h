@@ -1,7 +1,7 @@
 // src/adapters/ui/win32/controls/SimpleButton.h
 #pragma once
 
-#include <adapters/platform/win32/core/UniqueHandle.h>
+#include <adapters/platform/win32/memory/UniqueHandle.h>
 #include <windows.h>
 #include <commctrl.h>
 #include <string>

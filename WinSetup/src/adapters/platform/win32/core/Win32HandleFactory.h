@@ -1,9 +1,9 @@
 // src/adapters/platform/win32/core/Win32HandleFactory.h
 #pragma once
 
-#include "UniqueHandle.h"
-#include "UniqueLibrary.h"
-#include "UniqueFindHandle.h"
+#include "../memory/UniqueHandle.h"
+#include "../memory/UniqueLibrary.h"
+#include "../memory/UniqueFindHandle.h"
 #include <Windows.h>
 
 namespace winsetup::adapters::platform {

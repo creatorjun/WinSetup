@@ -204,7 +204,7 @@
     <ClCompile Include="src\adapters\platform\win32\core\Win32StringHelper.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\adapters\platform\win32\core\UniqueHandle.cpp">
+    <ClCompile Include="src\adapters\platform\win32\memory\UniqueHandle.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -551,13 +551,13 @@
     <ClInclude Include="src\abstractions\services\platform\IThreadPool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\win32\core\UniqueHandle.h">
+    <ClInclude Include="src\adapters\platform\win32\memory\UniqueHandle.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\win32\core\UniqueLibrary.h">
+    <ClInclude Include="src\adapters\platform\win32\memory\UniqueLibrary.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\win32\core\UniqueFindHandle.h">
+    <ClInclude Include="src\adapters\platform\win32\memory\UniqueFindHandle.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

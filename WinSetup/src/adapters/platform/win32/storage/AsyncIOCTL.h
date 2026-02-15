@@ -2,7 +2,7 @@
 #pragma once
 
 #include <domain/primitives/Expected.h>
-#include "../core/UniqueHandle.h"
+#include "../memory/UniqueHandle.h"
 #include <Windows.h>
 #include <functional>
 #include <vector>

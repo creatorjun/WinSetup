@@ -462,158 +462,72 @@ namespace winsetup::application {
 
 ## 🔌 Adapters 계층 설계 (저수준 구현)
 
-### UniqueHandle - Win32 RAII 래퍼
+### UniqueHandle - Win32 범용 RAII 래퍼
 
 #### adapters/platform/win32/memory/UniqueHandle.h
 ```cpp
 #pragma once
-
-#include <Windows.h>
 #include <utility>
 
-namespace winsetup::adapters::win32 {
+namespace winsetup::adapters::platform {
+
+    using NativeHandle = void*;
+    using HandleDeleterFunc = void(*)(NativeHandle) noexcept;
+    
+    constexpr NativeHandle InvalidHandleValue() noexcept {
+        return reinterpret_cast<NativeHandle>(-1);
+    }
 
     class UniqueHandle {
     public:
-        explicit UniqueHandle(HANDLE handle = INVALID_HANDLE_VALUE) noexcept
-            : mHandle(handle)
-        {}
+        explicit UniqueHandle(
+            NativeHandle handle = nullptr,
+            HandleDeleterFunc deleter = nullptr
+        ) noexcept;
+        
+        ~UniqueHandle() noexcept;
 
-        ~UniqueHandle() noexcept {
-            Close();
-        }
-
+        // 복사 금지, 이동 가능
         UniqueHandle(const UniqueHandle&) = delete;
         UniqueHandle& operator=(const UniqueHandle&) = delete;
+        UniqueHandle(UniqueHandle&& other) noexcept;
+        UniqueHandle& operator=(UniqueHandle&& other) noexcept;
 
-        UniqueHandle(UniqueHandle&& other) noexcept
-            : mHandle(std::exchange(other.mHandle, INVALID_HANDLE_VALUE))
-        {}
-
-        UniqueHandle& operator=(UniqueHandle&& other) noexcept {
-            if (this != &other) {
-                Close();
-                mHandle = std::exchange(other.mHandle, INVALID_HANDLE_VALUE);
-            }
-            return *this;
-        }
-
-        [[nodiscard]] HANDLE Get() const noexcept {
-            return mHandle;
-        }
-
-        [[nodiscard]] HANDLE Release() noexcept {
-            return std::exchange(mHandle, INVALID_HANDLE_VALUE);
-        }
-
-        void Reset(HANDLE handle = INVALID_HANDLE_VALUE) noexcept {
-            Close();
-            mHandle = handle;
-        }
-
-        [[nodiscard]] explicit operator bool() const noexcept {
-            return mHandle != INVALID_HANDLE_VALUE && mHandle != nullptr;
-        }
-
-        [[nodiscard]] HANDLE* AddressOf() noexcept {
-            return &mHandle;
-        }
+        [[nodiscard]] NativeHandle Get() const noexcept;
+        [[nodiscard]] NativeHandle Release() noexcept;
+        [[nodiscard]] explicit operator bool() const noexcept;
 
     private:
-        void Close() noexcept {
-            if (mHandle != INVALID_HANDLE_VALUE && mHandle != nullptr) {
-                CloseHandle(mHandle);
-                mHandle = INVALID_HANDLE_VALUE;
-            }
-        }
-
-        HANDLE mHandle;
+        void Close() noexcept;
+        NativeHandle m_handle;
+        HandleDeleterFunc m_deleter;
     };
 
-    class UniqueLibrary {
-    public:
-        explicit UniqueLibrary(HMODULE hModule = nullptr) noexcept
-            : mHModule(hModule)
-        {}
-
-        ~UniqueLibrary() noexcept {
-            if (mHModule) {
-                FreeLibrary(mHModule);
-            }
-        }
-
-        UniqueLibrary(const UniqueLibrary&) = delete;
-        UniqueLibrary& operator=(const UniqueLibrary&) = delete;
-
-        UniqueLibrary(UniqueLibrary&& other) noexcept
-            : mHModule(std::exchange(other.mHModule, nullptr))
-        {}
-
-        UniqueLibrary& operator=(UniqueLibrary&& other) noexcept {
-            if (this != &other) {
-                if (mHModule) {
-                    FreeLibrary(mHModule);
-                }
-                mHModule = std::exchange(other.mHModule, nullptr);
-            }
-            return *this;
-        }
-
-        [[nodiscard]] HMODULE Get() const noexcept {
-            return mHModule;
-        }
-
-        [[nodiscard]] explicit operator bool() const noexcept {
-            return mHModule != nullptr;
-        }
-
-    private:
-        HMODULE mHModule;
-    };
-
-    class UniqueFindHandle {
-    public:
-        explicit UniqueFindHandle(HANDLE hFind = INVALID_HANDLE_VALUE) noexcept
-            : mHFind(hFind)
-        {}
-
-        ~UniqueFindHandle() noexcept {
-            if (mHFind != INVALID_HANDLE_VALUE) {
-                FindClose(mHFind);
-            }
-        }
-
-        UniqueFindHandle(const UniqueFindHandle&) = delete;
-        UniqueFindHandle& operator=(const UniqueFindHandle&) = delete;
-
-        UniqueFindHandle(UniqueFindHandle&& other) noexcept
-            : mHFind(std::exchange(other.mHFind, INVALID_HANDLE_VALUE))
-        {}
-
-        UniqueFindHandle& operator=(UniqueFindHandle&& other) noexcept {
-            if (this != &other) {
-                if (mHFind != INVALID_HANDLE_VALUE) {
-                    FindClose(mHFind);
-                }
-                mHFind = std::exchange(other.mHFind, INVALID_HANDLE_VALUE);
-            }
-            return *this;
-        }
-
-        [[nodiscard]] HANDLE Get() const noexcept {
-            return mHFind;
-        }
-
-        [[nodiscard]] explicit operator bool() const noexcept {
-            return mHFind != INVALID_HANDLE_VALUE;
-        }
-
-    private:
-        HANDLE mHFind;
-    };
-
+    // UniqueLibrary와 UniqueFindHandle도 동일한 구조
 }
 ```
+
+#### adapters/platform/win32/core/Win32HandleFactory.h
+```cpp
+// 핸들 생성 및 타입 변환을 위한 팩토리
+class Win32HandleFactory {
+public:
+    // Deleter 함수들
+    static void CloseHandleDeleter(NativeHandle handle) noexcept;
+    static void FreeLibraryDeleter(NativeHandle handle) noexcept;
+    static void FindCloseDeleter(NativeHandle handle) noexcept;
+    
+    // 팩토리 메서드
+    [[nodiscard]] static UniqueHandle MakeHandle(HANDLE h) noexcept;
+    [[nodiscard]] static UniqueLibrary MakeLibrary(HMODULE h) noexcept;
+    [[nodiscard]] static UniqueFindHandle MakeFindHandle(HANDLE h) noexcept;
+    
+    // 타입 변환 메서드
+    [[nodiscard]] static HANDLE ToWin32Handle(const UniqueHandle& handle) noexcept;
+    [[nodiscard]] static HMODULE ToWin32Module(const UniqueLibrary& lib) noexcept;
+};
+```
+
 
 ### Win32StringHelper - 문자열 유틸리티
 
@@ -651,47 +565,6 @@ namespace winsetup::adapters::win32 {
 
         static std::wstring ToUpper(const std::wstring& str);
         static std::wstring ToLower(const std::wstring& str);
-    };
-
-}
-```
-
-### Win32HandleFactory - 핸들 팩토리
-
-#### adapters/platform/win32/core/Win32HandleFactory.h
-```cpp
-#pragma once
-
-#include <cstdint>
-#include <string>
-#include <Windows.h>
-#include "../../../../domain/primitives/Expected.h"
-#include "../memory/UniqueHandle.h"
-
-namespace winsetup::adapters::win32 {
-
-    class Win32HandleFactory {
-    public:
-        [[nodiscard]] static domain::Expected<UniqueHandle> OpenDisk(
-            uint32_t diskIndex,
-            DWORD accessFlags = GENERIC_READ | GENERIC_WRITE
-        );
-
-        [[nodiscard]] static domain::Expected<UniqueHandle> OpenVolume(
-            const std::wstring& volumePath,
-            DWORD accessFlags = GENERIC_READ
-        );
-
-        [[nodiscard]] static domain::Expected<UniqueHandle> OpenFile(
-            const std::wstring& filePath,
-            DWORD desiredAccess,
-            DWORD shareMode,
-            DWORD creationDisposition
-        );
-
-    private:
-        static std::wstring BuildDiskPath(uint32_t diskIndex);
-        static std::wstring BuildVolumePath(const std::wstring& volumePath);
     };
 
 }

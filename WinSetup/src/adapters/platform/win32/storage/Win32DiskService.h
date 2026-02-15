@@ -3,7 +3,7 @@
 
 #include <abstractions/services/storage/IDiskService.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
-#include <adapters/platform/win32/core/UniqueHandle.h>
+#include <adapters/platform/win32/memory/UniqueHandle.h>
 #include <Windows.h>
 #include <memory>
 #include <vector>

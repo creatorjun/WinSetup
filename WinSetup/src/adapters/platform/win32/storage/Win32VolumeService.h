@@ -3,7 +3,7 @@
 
 #include <abstractions/services/storage/IVolumeService.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
-#include <adapters/platform/win32/core/UniqueHandle.h>
+#include <adapters/platform/win32/memory/UniqueHandle.h>
 #include <memory>
 #include <Windows.h>
 

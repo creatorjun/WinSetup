@@ -2,7 +2,7 @@
 #pragma once
 
 #include <abstractions/infrastructure/logging/ILogger.h>
-#include "../core/UniqueHandle.h"
+#include "../memory/UniqueHandle.h"
 #include <string>
 #include <mutex>
 
