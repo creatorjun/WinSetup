@@ -94,7 +94,7 @@ namespace winsetup::adapters::platform {
         }
 
     private:
-        [[nodiscard]] domain::UniqueHandle OpenVolumeHandle(const std::wstring& volumePath);
+        [[nodiscard]] adapters::platform::UniqueHandle OpenVolumeHandle(const std::wstring& volumePath);
 
         [[nodiscard]] domain::Expected<USN_JOURNAL_DATA> QueryUSNJournal(HANDLE hVolume);
 

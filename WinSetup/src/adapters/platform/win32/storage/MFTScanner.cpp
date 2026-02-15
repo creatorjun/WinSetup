@@ -79,7 +79,7 @@ namespace winsetup::adapters::platform {
         return ToLower(normalized);
     }
 
-    domain::UniqueHandle MFTScanner::OpenVolumeHandle(const std::wstring& volumePath) {
+    adapters::platform::UniqueHandle MFTScanner::OpenVolumeHandle(const std::wstring& volumePath) {
         std::wstring normalizedPath = NormalizeVolumePath(volumePath);
 
         HANDLE hVolume = CreateFileW(
@@ -93,7 +93,7 @@ namespace winsetup::adapters::platform {
         );
 
         if (hVolume == INVALID_HANDLE_VALUE) {
-            return domain::UniqueHandle();
+            return adapters::platform::UniqueHandle();
         }
 
         return Win32HandleFactory::MakeHandle(hVolume);
