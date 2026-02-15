@@ -2,8 +2,8 @@
 // src/adapters/platform/win32/storage/MFTScanner.h
 #pragma once
 
-#include "../../../../domain/primitives/Expected.h"
-#include "../../../../domain/memory/UniqueHandle.h"
+#include <domain/primitives/Expected.h>
+#include <adapters/platform/win32/memory/UniqueHandle.h>
 #include <string>
 #include <vector>
 #include <unordered_map>

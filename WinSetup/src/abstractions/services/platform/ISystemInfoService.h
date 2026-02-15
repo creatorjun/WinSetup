@@ -1,8 +1,8 @@
 ﻿// src/abstractions/services/platform/ISystemInfoService.h
 #pragma once
 
-#include "../../../domain/primitives/Expected.h"
-#include "../../../domain/entities/SystemInfo.h"
+#include <domain/primitives/Expected.h>
+#include <domain/entities/SystemInfo.h>
 #include <string>
 
 namespace winsetup::abstractions {

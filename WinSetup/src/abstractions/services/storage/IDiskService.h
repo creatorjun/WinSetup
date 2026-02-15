@@ -1,10 +1,10 @@
 ﻿// src/abstractions/services/storage/IDiskService.h
 #pragma once
 
-#include "../../../domain/primitives/Expected.h"
-#include "../../../domain/entities/DiskInfo.h"
-#include "../../../domain/entities/PartitionInfo.h"
-#include "../../../domain/valueobjects/FileSystemType.h"
+#include <domain/primitives/Expected.h>
+#include <domain/entities/DiskInfo.h>
+#include <domain/entities/PartitionInfo.h>
+#include <domain/valueobjects/FileSystemType.h>
 #include <vector>
 #include <cstdint>
 

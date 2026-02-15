@@ -1,8 +1,8 @@
 ﻿// src/abstractions/services/storage/IVolumeService.h
 #pragma once
 
-#include "../../../domain/primitives/Expected.h"
-#include "../../../domain/entities/VolumeInfo.h"
+#include <domain/primitives/Expected.h>
+#include <domain/entities/VolumeInfo.h>
 #include <vector>
 #include <cstdint>
 

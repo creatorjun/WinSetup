@@ -1,8 +1,8 @@
 ﻿// src/adapters/platform/win32/storage/DiskTransaction.h
 #pragma once
 
-#include "../../../../abstractions/services/storage/IDiskService.h"
-#include "../../../../domain/primitives/Expected.h"
+#include <abstractions/services/storage/IDiskService.h>
+#include <domain/primitives/Expected.h>
 #include <memory>
 #include <functional>
 #include <vector>

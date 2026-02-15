@@ -1,7 +1,7 @@
 ﻿// src/adapters/platform/win32/system/SMBIOSParser.h
 #pragma once
 
-#include "../../../../domain/primitives/Expected.h"
+#include <domain/primitives/Expected.h>
 #include <Windows.h>
 #include <string>
 #include <vector>

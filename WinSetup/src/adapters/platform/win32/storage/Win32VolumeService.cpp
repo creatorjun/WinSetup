@@ -2,8 +2,8 @@
 #include "Win32VolumeService.h"
 #include "../core/Win32HandleFactory.h"
 #include "../core/Win32ErrorHandler.h"
-#include "../../../../domain/valueobjects/FileSystemType.h"
-#include "../../../../domain/valueobjects/DiskSize.h"
+#include <domain/valueobjects/FileSystemType.h>
+#include <domain/valueobjects/DiskSize.h>
 #include <algorithm>
 #include <cwctype>
 
