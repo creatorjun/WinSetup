@@ -500,9 +500,6 @@
     <ClInclude Include="src\adapters\ui\win32\controls\SimpleButton.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\platform\win32\core\Win32HandleDeleter.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="src\adapters\platform\win32\core\Win32HandleFactory.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>

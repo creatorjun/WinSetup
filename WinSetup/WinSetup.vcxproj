@@ -120,7 +120,6 @@
     <ClInclude Include="src\adapters\persistence\filesystem\Win32FileSystem.h" />
     <ClInclude Include="src\adapters\platform\win32\core\Win32Constants.h" />
     <ClInclude Include="src\adapters\platform\win32\core\Win32ErrorHandler.h" />
-    <ClInclude Include="src\adapters\platform\win32\core\Win32HandleDeleter.h" />
     <ClInclude Include="src\adapters\platform\win32\core\Win32HandleFactory.h" />
     <ClInclude Include="src\adapters\platform\win32\core\Win32StringHelper.h" />
     <ClInclude Include="src\adapters\platform\win32\core\Win32TypeMapper.h" />

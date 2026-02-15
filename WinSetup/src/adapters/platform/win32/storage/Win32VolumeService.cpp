@@ -36,14 +36,7 @@ namespace winsetup::adapters::platform {
             };
         }
 
-        domain::UniqueFindHandle findHandle(
-            reinterpret_cast<domain::NativeHandle>(hFind),
-            [](domain::NativeHandle handle) noexcept {
-                if (handle && handle != reinterpret_cast<domain::NativeHandle>(-1)) {
-                    FindVolumeClose(static_cast<HANDLE>(handle));
-                }
-            }
-        );
+        auto findHandle = Win32HandleFactory::MakeFindVolumeHandle(hFind);
 
         int volumeIndex = 0;
 
@@ -99,7 +92,7 @@ namespace winsetup::adapters::platform {
             volumes.push_back(std::move(volume));
             volumeIndex++;
 
-        } while (FindNextVolumeW(static_cast<HANDLE>(findHandle.Get()), volumeName, MAX_PATH));
+        } while (FindNextVolumeW(Win32HandleFactory::ToWin32FindHandle(findHandle), volumeName, MAX_PATH));
 
         DWORD error = GetLastError();
         if (error != ERROR_NO_MORE_FILES) {

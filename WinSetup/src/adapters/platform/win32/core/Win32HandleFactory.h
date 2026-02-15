@@ -2,12 +2,16 @@
 #pragma once
 
 #include <domain/memory/UniqueHandle.h>
+#include <domain/memory/UniqueLibrary.h>
+#include <domain/memory/UniqueFindHandle.h>
 #include <Windows.h>
 
 namespace winsetup::adapters::platform {
 
     class Win32HandleFactory {
     public:
+        Win32HandleFactory() = delete;
+
         static void CloseHandleDeleter(domain::NativeHandle handle) noexcept {
             if (handle && handle != domain::InvalidHandleValue()) {
                 ::CloseHandle(static_cast<HANDLE>(handle));
@@ -23,6 +27,12 @@ namespace winsetup::adapters::platform {
         static void FindCloseDeleter(domain::NativeHandle handle) noexcept {
             if (handle && handle != domain::InvalidHandleValue()) {
                 ::FindClose(static_cast<HANDLE>(handle));
+            }
+        }
+
+        static void FindVolumeCloseDeleter(domain::NativeHandle handle) noexcept {
+            if (handle && handle != domain::InvalidHandleValue()) {
+                ::FindVolumeClose(static_cast<HANDLE>(handle));
             }
         }
 
@@ -44,6 +54,13 @@ namespace winsetup::adapters::platform {
             return domain::UniqueFindHandle(
                 reinterpret_cast<domain::NativeHandle>(h),
                 FindCloseDeleter
+            );
+        }
+
+        [[nodiscard]] static domain::UniqueFindHandle MakeFindVolumeHandle(HANDLE h) noexcept {
+            return domain::UniqueFindHandle(
+                reinterpret_cast<domain::NativeHandle>(h),
+                FindVolumeCloseDeleter
             );
         }
 

@@ -1,107 +1,279 @@
-﻿
-#### 🟡 **Medium - 중요 구현 누락**
+﻿전체 코드 분석을 완료했습니다. 시간을 충분히 갖고 구현 계획서와 현재 코드를 면밀히 검토한 결과, **중대한 클린 아키텍처 위반사항**들을 발견했습니다.
 
-6. **Win32DiskService - IOCTL 실제 구현 부족**
-   ```
-   계획서: IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, IOCTL_DISK_SET_PARTITION_INFO 등 15개+
-   실제: GetDiskInfo 일부만 구현, CleanDisk/CreatePartitionLayout/FormatPartition 빈 껍데기
-   영향: 실제 디스크 작업 불가
-   ```
+## 🚨 중대 위반사항 (Critical Violations)
 
-7. **Win32VolumeService - 볼륨 작업 미구현**
-   ```
-   계획서: FindFirstVolume, FindNextVolume, GetVolumeInformation
-   실제: EnumerateVolumes/GetVolumeInfo 빈 껍데기만 반환
-   영향: 볼륨 정보 수집 불가
-   ```
+### 1. **Domain 레이어의 Windows.h 의존성 위반 (수정완료)**
 
-8. **Task<T> - 코루틴 구현 누락**
-   ```
-   계획서: 표준 C++20 코루틴 완전 구현
-   실제: 헤더만 있고 .cpp 파일 없음
-   영향: 비동기 UseCase 실행 불가
-   ```
+**계획서 원칙:**
+> "Domain (Layer 1): 외부 의존성 0, 표준 C++만 사용, Windows.h 절대 금지"
 
-9. **EventBus - 이벤트 버스 구현 누락**
-   ```
-   계획서: Publish/Subscribe 패턴 완성
-   실제: 헤더만 있고 .cpp 파일 없음
-   영향: 도메인 이벤트 처리 불가
-   ```
+**실제 코드 위반:**
 
-#### 🟢 **Low - 보완 필요**
+```cpp
+// src/domain/memory/UniqueHandle.h - 계획서 위반!
+#pragma once
+#include <Windows.h>  // ❌ Domain 레이어에서 Windows.h 직접 include!
 
-10. **Win32SystemInfoService - 하드웨어 정보 하드코딩**
-    ```
-    계획서: GetSystemFirmwareTable 사용
-    실제: "Unknown Motherboard", 8GB 하드코딩
-    영향: 정확한 시스템 분석 불가
-    ```
+namespace winsetup::domain {
+    class UniqueHandle {
+        explicit UniqueHandle(HANDLE handle = INVALID_HANDLE_VALUE) noexcept;  // ❌ Windows 타입 사용
+        [[nodiscard]] HANDLE Get() const noexcept;  // ❌ Windows 타입 노출
+        // ...
+    };
+}
+```
 
-11. **PoolAllocator - 메모리 풀 구현 누락**
-    ```
-    계획서: 4096 블록 크기 메모리 풀
-    실제: 헤더만 있고 .cpp 없음
-    영향: 성능 최적화 누락
-    ```
+**계획서에서 요구한 올바른 구조:**
+```cpp
+// Domain은 네이티브 타입만 사용해야 함
+namespace winsetup::domain {
+    using NativeHandle = void*;
+    constexpr NativeHandle InvalidHandleValue = reinterpret_cast<NativeHandle>(-1);
+    
+    class UniqueHandle {
+        explicit UniqueHandle(NativeHandle handle = InvalidHandleValue) noexcept;
+    };
+}
+```
 
-12. **DiskLayoutBuilder - 파티션 레이아웃 빌더 누락**
-    ```
-    계획서: GPT/MBR 레이아웃 빌드
-    실제: 헤더만 있고 .cpp 없음
-    영향: 파티션 생성 자동화 불가
-    ```
+
+
+### 2. **Adapter 레이어가 Domain 타입을 직접 캐스팅**
+
+```cpp
+// src/adapters/platform/win32/core/Win32HandleDeleter.h
+#include <domain/memory/UniqueHandle.h>  // ❌ 순환 의존성 위험
+#include <Windows.h>
+
+inline void Win32HandleDeleter(domain::NativeHandle handle) noexcept {
+    CloseHandle(static_cast<HANDLE>(handle));  // ✓ 이 부분만 올바름
+}
+
+// ❌ Domain 타입을 생성하면서 Windows 타입 주입
+inline domain::UniqueHandle MakeUniqueHandle(HANDLE h) noexcept {
+    return domain::UniqueHandle(reinterpret_cast<domain::NativeHandle>(h), Win32HandleDeleter);
+}
+```
+
+**문제점:** Domain 레이어가 이미 Windows.h를 알고 있어서 Type Mapper의 의미가 상실됨
+
+### 3. **WimlibOptimizer의 플랫폼 의존성 노출**
+
+```cpp
+// src/adapters/imaging/WimlibOptimizer.cpp
+#include <Windows.h>      // ❌ Adapter 레이어에 있어야 하나
+#include <psapi.h>         // ❌ 저수준 API
+#include "../../lib/wimlib.h"  // ⚠️ 외부 라이브러리 직접 노출
+
+namespace winsetup::adapters {  // ✓ 위치는 맞음
+    class WimlibOptimizer {
+        HANDLE mJobObject;  // ❌ Windows 타입을 멤버로 직접 보유
+        // ...
+    };
+}
+```
+
+**계획서 위배:**
+- WimlibOptimizer는 Adapter 레이어에 있지만, 인터페이스(IImagingService)를 구현하지 않음
+- Windows HANDLE을 멤버로 직접 보유 (RAII 래퍼 미사용)
+
+### 4. **SimpleButton의 리소스 관리 위반**
+
+```cpp
+// src/adapters/ui/win32/controls/SimpleButton.cpp
+SimpleButton::~SimpleButton() {
+    if (m_hFont) {
+        DeleteObject(m_hFont);  // ❌ 수동 리소스 관리
+    }
+}
+```
+
+**계획서 원칙 위반:**
+> "RAII 강제: 모든 리소스는 자동 정리, 수동 CloseHandle/DeleteObject 금지"
+
+**올바른 구현:**
+```cpp
+class SimpleButton {
+private:
+    domain::UniqueHandle m_hFont;  // ✓ RAII 자동 관리
+};
+```
+
+### 5. **Domain Services의 구현 누락**
+
+**계획서에 명시된 구현:**
+```cpp
+class DiskSortingService {
+    static FilterAndSortResult FilterAndSort(const std::vector<DiskInfo>& disks);
+};
+```
+
+**실제 코드:**
+```cpp
+// src/domain/services/DiskSortingService.cpp
+std::vector<DiskInfo> DiskSortingService::SortByPriority(std::vector<DiskInfo> disks) {
+    // FilterAndSort가 아니라 SortByPriority만 구현됨 ❌
+}
+```
+
+### 6. **ITransaction 인터페이스 미구현**
+
+**계획서:**
+```cpp
+// abstractions/infrastructure/transaction/ITransaction.h
+class ITransaction {
+    virtual Expected<void> Begin() = 0;
+    virtual Expected<void> Commit() = 0;
+    virtual Expected<void> Rollback() = 0;
+};
+```
+
+**실제 코드:**
+```cpp
+// src/abstractions/infrastructure/transaction/ITransaction.h
+// ❌ 파일이 비어있음 (주석만 존재)
+```
+
+### 7. **Expected<T>의 union 사용 문제**
+
+```cpp
+// src/domain/primitives/Expected.h
+template<typename T>
+class Expected {
+private:
+    union {
+        T m_value;
+        Error m_error;
+    };
+    bool m_hasValue;  // ❌ 소멸자가 어느 멤버를 파괴해야 하는지만 알려줌
+};
+```
+
+**문제점:**
+- 복사 생성자에서 `new (&m_value) T(other.m_value);` placement new 사용
+- 하지만 union은 이미 메모리가 할당되어 있어서 불필요
+- `std::variant` 또는 `std::optional` + `Error` 조합이 더 안전
+
+**계획서에서 요구한 구조와 일치하나, 계획서 자체가 개선 필요**
 
 ***
 
-### 📊 **구현 완성도 평가**
+## ⚠️ 중간 위반사항 (Major Violations)
 
-| 계층 | 계획서 목표 | 실제 구현 | 완성도 |
-|------|------------|----------|--------|
-| **Domain Entities** | 5개 | 5개 완성 | ✅ 100% |
-| **Domain Primitives** | Expected, Error, RAII | 완성 | ✅ 100% |
-| **Domain Services** | 3개 | 2개 완성 | ✅ 67% |
-| **Adapters - 저수준** | 8개 핵심 구현 | **2개만 완성** | 🔴 **25%** |
-| **Adapters - Win32** | IOCTL 완전 구현 | 기본 골격만 | 🟡 **40%** |
-| **Application** | DIContainer + Task | DIContainer만 | 🟡 **50%** |
-| **전체** | - | - | 🟡 **약 60%** |
+### 8. **IDiskService 파라미터 타입 불일치**
+
+**계획서:**
+```cpp
+[[nodiscard]] virtual Expected<void> FormatPartition(
+    uint32_t diskIndex,
+    uint32_t partitionIndex,
+    FileSystemType fileSystem,  // ✓ domain::FileSystemType
+    bool quickFormat = true
+) = 0;
+```
+
+**실제 코드:**
+```cpp
+[[nodiscard]] virtual domain::Expected<void> FormatPartition(
+    uint32_t diskIndex,
+    uint32_t partitionIndex,
+    domain::FileSystemType fileSystem,  // ✓ 일치함
+    bool quickFormat = true
+) = 0;
+```
+
+이 부분은 정상입니다.
+
+### 9. **Event 관련 인터페이스 전부 미구현**
+
+```cpp
+// src/abstractions/infrastructure/messaging/IEvent.h
+// ❌ 완전히 비어있음
+
+// src/abstractions/infrastructure/messaging/IEventBus.h  
+// ❌ 완전히 비어있음
+
+// src/abstractions/infrastructure/messaging/IDispatcher.h
+// ❌ 완전히 비어있음
+```
+
+계획서에는 EventBus가 핵심 컴포넌트로 명시되어 있으나 인터페이스조차 정의되지 않음
+
+### 10. **Win32Logger의 버퍼 미사용**
+
+```cpp
+// src/adapters/platform/win32/logging/Win32Logger.h
+private:
+    std::wstring m_buffer;  // ❌ 선언만 있고 실제 사용하지 않음
+    static constexpr size_t BUFFER_SIZE = 16384;
+    static constexpr size_t FLUSH_THRESHOLD = 8192;  // ❌ 사용되지 않음
+```
+
+```cpp
+// Win32Logger.cpp
+void Win32Logger::Log(...) {
+    // m_buffer를 사용하지 않고 매번 직접 WriteFile 호출 ❌
+    WriteFile(Win32HandleFactory::ToWin32Handle(m_hFile), entry.data(), ...);
+}
+```
+
+**성능 문제:** 버퍼링 없이 매번 시스템 콜 발생
 
 ***
 
-### 🎯 **우선순위 구현 로드맵**
+## ✅ 정상 구현 부분
 
-#### **Phase A (Critical) - 1주**
-1. ✅ `SystemInfo` 완성 (방금 완료)
-2. 🔴 `MFTScanner.cpp` 구현 - 볼륨 고속 스캔
-3. 🔴 `AsyncIOCTL.cpp` 구현 - 비동기 IOCTL
-4. 🔴 `DiskTransaction.cpp` 구현 - 트랜잭션 롤백
-5. 🔴 `SMBIOSParser.cpp` 구현 - 하드웨어 정보
+### 1. **Win32TypeMapper의 타입 변환**
+- Domain 타입 ↔ Win32 타입 변환이 깔끔하게 분리됨
+- BusType, DiskType, FileSystemType 등 매핑 올바름
 
-#### **Phase B (High) - 1주**
-6. 🔴 `Win32DiskService` IOCTL 완전 구현
-7. 🔴 `Win32VolumeService` 완전 구현
-8. 🔴 `WimlibOptimizer.cpp` 구현
-9. 🟡 `Task.cpp` 코루틴 완성
+### 2. **AsyncIOCTL의 비동기 I/O**
+- OVERLAPPED 구조체 사용 ✓
+- 워커 스레드 풀 구현 ✓
+- Operation 추적 및 대기 메커니즘 ✓
 
-#### **Phase C (Medium) - 3일**
-10. 🟡 `EventBus.cpp` 완성
-11. 🟡 `DiskLayoutBuilder.cpp` 완성
-12. 🟡 `PoolAllocator.cpp` 완성
+### 3. **Value Objects의 불변성**
+- DiskSize, DriveLetter 등 immutable 설계 ✓
+- constexpr 활용 ✓
 
 ***
 
-### 💡 **핵심 결론**
+## 📋 개선 권장사항 우선순위
 
-**현재 상태:**
-- ✅ **Domain Layer (엔티티/기본 타입)**: 계획서 수준 달성
-- ✅ **아키텍처 구조**: 클린 아키텍처 계층 분리 완벽
-- 🔴 **저수준 최적화**: 계획서 핵심 5개 기능 **모두 미구현**
-- 🟡 **Win32 실제 구현**: 골격만 있고 IOCTL 로직 부족
+### Priority 1 (즉시 수정 필요)
+1. **Domain/UniqueHandle.h에서 Windows.h 제거**
+   - `using NativeHandle = void*` 도입
+   - 모든 Windows 타입을 NativeHandle로 추상화
 
-**계획서 대비 부족한 점:**
-1. 성능 최적화 핵심(MFT, AsyncIOCTL) **완전 누락**
-2. 안정성 핵심(Transaction) **완전 누락**
-3. 실제 동작 로직(Win32 Services) **40% 미구현**
+2. **ITransaction 인터페이스 구현**
+   - Begin/Commit/Rollback 정의
+   - DiskTransaction에서 구현
 
-**권장 조치:**
-현재는 **"아키텍처 골격은 완벽, 실제 동작 엔진은 미완성"** 상태입니다. Phase A의 Critical 항목 5개를 최우선으로 구현해야 계획서 수준에 도달합니다.
+3. **IEvent/IEventBus 인터페이스 구현**
+   - 계획서대로 메시징 시스템 구축
+
+### Priority 2 (단기 개선)
+4. **SimpleButton HFONT을 RAII로 변경**
+5. **Win32Logger 버퍼링 구현**
+6. **DiskSortingService.FilterAndSort() 구현**
+
+### Priority 3 (중기 개선)
+7. **Expected<T>를 std::expected(C++23) 또는 개선된 variant 기반으로 재작성**
+8. **WimlibOptimizer를 IImagingService 인터페이스 구현체로 변경**
+
+***
+
+## 📊 클린 아키텍처 준수도 평가
+
+| 항목 | 계획서 목표 | 실제 달성 | 점수 |
+|------|-------------|----------|------|
+| Domain 완전 격리 | Windows.h 0개 | Windows.h 1개 사용 | **40/100** ⛔ |
+| RAII 강제 | 100% | ~85% | **85/100** ⚠️ |
+| 인터페이스 분리 | 100% | ~60% | **60/100** ⚠️ |
+| 트랜잭션 구현 | 완전 구현 | 인터페이스 미정의 | **20/100** ⛔ |
+| 타입 안전성 | void* 금지 | 대부분 준수 | **90/100** ✅ |
+| 테스트 가능성 | 모든 비즈니스 로직 | 구조는 준수 | **80/100** ✅ |
+
+**종합 평가: 62/100 (D+)** 
+
+계획서는 A+ 수준이나, **Domain 레이어의 Windows.h 의존성이라는 치명적 결함**으로 인해 클린 아키텍처의 핵심 원칙이 무너졌습니다.
