@@ -65,8 +65,11 @@ namespace winsetup::application {
 
     domain::Expected<void> MainViewModel::LoadConfiguration() {
         auto result = mLoadConfigUseCase->Execute(L"config.ini");
-        if (!result.HasValue())
+        if (!result.HasValue()) {
+            if (mLogger)
+                mLogger->Error(L"Failed to load configuration: " + result.GetError().GetMessage());
             return result.GetError();
+        }
         mConfig = result.Value();
         return domain::Expected<void>{};
     }

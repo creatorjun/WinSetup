@@ -43,8 +43,8 @@ namespace winsetup::application {
         domain::Expected<void> LoadConfiguration();
 
         std::shared_ptr<LoadConfigurationUseCase> mLoadConfigUseCase;
-        std::shared_ptr<abstractions::ILogger> mLogger;
-        std::shared_ptr<domain::SetupConfig> mConfig;
+        std::shared_ptr<abstractions::ILogger>    mLogger;
+        std::shared_ptr<domain::SetupConfig>      mConfig;
 
         std::wstring mStatusText;
         std::wstring mWindowTitle;
