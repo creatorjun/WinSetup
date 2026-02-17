@@ -6,6 +6,7 @@
 #include <abstractions/infrastructure/logging/ILogger.h>
 #include <adapters/ui/win32/controls/TypeSelectorGroup.h>
 #include <adapters/ui/win32/controls/ToggleButton.h>
+#include <adapters/ui/win32/controls/SimpleButton.h>
 #include <Windows.h>
 #include <memory>
 #include <string>
@@ -43,6 +44,7 @@ namespace winsetup::adapters::ui {
         void UpdateWindowTitle();
         void UpdateDataPreservation();
         void UpdateBitlockerEnabled();
+        void UpdateProcessingState();
 
         void OnCreate();
         void OnDestroy();
@@ -64,12 +66,14 @@ namespace winsetup::adapters::ui {
 
         ToggleButton m_btnDataPreserve;
         ToggleButton m_btnBitlocker;
+        SimpleButton m_btnStartStop;
 
         static constexpr int  WINDOW_WIDTH = 640;
         static constexpr int  WINDOW_HEIGHT = 480;
         static constexpr int  TYPE_SELECTOR_GROUP_ID = 100;
         static constexpr int  ID_TOGGLE_DATA_PRESERVE = 4000;
         static constexpr int  ID_TOGGLE_BITLOCKER = 4001;
+        static constexpr int  ID_BTN_START_STOP = 4002;
         static constexpr auto CLASS_NAME = L"WinSetupMainWindow";
     };
 

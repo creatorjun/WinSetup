@@ -85,6 +85,13 @@ namespace winsetup::application {
         }
     }
 
+    void MainViewModel::SetProcessing(bool processing) {
+        if (m_isProcessing != processing) {
+            m_isProcessing = processing;
+            NotifyPropertyChanged(L"IsProcessing");
+        }
+    }
+
     domain::Expected<void> MainViewModel::Initialize() {
         m_isInitializing = true;
         SetStatusText(L"Initializing...");

@@ -1,4 +1,5 @@
 ﻿// src/adapters/ui/win32/controls/TypeSelectorGroup.cpp
+
 #include <adapters/ui/win32/controls/TypeSelectorGroup.h>
 
 #undef min
@@ -26,10 +27,8 @@ namespace winsetup::adapters::ui {
     }
 
     void TypeSelectorGroup::Create(
-        HWND hParent,
-        HINSTANCE hInstance,
-        const std::wstring& label,
-        int groupId)
+        HWND hParent, HINSTANCE hInstance,
+        const std::wstring& label, int groupId)
     {
         m_hParent = hParent;
         m_hInstance = hInstance;
@@ -40,10 +39,9 @@ namespace winsetup::adapters::ui {
     void TypeSelectorGroup::Rebuild(const std::vector<domain::InstallationType>& types) {
         if (!m_hParent || !m_hInstance) return;
 
-        for (auto& btn : m_buttons) {
+        for (auto& btn : m_buttons)
             if (btn && btn->Handle())
                 DestroyWindow(btn->Handle());
-        }
         m_buttons.clear();
 
         m_types = types;
@@ -52,12 +50,11 @@ namespace winsetup::adapters::ui {
 
         for (size_t i = 0; i < m_types.size(); ++i) {
             auto btn = std::make_unique<ToggleButton>();
-
             HWND hBtn = btn->Create(
                 m_hParent,
                 m_types[i].name,
                 0, 0,
-                BTN_MIN_WIDTH, BTN_HEIGHT,
+                BTN_MIN_W, BTN_HEIGHT,
                 m_nextButtonId++,
                 m_hInstance);
 
@@ -84,12 +81,19 @@ namespace winsetup::adapters::ui {
         m_onSelectionChanged = std::move(callback);
     }
 
+    void TypeSelectorGroup::SetEnabled(bool enabled) {
+        for (auto& btn : m_buttons) {
+            if (btn && btn->Handle())
+                EnableWindow(btn->Handle(), enabled ? TRUE : FALSE);
+        }
+    }
+
     void TypeSelectorGroup::RecalcButtonRects() {
         if (m_buttons.empty()) return;
 
         const int areaW = (m_rect.right - m_rect.left) - INNER_PAD_H * 2;
         const int calc = (areaW - BTN_GAP_H * (COLS - 1)) / COLS;
-        const int btnW = calc > BTN_MIN_WIDTH ? calc : BTN_MIN_WIDTH;
+        const int btnW = calc > BTN_MIN_W ? calc : BTN_MIN_W;
 
         for (int i = 0; i < static_cast<int>(m_buttons.size()); ++i) {
             if (!m_buttons[i]) continue;
@@ -101,9 +105,7 @@ namespace winsetup::adapters::ui {
             const int x = m_rect.left + INNER_PAD_H + col * (btnW + BTN_GAP_H);
             const int y = m_rect.top + INNER_PAD_TOP + row * (BTN_HEIGHT + BTN_GAP_V);
 
-            SetWindowPos(
-                hBtn, nullptr,
-                x, y, btnW, BTN_HEIGHT,
+            SetWindowPos(hBtn, nullptr, x, y, btnW, BTN_HEIGHT,
                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
         }
     }
@@ -126,15 +128,17 @@ namespace winsetup::adapters::ui {
         }
     }
 
+    void TypeSelectorGroup::OnPaint(HDC hdc) const {
+        DrawGroupBox(hdc);
+    }
+
     void TypeSelectorGroup::DrawGroupBox(HDC hdc) const {
         if (m_labelFontDirty || !m_labelFont) {
-            if (m_labelFont) { DeleteObject(m_labelFont); m_labelFont = nullptr; }
+            if (m_labelFont) DeleteObject(m_labelFont);
             m_labelFont = CreateFontW(
-                LABEL_FONT_SZ, 0, 0, 0,
-                FW_NORMAL, FALSE, FALSE, FALSE,
+                LABEL_FONT_SZ, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
-                L"Segoe UI");
+                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
             m_labelFontDirty = false;
         }
 
@@ -146,9 +150,9 @@ namespace winsetup::adapters::ui {
             static_cast<int>(m_label.size()), &labelSize);
 
         const RECT& r = m_rect;
-        const int   labelX = r.left + INNER_PAD_H;
-        const int   labelTopY = r.top + LABEL_OFF_Y;
-        const int   borderTop = r.top + labelSize.cy / 2;
+        const int labelX = r.left + INNER_PAD_H;
+        const int labelTopY = r.top + LABEL_OFF_Y;
+        const int borderTop = r.top + labelSize.cy / 2;
 
         HPEN hPen = CreatePen(PS_SOLID, 1, RGB(180, 180, 180));
         HPEN hOldPen = static_cast<HPEN>(SelectObject(hdc, hPen));
@@ -167,18 +171,13 @@ namespace winsetup::adapters::ui {
         SetTextColor(hdc, RGB(80, 80, 80));
 
         RECT labelRect = {
-            labelX,
-            labelTopY,
-            labelX + labelSize.cx + 1,
-            labelTopY + labelSize.cy + 1
+            labelX, labelTopY,
+            labelX + labelSize.cx + 1, labelTopY + labelSize.cy + 1
         };
-        DrawTextW(hdc, m_label.c_str(), -1, &labelRect, DT_LEFT | DT_TOP | DT_SINGLELINE);
+        DrawTextW(hdc, m_label.c_str(), -1, &labelRect,
+            DT_LEFT | DT_TOP | DT_SINGLELINE);
 
         SelectObject(hdc, hOldFont);
-    }
-
-    void TypeSelectorGroup::OnPaint(HDC hdc) const {
-        DrawGroupBox(hdc);
     }
 
 }

@@ -35,6 +35,8 @@ namespace winsetup::abstractions {
         [[nodiscard]] virtual bool IsProcessing()    const = 0;
         [[nodiscard]] virtual bool IsCompleted()     const = 0;
 
+        virtual void SetProcessing(bool processing) = 0;
+
         virtual domain::Expected<void> Initialize() = 0;
     };
 

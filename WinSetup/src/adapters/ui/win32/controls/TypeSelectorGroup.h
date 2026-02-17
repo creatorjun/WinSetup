@@ -21,16 +21,11 @@ namespace winsetup::adapters::ui {
         TypeSelectorGroup(const TypeSelectorGroup&) = delete;
         TypeSelectorGroup& operator=(const TypeSelectorGroup&) = delete;
 
-        void Create(
-            HWND hParent,
-            HINSTANCE hInstance,
-            const std::wstring& label,
-            int groupId);
-
+        void Create(HWND hParent, HINSTANCE hInstance, const std::wstring& label, int groupId);
         void Rebuild(const std::vector<domain::InstallationType>& types);
-
         void SetRect(const RECT& rect);
         void SetSelectionChangedCallback(SelectionChangedCallback callback);
+        void SetEnabled(bool enabled);
 
         void OnCommand(WPARAM wParam, LPARAM lParam);
         void OnPaint(HDC hdc) const;
@@ -43,25 +38,24 @@ namespace winsetup::adapters::ui {
         void RecalcButtonRects();
         void DrawGroupBox(HDC hdc) const;
 
-        HWND      m_hParent;
-        HINSTANCE m_hInstance;
+        HWND      m_hParent = nullptr;
+        HINSTANCE m_hInstance = nullptr;
+        int       m_groupId = -1;
+        RECT      m_rect = {};
 
-        std::wstring                               m_label;
+        std::wstring m_label;
         std::vector<domain::InstallationType>      m_types;
         std::vector<std::unique_ptr<ToggleButton>> m_buttons;
         std::wstring                               m_selectedKey;
         SelectionChangedCallback                   m_onSelectionChanged;
-        int                                        m_groupId;
-        RECT                                       m_rect;
 
-        mutable HFONT m_labelFont;
-        mutable bool  m_labelFontDirty;
-
-        int m_nextButtonId;
+        mutable HFONT m_labelFont = nullptr;
+        mutable bool  m_labelFontDirty = true;
+        int           m_nextButtonId = BTN_ID_BASE;
 
         static constexpr int COLS = 2;
         static constexpr int BTN_HEIGHT = 32;
-        static constexpr int BTN_MIN_WIDTH = 80;
+        static constexpr int BTN_MIN_W = 80;
         static constexpr int BTN_GAP_H = 8;
         static constexpr int BTN_GAP_V = 8;
         static constexpr int INNER_PAD_H = 12;

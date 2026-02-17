@@ -40,6 +40,8 @@ namespace winsetup::application {
         [[nodiscard]] bool IsProcessing()   const override { return m_isProcessing; }
         [[nodiscard]] bool IsCompleted()    const override { return m_isCompleted; }
 
+        void SetProcessing(bool processing) override;
+
         domain::Expected<void> Initialize() override;
 
         void AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) override;

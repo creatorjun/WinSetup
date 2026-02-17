@@ -133,58 +133,54 @@ namespace winsetup::adapters::ui {
         };
 
         m_typeSelectorGroup.Create(
-            m_hWnd,
-            m_hInstance,
-            L"설치 유형",
-            TYPE_SELECTOR_GROUP_ID);
-
+            m_hWnd, m_hInstance, L"설치 유형", TYPE_SELECTOR_GROUP_ID);
         m_typeSelectorGroup.SetRect(m_selectorRect);
-
         m_typeSelectorGroup.SetSelectionChangedCallback(
             [this](const std::wstring& key) {
-                if (m_viewModel)
-                    m_viewModel->SetTypeDescription(key);
+                if (m_viewModel) m_viewModel->SetTypeDescription(key);
             });
 
         RebuildTypeSelector();
 
-        // ── 옵션 토글 버튼 영역 (1열 2행 세로 배열) ─────────────────────
+        // ── 옵션 토글 버튼 (1열 2행) ────────────────────────────────────
         const int optionAreaY = m_selectorRect.bottom + gap * 2;
         const int optionBtnW = cw - marginH * 2;
         const int optionBtnH = 36;
 
         m_btnDataPreserve.Create(
-            m_hWnd,
-            L"데이터 보존",
-            marginH,
-            optionAreaY,
-            optionBtnW,
-            optionBtnH,
-            ID_TOGGLE_DATA_PRESERVE,
-            m_hInstance);
+            m_hWnd, L"데이터 보존",
+            marginH, optionAreaY,
+            optionBtnW, optionBtnH,
+            ID_TOGGLE_DATA_PRESERVE, m_hInstance);
 
         m_btnBitlocker.Create(
-            m_hWnd,
-            L"BitLocker 설정",
-            marginH,
-            optionAreaY + optionBtnH + gap,
-            optionBtnW,
-            optionBtnH,
-            ID_TOGGLE_BITLOCKER,
-            m_hInstance);
+            m_hWnd, L"BitLocker 설정",
+            marginH, optionAreaY + optionBtnH + gap,
+            optionBtnW, optionBtnH,
+            ID_TOGGLE_BITLOCKER, m_hInstance);
 
         if (m_viewModel) {
             m_btnDataPreserve.SetChecked(m_viewModel->GetDataPreservation());
             m_btnBitlocker.SetChecked(m_viewModel->GetBitlockerEnabled());
         }
+
+        // ── 시작/중지 버튼 ────────────────────────────────────────────────
+        const int startStopY = optionAreaY + (optionBtnH + gap) * 2 + gap;
+        const int startStopH = 44;
+
+        m_btnStartStop.Create(
+            m_hWnd, L"시작",
+            marginH, startStopY,
+            optionBtnW, startStopH,
+            ID_BTN_START_STOP, m_hInstance);
+
+        m_btnStartStop.SetFontSize(15);
     }
 
     void Win32MainWindow::RebuildTypeSelector() {
         if (!m_viewModel || !m_hWnd) return;
-
         const auto types = m_viewModel->GetInstallationTypes();
         if (types.empty()) return;
-
         m_typeSelectorGroup.Rebuild(types);
     }
 
@@ -216,10 +212,8 @@ namespace winsetup::adapters::ui {
         DeleteObject(hFont);
 
         RECT typeRect = {
-            marginH,
-            statusH + gap,
-            clientRect.right - marginH,
-            statusH + gap + typeDescH
+            marginH, statusH + gap,
+            clientRect.right - marginH, statusH + gap + typeDescH
         };
 
         HBRUSH hBg = CreateSolidBrush(RGB(255, 255, 255));
@@ -258,6 +252,7 @@ namespace winsetup::adapters::ui {
         else if (propertyName == L"InstallationTypes") RebuildTypeSelector();
         else if (propertyName == L"DataPreservation")  UpdateDataPreservation();
         else if (propertyName == L"BitlockerEnabled")  UpdateBitlockerEnabled();
+        else if (propertyName == L"IsProcessing")      UpdateProcessingState();
     }
 
     void Win32MainWindow::UpdateStatusText() {
@@ -287,6 +282,18 @@ namespace winsetup::adapters::ui {
         InvalidateRect(m_btnBitlocker.Handle(), nullptr, TRUE);
     }
 
+    void Win32MainWindow::UpdateProcessingState() {
+        if (!m_viewModel || !m_btnStartStop.Handle()) return;
+
+        const bool processing = m_viewModel->IsProcessing();
+
+        m_btnStartStop.SetText(processing ? L"중지" : L"시작");
+
+        m_btnDataPreserve.SetEnabled(!processing);
+        m_btnBitlocker.SetEnabled(!processing);
+        m_typeSelectorGroup.SetEnabled(!processing);
+    }
+
     void Win32MainWindow::OnCreate() {
         if (m_logger) m_logger->Debug(L"Window WM_CREATE received");
         InitializeWidgets();
@@ -312,8 +319,6 @@ namespace winsetup::adapters::ui {
 
         if (notifCode == BN_CLICKED) {
             if (ctrlId == ID_TOGGLE_DATA_PRESERVE && m_viewModel) {
-                // ToggleButton 내부에서 이미 SetChecked 처리 완료
-                // → ViewModel을 버튼의 현재 상태로 동기화
                 const bool current = m_btnDataPreserve.IsChecked();
                 m_viewModel->SetDataPreservation(current);
                 if (m_logger)
@@ -323,14 +328,21 @@ namespace winsetup::adapters::ui {
                 return;
             }
             if (ctrlId == ID_TOGGLE_BITLOCKER && m_viewModel) {
-                // ToggleButton 내부에서 이미 SetChecked 처리 완료
-                // → ViewModel을 버튼의 현재 상태로 동기화
                 const bool current = m_btnBitlocker.IsChecked();
                 m_viewModel->SetBitlockerEnabled(current);
                 if (m_logger)
                     m_logger->Debug(
                         std::wstring(L"BitlockerEnabled toggled: ") +
                         (current ? L"ON" : L"OFF"));
+                return;
+            }
+            if (ctrlId == ID_BTN_START_STOP && m_viewModel) {
+                const bool nowProcessing = !m_viewModel->IsProcessing();
+                m_viewModel->SetProcessing(nowProcessing);
+                if (m_logger)
+                    m_logger->Info(
+                        std::wstring(L"Process ") +
+                        (nowProcessing ? L"started" : L"stopped"));
                 return;
             }
         }
