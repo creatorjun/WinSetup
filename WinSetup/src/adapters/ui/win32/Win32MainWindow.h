@@ -7,6 +7,7 @@
 #include <adapters/ui/win32/controls/TypeSelectorGroup.h>
 #include <adapters/ui/win32/controls/ToggleButton.h>
 #include <adapters/ui/win32/controls/SimpleButton.h>
+#include <adapters/ui/win32/Win32ProgressBar.h>
 #include <Windows.h>
 #include <memory>
 #include <string>
@@ -45,11 +46,16 @@ namespace winsetup::adapters::ui {
         void UpdateDataPreservation();
         void UpdateBitlockerEnabled();
         void UpdateProcessingState();
+        void UpdateProgress();
+
+        void StartTimer();
+        void StopTimer();
 
         void OnCreate();
         void OnDestroy();
         void OnPaint();
         void OnCommand(WPARAM wParam, LPARAM lParam);
+        void OnTimer(WPARAM timerId);
 
         LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
         static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -64,16 +70,19 @@ namespace winsetup::adapters::ui {
         RECT              m_selectorRect;
         std::wstring      m_typeDescription;
 
-        ToggleButton m_btnDataPreserve;
-        ToggleButton m_btnBitlocker;
-        SimpleButton m_btnStartStop;
+        ToggleButton   m_btnDataPreserve;
+        ToggleButton   m_btnBitlocker;
+        SimpleButton   m_btnStartStop;
+        Win32ProgressBar m_progressBar;
 
         static constexpr int  WINDOW_WIDTH = 640;
-        static constexpr int  WINDOW_HEIGHT = 480;
+        static constexpr int  WINDOW_HEIGHT = 520;
         static constexpr int  TYPE_SELECTOR_GROUP_ID = 100;
         static constexpr int  ID_TOGGLE_DATA_PRESERVE = 4000;
         static constexpr int  ID_TOGGLE_BITLOCKER = 4001;
         static constexpr int  ID_BTN_START_STOP = 4002;
+        static constexpr int  ID_PROGRESS_BAR = 4003;
+        static constexpr UINT TIMER_ID_PROGRESS = 1001;
         static constexpr auto CLASS_NAME = L"WinSetupMainWindow";
     };
 

@@ -37,6 +37,11 @@ namespace winsetup::abstractions {
 
         virtual void SetProcessing(bool processing) = 0;
 
+        [[nodiscard]] virtual int GetProgress()         const = 0;
+        [[nodiscard]] virtual int GetRemainingSeconds() const = 0;
+
+        virtual void TickTimer() = 0;
+
         virtual domain::Expected<void> Initialize() = 0;
     };
 

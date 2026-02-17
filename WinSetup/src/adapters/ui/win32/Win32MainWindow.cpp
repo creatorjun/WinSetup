@@ -27,6 +27,7 @@ namespace winsetup::adapters::ui {
     }
 
     Win32MainWindow::~Win32MainWindow() {
+        StopTimer();
         if (m_viewModel)
             m_viewModel->RemoveAllPropertyChangedHandlers();
         if (m_hWnd) {
@@ -108,6 +109,16 @@ namespace winsetup::adapters::ui {
         return msg.wParam == 0;
     }
 
+    void Win32MainWindow::StartTimer() {
+        if (m_hWnd)
+            SetTimer(m_hWnd, TIMER_ID_PROGRESS, 1000, nullptr);
+    }
+
+    void Win32MainWindow::StopTimer() {
+        if (m_hWnd)
+            KillTimer(m_hWnd, TIMER_ID_PROGRESS);
+    }
+
     void Win32MainWindow::InitializeWidgets() {
         RECT clientRect = {};
         GetClientRect(m_hWnd, &clientRect);
@@ -175,6 +186,18 @@ namespace winsetup::adapters::ui {
             ID_BTN_START_STOP, m_hInstance);
 
         m_btnStartStop.SetFontSize(15);
+
+        // ── 프로그레스바 + 예상 시간 (2*1, 70% / 30%) ────────────────────
+        const int progressAreaY = startStopY + startStopH + gap * 2;
+        const int progressH = 36;
+
+        m_progressBar.Create(
+            m_hWnd, m_hInstance,
+            marginH, progressAreaY,
+            optionBtnW, progressH,
+            ID_PROGRESS_BAR);
+
+        m_progressBar.Reset();
     }
 
     void Win32MainWindow::RebuildTypeSelector() {
@@ -253,6 +276,7 @@ namespace winsetup::adapters::ui {
         else if (propertyName == L"DataPreservation")  UpdateDataPreservation();
         else if (propertyName == L"BitlockerEnabled")  UpdateBitlockerEnabled();
         else if (propertyName == L"IsProcessing")      UpdateProcessingState();
+        else if (propertyName == L"Progress")          UpdateProgress();
     }
 
     void Win32MainWindow::UpdateStatusText() {
@@ -288,10 +312,24 @@ namespace winsetup::adapters::ui {
         const bool processing = m_viewModel->IsProcessing();
 
         m_btnStartStop.SetText(processing ? L"중지" : L"시작");
-
         m_btnDataPreserve.SetEnabled(!processing);
         m_btnBitlocker.SetEnabled(!processing);
         m_typeSelectorGroup.SetEnabled(!processing);
+
+        if (processing) {
+            m_progressBar.Reset();
+            StartTimer();
+        }
+        else {
+            StopTimer();
+            m_progressBar.Reset();
+        }
+    }
+
+    void Win32MainWindow::UpdateProgress() {
+        if (!m_viewModel) return;
+        m_progressBar.SetProgress(m_viewModel->GetProgress());
+        m_progressBar.SetRemainingSeconds(m_viewModel->GetRemainingSeconds());
     }
 
     void Win32MainWindow::OnCreate() {
@@ -300,6 +338,7 @@ namespace winsetup::adapters::ui {
     }
 
     void Win32MainWindow::OnDestroy() {
+        StopTimer();
         if (m_logger) m_logger->Info(L"Window destroyed");
         ToggleButton::Cleanup();
         PostQuitMessage(0);
@@ -311,6 +350,18 @@ namespace winsetup::adapters::ui {
         DrawStatusText(hdc);
         m_typeSelectorGroup.OnPaint(hdc);
         EndPaint(m_hWnd, &ps);
+    }
+
+    void Win32MainWindow::OnTimer(WPARAM timerId) {
+        if (timerId != TIMER_ID_PROGRESS) return;
+        if (!m_viewModel || !m_viewModel->IsProcessing()) return;
+
+        m_viewModel->TickTimer();
+
+        if (m_viewModel->GetProgress() >= 100) {
+            StopTimer();
+            m_viewModel->SetProcessing(false);
+        }
     }
 
     void Win32MainWindow::OnCommand(WPARAM wParam, LPARAM lParam) {
@@ -370,10 +421,11 @@ namespace winsetup::adapters::ui {
 
     LRESULT Win32MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
         switch (uMsg) {
-        case WM_CREATE:   OnCreate();                return 0;
-        case WM_DESTROY:  OnDestroy();               return 0;
-        case WM_PAINT:    OnPaint();                 return 0;
-        case WM_COMMAND:  OnCommand(wParam, lParam); return 0;
+        case WM_CREATE:   OnCreate();                 return 0;
+        case WM_DESTROY:  OnDestroy();                return 0;
+        case WM_PAINT:    OnPaint();                  return 0;
+        case WM_COMMAND:  OnCommand(wParam, lParam);  return 0;
+        case WM_TIMER:    OnTimer(wParam);            return 0;
         case WM_CLOSE:
             DestroyWindow(m_hWnd);
             return 0;

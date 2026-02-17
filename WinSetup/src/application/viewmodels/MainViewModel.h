@@ -42,6 +42,11 @@ namespace winsetup::application {
 
         void SetProcessing(bool processing) override;
 
+        [[nodiscard]] int GetProgress()         const override { return m_progress; }
+        [[nodiscard]] int GetRemainingSeconds() const override { return m_remainingSeconds; }
+
+        void TickTimer() override;
+
         domain::Expected<void> Initialize() override;
 
         void AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) override;
@@ -54,6 +59,7 @@ namespace winsetup::application {
 
     private:
         domain::Expected<void> LoadConfiguration();
+        void ResetProgress();
 
         std::shared_ptr<LoadConfigurationUseCase> m_loadConfigUseCase;
         std::shared_ptr<abstractions::ILogger>    m_logger;
@@ -62,12 +68,18 @@ namespace winsetup::application {
         std::wstring m_statusText;
         std::wstring m_windowTitle;
         std::wstring m_typeDescription;
+        std::wstring m_motherboardModel;
 
         bool m_isInitializing = false;
         bool m_isProcessing = false;
         bool m_isCompleted = false;
         bool m_dataPreservation = false;
         bool m_bitlockerEnabled = false;
+
+        int m_totalSeconds = 0;
+        int m_elapsedSeconds = 0;
+        int m_remainingSeconds = 0;
+        int m_progress = 0;
 
         std::vector<abstractions::PropertyChangedCallback> m_propertyChangedHandlers;
     };

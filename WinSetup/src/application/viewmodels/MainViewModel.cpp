@@ -18,6 +18,10 @@ namespace winsetup::application {
         , m_isCompleted(false)
         , m_dataPreservation(false)
         , m_bitlockerEnabled(false)
+        , m_totalSeconds(0)
+        , m_elapsedSeconds(0)
+        , m_remainingSeconds(0)
+        , m_progress(0)
     {
     }
 
@@ -63,9 +67,7 @@ namespace winsetup::application {
         }
     }
 
-    bool MainViewModel::GetDataPreservation() const {
-        return m_dataPreservation;
-    }
+    bool MainViewModel::GetDataPreservation() const { return m_dataPreservation; }
 
     void MainViewModel::SetDataPreservation(bool enabled) {
         if (m_dataPreservation != enabled) {
@@ -74,9 +76,7 @@ namespace winsetup::application {
         }
     }
 
-    bool MainViewModel::GetBitlockerEnabled() const {
-        return m_bitlockerEnabled;
-    }
+    bool MainViewModel::GetBitlockerEnabled() const { return m_bitlockerEnabled; }
 
     void MainViewModel::SetBitlockerEnabled(bool enabled) {
         if (m_bitlockerEnabled != enabled) {
@@ -88,8 +88,53 @@ namespace winsetup::application {
     void MainViewModel::SetProcessing(bool processing) {
         if (m_isProcessing != processing) {
             m_isProcessing = processing;
+            if (processing)
+                ResetProgress();
+            else {
+                m_progress = 0;
+                m_remainingSeconds = 0;
+                m_elapsedSeconds = 0;
+            }
             NotifyPropertyChanged(L"IsProcessing");
+            NotifyPropertyChanged(L"Progress");
         }
+    }
+
+    void MainViewModel::TickTimer() {
+        if (!m_isProcessing || m_totalSeconds <= 0) return;
+
+        ++m_elapsedSeconds;
+        if (m_elapsedSeconds >= m_totalSeconds) {
+            m_elapsedSeconds = m_totalSeconds;
+            m_remainingSeconds = 0;
+            m_progress = 100;
+        }
+        else {
+            m_remainingSeconds = m_totalSeconds - m_elapsedSeconds;
+            m_progress = static_cast<int>(
+                (static_cast<double>(m_elapsedSeconds) / m_totalSeconds) * 100.0);
+        }
+
+        NotifyPropertyChanged(L"Progress");
+    }
+
+    void MainViewModel::ResetProgress() {
+        m_elapsedSeconds = 0;
+
+        constexpr int DEFAULT_TOTAL_SECONDS = 180;
+
+        if (m_config && !m_motherboardModel.empty() &&
+            m_config->HasEstimatedTime(m_motherboardModel))
+        {
+            m_totalSeconds = static_cast<int>(
+                m_config->GetEstimatedTime(m_motherboardModel));
+        }
+        else {
+            m_totalSeconds = DEFAULT_TOTAL_SECONDS;
+        }
+
+        m_remainingSeconds = m_totalSeconds;
+        m_progress = 0;
     }
 
     domain::Expected<void> MainViewModel::Initialize() {
@@ -118,14 +163,17 @@ namespace winsetup::application {
         auto result = m_loadConfigUseCase->Execute(L"config.ini");
         if (!result.HasValue()) {
             if (m_logger)
-                m_logger->Error(L"Failed to load configuration: " + result.GetError().GetMessage());
+                m_logger->Error(L"Failed to load configuration: " +
+                    result.GetError().GetMessage());
             return result.GetError();
         }
         m_config = result.Value();
         return domain::Expected<void>();
     }
 
-    void MainViewModel::AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) {
+    void MainViewModel::AddPropertyChangedHandler(
+        abstractions::PropertyChangedCallback callback)
+    {
         m_propertyChangedHandlers.push_back(std::move(callback));
     }
 
