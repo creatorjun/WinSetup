@@ -31,39 +31,42 @@ namespace winsetup {
     }
 
     void ServiceRegistration::RegisterRepositoryServices(application::DIContainer& container) {
-        auto repository = std::make_shared<adapters::persistence::IniConfigRepository>();
         container.RegisterInstance<abstractions::IConfigRepository>(
-            std::static_pointer_cast<abstractions::IConfigRepository>(repository)
+            std::static_pointer_cast<abstractions::IConfigRepository>(
+                std::make_shared<adapters::persistence::IniConfigRepository>()
+            )
         );
     }
 
     void ServiceRegistration::RegisterUseCaseServices(application::DIContainer& container) {
-        auto loggerResult = container.Resolve<abstractions::ILogger>();
-        if (!loggerResult.HasValue()) return;
-
         auto repositoryResult = container.Resolve<abstractions::IConfigRepository>();
         if (!repositoryResult.HasValue()) return;
 
-        auto useCase = std::make_shared<application::LoadConfigurationUseCase>(
-            repositoryResult.Value(),
-            loggerResult.Value()
-        );
-        container.RegisterInstance<application::LoadConfigurationUseCase>(useCase);
-    }
-
-    void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container) {
         auto loggerResult = container.Resolve<abstractions::ILogger>();
         if (!loggerResult.HasValue()) return;
 
+        container.RegisterInstance<application::LoadConfigurationUseCase>(
+            std::make_shared<application::LoadConfigurationUseCase>(
+                repositoryResult.Value(),
+                loggerResult.Value()
+            )
+        );
+    }
+
+    void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container) {
         auto useCaseResult = container.Resolve<application::LoadConfigurationUseCase>();
         if (!useCaseResult.HasValue()) return;
 
-        auto viewModel = std::make_shared<application::MainViewModel>(
-            useCaseResult.Value(),
-            loggerResult.Value()
-        );
+        auto loggerResult = container.Resolve<abstractions::ILogger>();
+        if (!loggerResult.HasValue()) return;
+
         container.RegisterInstance<abstractions::IMainViewModel>(
-            std::static_pointer_cast<abstractions::IMainViewModel>(viewModel)
+            std::static_pointer_cast<abstractions::IMainViewModel>(
+                std::make_shared<application::MainViewModel>(
+                    useCaseResult.Value(),
+                    loggerResult.Value()
+                )
+            )
         );
     }
 
