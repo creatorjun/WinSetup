@@ -1,4 +1,4 @@
 ﻿// src/resources/resource.h
 #pragma once
 
-#define IDI_MAINICON    101
+#define IDI_MAIN_ICON  101

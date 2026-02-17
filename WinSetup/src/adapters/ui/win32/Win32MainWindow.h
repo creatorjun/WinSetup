@@ -1,12 +1,12 @@
 ﻿// src/adapters/ui/win32/Win32MainWindow.h
 #pragma once
 
-#include <Windows.h>
-#include <string>
-#include <memory>
-#include <abstractions/infrastructure/logging/ILogger.h>
-#include <abstractions/ui/IMainViewModel.h>
 #include <abstractions/ui/IWindow.h>
+#include <abstractions/ui/IMainViewModel.h>
+#include <abstractions/infrastructure/logging/ILogger.h>
+#include <Windows.h>
+#include <memory>
+#include <string>
 
 namespace winsetup::adapters::ui {
 
@@ -21,12 +21,15 @@ namespace winsetup::adapters::ui {
         Win32MainWindow(const Win32MainWindow&) = delete;
         Win32MainWindow& operator=(const Win32MainWindow&) = delete;
 
-        bool Create(void* hInstance, int nCmdShow) override;
+        bool Create(HINSTANCE hInstance, int nCmdShow);
+
         void Show() override;
         void Hide() override;
-        void* GetHandle() const noexcept override { return mhwnd; }
 
-        [[nodiscard]] HWND GetHWND() const noexcept { return mhwnd; }
+        [[nodiscard]] bool IsValid()          const noexcept override;
+        [[nodiscard]] bool RunMessageLoop()   override;
+
+        [[nodiscard]] HWND GetHWND()          const noexcept;
 
     private:
         static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -36,20 +39,19 @@ namespace winsetup::adapters::ui {
         void OnDestroy();
         void OnPaint();
         void DrawStatusText(HDC hdc);
-
         void OnViewModelPropertyChanged(const std::wstring& propertyName);
         void UpdateStatusText();
         void UpdateWindowTitle();
 
-        HWND mhwnd;
-        HINSTANCE mhInstance;
-        std::shared_ptr<abstractions::ILogger> mLogger;
+        HWND      mHwnd;
+        HINSTANCE mHInstance;
+        std::shared_ptr<abstractions::ILogger>        mLogger;
         std::shared_ptr<abstractions::IMainViewModel> mViewModel;
 
         static constexpr const wchar_t* CLASSNAME = L"WinSetupMainWindow";
-        static constexpr int WINDOW_WIDTH = 640;
-        static constexpr int WINDOW_HEIGHT = 480;
-        static constexpr float STATUSAREA_HEIGHT_RATIO = 0.15f;
+        static constexpr int            WINDOW_WIDTH = 640;
+        static constexpr int            WINDOW_HEIGHT = 480;
+        static constexpr float          STATUS_AREA_HEIGHT_RATIO = 0.15f;
     };
 
 }
