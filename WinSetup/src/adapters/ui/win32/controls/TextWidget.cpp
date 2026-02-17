@@ -64,32 +64,40 @@ namespace winsetup::adapters::ui {
         m_fontDirty = false;
     }
 
+    void TextWidget::DrawBorder(HDC hdc, bool condition, POINT from, POINT to) const {
+        if (!condition) return;
+        HPEN hPen = CreatePen(PS_SOLID, 1, m_style.borderColor);
+        HPEN hOldPen = static_cast<HPEN>(SelectObject(hdc, hPen));
+        MoveToEx(hdc, from.x, from.y, nullptr);
+        LineTo(hdc, to.x, to.y);
+        SelectObject(hdc, hOldPen);
+        DeleteObject(hPen);
+    }
+
     void TextWidget::Draw(HDC hdc) const {
-        const RECT& drawRect = m_rect;
+        const RECT& r = m_rect;
 
         if (m_style.drawBackground) {
             HBRUSH hBg = CreateSolidBrush(m_style.bgColor);
-            FillRect(hdc, &drawRect, hBg);
+            FillRect(hdc, &r, hBg);
             DeleteObject(hBg);
         }
 
-        if (m_style.drawTopBorder) {
-            HPEN hPen = CreatePen(PS_SOLID, 1, m_style.borderColor);
-            HPEN hOldPen = static_cast<HPEN>(SelectObject(hdc, hPen));
-            MoveToEx(hdc, drawRect.left, drawRect.top, nullptr);
-            LineTo(hdc, drawRect.right, drawRect.top);
-            SelectObject(hdc, hOldPen);
-            DeleteObject(hPen);
-        }
+        DrawBorder(hdc, m_style.drawTopBorder,
+            { r.left,      r.top },
+            { r.right,     r.top });
 
-        if (m_style.drawBottomBorder) {
-            HPEN hPen = CreatePen(PS_SOLID, 1, m_style.borderColor);
-            HPEN hOldPen = static_cast<HPEN>(SelectObject(hdc, hPen));
-            MoveToEx(hdc, drawRect.left, drawRect.bottom - 1, nullptr);
-            LineTo(hdc, drawRect.right, drawRect.bottom - 1);
-            SelectObject(hdc, hOldPen);
-            DeleteObject(hPen);
-        }
+        DrawBorder(hdc, m_style.drawBottomBorder,
+            { r.left,      r.bottom - 1 },
+            { r.right,     r.bottom - 1 });
+
+        DrawBorder(hdc, m_style.drawLeftBorder,
+            { r.left,      r.top },
+            { r.left,      r.bottom });
+
+        DrawBorder(hdc, m_style.drawRightBorder,
+            { r.right - 1, r.top },
+            { r.right - 1, r.bottom });
 
         const std::wstring& displayText = m_text.empty() ? m_placeholder : m_text;
         if (displayText.empty()) return;
@@ -106,10 +114,10 @@ namespace winsetup::adapters::ui {
         SetTextColor(hdc, isPlaceholder ? m_style.placeholderColor : m_style.textColor);
 
         RECT textRect = {
-            drawRect.left + m_style.paddingLeft,
-            drawRect.top + m_style.paddingTop,
-            drawRect.right - m_style.paddingRight,
-            drawRect.bottom - m_style.paddingBottom
+            r.left + m_style.paddingLeft,
+            r.top + m_style.paddingTop,
+            r.right - m_style.paddingRight,
+            r.bottom - m_style.paddingBottom
         };
 
         DrawTextW(hdc, displayText.c_str(), -1, &textRect, m_style.dtFormat);

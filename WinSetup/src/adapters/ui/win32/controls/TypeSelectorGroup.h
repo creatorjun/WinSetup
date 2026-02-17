@@ -1,0 +1,76 @@
+﻿// src/adapters/ui/win32/controls/TypeSelectorGroup.h
+#pragma once
+
+#include <adapters/ui/win32/controls/ToggleButton.h>
+#include <domain/entities/SetupConfig.h>
+#include <Windows.h>
+#include <string>
+#include <vector>
+#include <memory>
+#include <functional>
+
+namespace winsetup::adapters::ui {
+
+    class TypeSelectorGroup {
+    public:
+        using SelectionChangedCallback = std::function<void(const std::wstring& selectedKey)>;
+
+        TypeSelectorGroup();
+        ~TypeSelectorGroup();
+
+        TypeSelectorGroup(const TypeSelectorGroup&) = delete;
+        TypeSelectorGroup& operator=(const TypeSelectorGroup&) = delete;
+
+        void Create(
+            HWND hParent,
+            HINSTANCE hInstance,
+            const std::wstring& label,
+            int groupId);
+
+        void Rebuild(const std::vector<domain::InstallationType>& types);
+
+        void SetRect(const RECT& rect);
+        void SetSelectionChangedCallback(SelectionChangedCallback callback);
+
+        void OnCommand(WPARAM wParam, LPARAM lParam);
+        void OnPaint(HDC hdc) const;
+
+        [[nodiscard]] const std::wstring& GetSelectedKey() const noexcept { return m_selectedKey; }
+        [[nodiscard]] const RECT& GetRect()        const noexcept { return m_rect; }
+        [[nodiscard]] bool                IsReady()        const noexcept { return !m_types.empty(); }
+
+    private:
+        void RecalcButtonRects();
+        void DrawGroupBox(HDC hdc) const;
+
+        HWND      m_hParent;
+        HINSTANCE m_hInstance;
+
+        std::wstring                               m_label;
+        std::vector<domain::InstallationType>      m_types;
+        std::vector<std::unique_ptr<ToggleButton>> m_buttons;
+        std::wstring                               m_selectedKey;
+        SelectionChangedCallback                   m_onSelectionChanged;
+        int                                        m_groupId;
+        RECT                                       m_rect;
+
+        mutable HFONT m_labelFont;
+        mutable bool  m_labelFontDirty;
+
+        int m_nextButtonId;
+
+        static constexpr int COLS = 2;
+        static constexpr int BTN_HEIGHT = 32;
+        static constexpr int BTN_MIN_WIDTH = 80;
+        static constexpr int BTN_GAP_H = 8;
+        static constexpr int BTN_GAP_V = 8;
+        static constexpr int INNER_PAD_H = 12;
+        static constexpr int INNER_PAD_TOP = 28;
+        static constexpr int INNER_PAD_BOT = 12;
+        static constexpr int LABEL_FONT_SZ = 12;
+        static constexpr int LABEL_OFF_Y = 3;
+        static constexpr int LABEL_PAD_H = 6;
+        static constexpr int BTN_ID_BASE = 3000;
+    };
+
+}

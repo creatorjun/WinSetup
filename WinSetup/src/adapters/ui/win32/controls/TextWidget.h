@@ -15,6 +15,8 @@ namespace winsetup::adapters::ui {
         bool      drawBackground = false;
         bool      drawTopBorder = false;
         bool      drawBottomBorder = false;
+        bool      drawLeftBorder = false;
+        bool      drawRightBorder = false;
         COLORREF  borderColor = RGB(210, 210, 210);
         UINT      dtFormat = DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS;
         int       paddingLeft = 0;
@@ -47,6 +49,7 @@ namespace winsetup::adapters::ui {
     private:
         void EnsureFont() const;
         void ReleaseFont();
+        void DrawBorder(HDC hdc, bool condition, POINT from, POINT to) const;
 
         TextWidgetStyle  m_style;
         RECT             m_rect;

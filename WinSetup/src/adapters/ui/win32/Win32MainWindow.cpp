@@ -1,18 +1,23 @@
 ﻿// src/adapters/ui/win32/Win32MainWindow.cpp
+
 #include <adapters/ui/win32/Win32MainWindow.h>
+#include <adapters/ui/win32/controls/ToggleButton.h>
 #include <resources/resource.h>
 #include <windowsx.h>
-#include <vector>
+
+#undef min
+#undef max
 
 namespace winsetup::adapters::ui {
 
     Win32MainWindow::Win32MainWindow(
-        std::shared_ptr<abstractions::ILogger> logger,
+        std::shared_ptr<abstractions::ILogger>        logger,
         std::shared_ptr<abstractions::IMainViewModel> viewModel)
-        : m_hwnd(nullptr)
+        : m_hWnd(nullptr)
         , m_hInstance(nullptr)
         , m_logger(std::move(logger))
         , m_viewModel(std::move(viewModel))
+        , m_selectorRect{}
     {
         if (m_viewModel)
             m_viewModel->AddPropertyChangedHandler(
@@ -24,14 +29,16 @@ namespace winsetup::adapters::ui {
     Win32MainWindow::~Win32MainWindow() {
         if (m_viewModel)
             m_viewModel->RemoveAllPropertyChangedHandlers();
-        if (m_hwnd) {
-            DestroyWindow(m_hwnd);
-            m_hwnd = nullptr;
+        if (m_hWnd) {
+            DestroyWindow(m_hWnd);
+            m_hWnd = nullptr;
         }
     }
 
     bool Win32MainWindow::Create(HINSTANCE hInstance, int nCmdShow) {
         m_hInstance = hInstance;
+
+        ToggleButton::Initialize(m_hInstance);
 
         HICON hIcon = LoadIconW(m_hInstance, MAKEINTRESOURCE(IDI_MAIN_ICON));
         HICON hIconSm = LoadIconW(m_hInstance, MAKEINTRESOURCE(IDI_MAIN_ICON));
@@ -70,27 +77,27 @@ namespace winsetup::adapters::ui {
             ? m_viewModel->GetWindowTitle()
             : L"WinSetup - PC Reinstallation Tool";
 
-        m_hwnd = CreateWindowExW(
+        m_hWnd = CreateWindowExW(
             0, CLASS_NAME, title.c_str(), dwStyle,
             posX, posY, adjustedWidth, adjustedHeight,
             nullptr, nullptr, m_hInstance, this);
 
-        if (!m_hwnd) {
+        if (!m_hWnd) {
             if (m_logger) m_logger->Error(L"Failed to create window");
             return false;
         }
 
-        ShowWindow(m_hwnd, nCmdShow);
-        UpdateWindow(m_hwnd);
+        ShowWindow(m_hWnd, nCmdShow);
+        UpdateWindow(m_hWnd);
 
         if (m_logger) m_logger->Info(L"Main window created successfully");
         return true;
     }
 
-    void Win32MainWindow::Show() { if (m_hwnd) ShowWindow(m_hwnd, SW_SHOW); }
-    void Win32MainWindow::Hide() { if (m_hwnd) ShowWindow(m_hwnd, SW_HIDE); }
-    bool Win32MainWindow::IsValid() const noexcept { return m_hwnd != nullptr; }
-    HWND Win32MainWindow::GetHWND() const noexcept { return m_hwnd; }
+    void Win32MainWindow::Show() { if (m_hWnd) ShowWindow(m_hWnd, SW_SHOW); }
+    void Win32MainWindow::Hide() { if (m_hWnd) ShowWindow(m_hWnd, SW_HIDE); }
+    bool Win32MainWindow::IsValid() const noexcept { return m_hWnd != nullptr; }
+    HWND Win32MainWindow::GetHWND() const noexcept { return m_hWnd; }
 
     bool Win32MainWindow::RunMessageLoop() {
         MSG msg = {};
@@ -102,112 +109,153 @@ namespace winsetup::adapters::ui {
     }
 
     void Win32MainWindow::InitializeWidgets() {
-        TextWidgetStyle statusStyle;
-        statusStyle.fontSize = 18;
-        statusStyle.fontWeight = FW_NORMAL;
-        statusStyle.textColor = RGB(0, 0, 0);
-        statusStyle.placeholderColor = RGB(160, 160, 160);
-        statusStyle.bgColor = RGB(255, 255, 255);
-        statusStyle.drawBackground = false;
-        statusStyle.drawTopBorder = false;
-        statusStyle.drawBottomBorder = false;
-        statusStyle.dtFormat = DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS;
-        statusStyle.paddingLeft = PAD_TEXT;
-        statusStyle.paddingRight = PAD_TEXT;
-        statusStyle.paddingTop = 0;
-        statusStyle.paddingBottom = 0;
-        m_statusWidget.SetStyle(statusStyle);
-
-        if (m_viewModel)
-            m_statusWidget.SetText(m_viewModel->GetStatusText());
-
-        TextWidgetStyle typeStyle;
-        typeStyle.fontSize = 14;
-        typeStyle.fontWeight = FW_NORMAL;
-        typeStyle.textColor = RGB(30, 30, 30);
-        typeStyle.placeholderColor = RGB(160, 160, 160);
-        typeStyle.bgColor = RGB(245, 245, 245);
-        typeStyle.drawBackground = true;
-        typeStyle.drawTopBorder = true;
-        typeStyle.drawBottomBorder = true;
-        typeStyle.borderColor = RGB(210, 210, 210);
-        typeStyle.dtFormat = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS;
-        typeStyle.paddingLeft = MARGIN_H + PAD_TEXT;
-        typeStyle.paddingRight = MARGIN_H + PAD_TEXT;
-        typeStyle.paddingTop = 0;
-        typeStyle.paddingBottom = 0;
-        m_typeWidget.SetStyle(typeStyle);
-        m_typeWidget.SetPlaceholder(L"타입을 선택해주세요.");
-
-        if (m_viewModel)
-            m_typeWidget.SetText(m_viewModel->GetTypeDescription());
-
-        RecalcWidgetRects();
-    }
-
-    void Win32MainWindow::RecalcWidgetRects() {
-        if (!m_hwnd) return;
-
-        RECT clientRect;
-        GetClientRect(m_hwnd, &clientRect);
+        RECT clientRect = {};
+        GetClientRect(m_hWnd, &clientRect);
 
         const int cw = clientRect.right;
-        const int ch = clientRect.bottom;
-        const int statusHeight = static_cast<int>(ch * STATUS_AREA_HEIGHT_RATIO);
-        const int typeHeight = static_cast<int>(ch * TYPE_AREA_HEIGHT_RATIO);
+        const int marginH = 16;
+        const int statusH = 60;
+        const int typeDescH = 40;
+        const int gap = 8;
+        const int btnRows = 2;
+        const int btnH = 32;
+        const int btnGapV = 8;
+        const int innerPadTop = 28;
+        const int innerPadBot = 12;
+        const int selectorH = innerPadTop + (btnRows * btnH) + ((btnRows - 1) * btnGapV) + innerPadBot;
+        const int selectorY = statusH + typeDescH + gap;
 
-        RECT statusRect = {
-            MARGIN_H,
-            MARGIN_V,
-            cw - MARGIN_H,
-            statusHeight - MARGIN_V
+        m_selectorRect = {
+            marginH,
+            selectorY,
+            cw - marginH,
+            selectorY + selectorH
         };
+
+        m_typeSelectorGroup.Create(
+            m_hWnd,
+            m_hInstance,
+            L"설치 유형",
+            TYPE_SELECTOR_GROUP_ID);
+
+        m_typeSelectorGroup.SetRect(m_selectorRect);
+
+        m_typeSelectorGroup.SetSelectionChangedCallback(
+            [this](const std::wstring& key) {
+                if (m_viewModel)
+                    m_viewModel->SetTypeDescription(key);
+            });
+
+        RebuildTypeSelector();
+    }
+
+    void Win32MainWindow::RebuildTypeSelector() {
+        if (!m_viewModel || !m_hWnd) return;
+
+        const auto types = m_viewModel->GetInstallationTypes();
+        if (types.empty()) return;
+
+        m_typeSelectorGroup.Rebuild(types);
+    }
+
+    void Win32MainWindow::DrawStatusText(HDC hdc) {
+        if (!m_viewModel) return;
+
+        RECT clientRect = {};
+        GetClientRect(m_hWnd, &clientRect);
+
+        const int marginH = 16;
+        const int statusH = 60;
+        const int typeDescH = 40;
+        const int gap = 8;
+
+        RECT statusRect = { 0, 0, clientRect.right, statusH };
+
+        HFONT hFont = CreateFontW(
+            18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+        HFONT hOldFont = static_cast<HFONT>(SelectObject(hdc, hFont));
+
+        SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(hdc, RGB(0, 0, 0));
+        DrawTextW(hdc, m_viewModel->GetStatusText().c_str(), -1, &statusRect,
+            DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+
+        SelectObject(hdc, hOldFont);
+        DeleteObject(hFont);
 
         RECT typeRect = {
-            0,
-            statusHeight,
-            cw,
-            statusHeight + typeHeight
+            marginH,
+            statusH + gap,
+            clientRect.right - marginH,
+            statusH + gap + typeDescH
         };
 
-        m_statusWidget.SetRect(statusRect);
-        m_typeWidget.SetRect(typeRect);
+        HBRUSH hBg = CreateSolidBrush(RGB(255, 255, 255));
+        FillRect(hdc, &typeRect, hBg);
+        DeleteObject(hBg);
+
+        HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(210, 210, 210));
+        HPEN hOldPen = static_cast<HPEN>(SelectObject(hdc, hBorderPen));
+        SelectObject(hdc, GetStockObject(NULL_BRUSH));
+        Rectangle(hdc, typeRect.left, typeRect.top, typeRect.right, typeRect.bottom);
+        SelectObject(hdc, hOldPen);
+        DeleteObject(hBorderPen);
+
+        HFONT hTypeFont = CreateFontW(
+            14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+        HFONT hOldTypeFont = static_cast<HFONT>(SelectObject(hdc, hTypeFont));
+
+        const bool         empty = m_typeDescription.empty();
+        const std::wstring text = empty ? L"타입을 선택해주세요." : m_typeDescription;
+
+        SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(hdc, empty ? RGB(160, 160, 160) : RGB(30, 30, 30));
+        DrawTextW(hdc, text.c_str(), -1, &typeRect,
+            DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+
+        SelectObject(hdc, hOldTypeFont);
+        DeleteObject(hTypeFont);
     }
 
     void Win32MainWindow::OnViewModelPropertyChanged(const std::wstring& propertyName) {
-        if (propertyName == L"StatusText")      UpdateStatusText();
-        else if (propertyName == L"TypeDescription") UpdateTypeDescription();
-        else if (propertyName == L"WindowTitle")     UpdateWindowTitle();
+        if (propertyName == L"StatusText")        UpdateStatusText();
+        else if (propertyName == L"TypeDescription")   UpdateTypeDescription();
+        else if (propertyName == L"WindowTitle")       UpdateWindowTitle();
+        else if (propertyName == L"InstallationTypes") RebuildTypeSelector();
     }
 
     void Win32MainWindow::UpdateStatusText() {
-        if (!m_viewModel) return;
-        m_statusWidget.SetText(m_viewModel->GetStatusText());
-        m_statusWidget.Invalidate(m_hwnd);
+        if (m_hWnd) InvalidateRect(m_hWnd, nullptr, TRUE);
     }
 
     void Win32MainWindow::UpdateTypeDescription() {
-        if (!m_viewModel) return;
-        std::wstring desc = m_viewModel->GetTypeDescription();
-        m_typeWidget.SetText(desc == L"타입을 선택해주세요." ? L"" : desc);
-        m_typeWidget.Invalidate(m_hwnd);
+        if (!m_viewModel || !m_hWnd) return;
+        m_typeDescription = m_viewModel->GetTypeDescription();
+        InvalidateRect(m_hWnd, nullptr, TRUE);
     }
 
     void Win32MainWindow::UpdateWindowTitle() {
-        if (m_hwnd && m_viewModel)
-            SetWindowTextW(m_hwnd, m_viewModel->GetWindowTitle().c_str());
+        if (m_hWnd && m_viewModel)
+            SetWindowTextW(m_hWnd, m_viewModel->GetWindowTitle().c_str());
     }
 
-    LRESULT CALLBACK Win32MainWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    LRESULT CALLBACK Win32MainWindow::WindowProc(
+        HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+    {
         Win32MainWindow* pThis = nullptr;
         if (uMsg == WM_NCCREATE) {
             auto* pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
             pThis = static_cast<Win32MainWindow*>(pCreate->lpCreateParams);
             SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pThis));
-            pThis->m_hwnd = hwnd;
+            pThis->m_hWnd = hwnd;
         }
         else {
-            pThis = reinterpret_cast<Win32MainWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+            pThis = reinterpret_cast<Win32MainWindow*>(
+                GetWindowLongPtrW(hwnd, GWLP_USERDATA));
         }
         if (pThis) return pThis->HandleMessage(uMsg, wParam, lParam);
         return DefWindowProcW(hwnd, uMsg, wParam, lParam);
@@ -215,26 +263,15 @@ namespace winsetup::adapters::ui {
 
     LRESULT Win32MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
         switch (uMsg) {
-        case WM_CREATE:   OnCreate();                 return 0;
-        case WM_DESTROY:  OnDestroy();                return 0;
-        case WM_PAINT:    OnPaint();                  return 0;
-        case WM_COMMAND:  OnCommand(wParam, lParam);  return 0;
-        case WM_SIZE:
-            OnSize(LOWORD(lParam), HIWORD(lParam));
-            return 0;
-        case WM_GETMINMAXINFO: {
-            auto* lpMMI = reinterpret_cast<LPMINMAXINFO>(lParam);
-            lpMMI->ptMinTrackSize.x = WINDOW_WIDTH;
-            lpMMI->ptMinTrackSize.y = WINDOW_HEIGHT;
-            lpMMI->ptMaxTrackSize.x = WINDOW_WIDTH;
-            lpMMI->ptMaxTrackSize.y = WINDOW_HEIGHT;
-            return 0;
-        }
+        case WM_CREATE:   OnCreate();                return 0;
+        case WM_DESTROY:  OnDestroy();               return 0;
+        case WM_PAINT:    OnPaint();                 return 0;
+        case WM_COMMAND:  OnCommand(wParam, lParam); return 0;
         case WM_CLOSE:
-            DestroyWindow(m_hwnd);
+            DestroyWindow(m_hWnd);
             return 0;
         default:
-            return DefWindowProcW(m_hwnd, uMsg, wParam, lParam);
+            return DefWindowProcW(m_hWnd, uMsg, wParam, lParam);
         }
     }
 
@@ -245,39 +282,20 @@ namespace winsetup::adapters::ui {
 
     void Win32MainWindow::OnDestroy() {
         if (m_logger) m_logger->Info(L"Window destroyed");
+        ToggleButton::Cleanup();
         PostQuitMessage(0);
     }
 
     void Win32MainWindow::OnPaint() {
         PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(m_hwnd, &ps);
-
-        m_statusWidget.Draw(hdc);
-        m_typeWidget.Draw(hdc);
-
-        EndPaint(m_hwnd, &ps);
+        HDC hdc = BeginPaint(m_hWnd, &ps);
+        DrawStatusText(hdc);
+        m_typeSelectorGroup.OnPaint(hdc);
+        EndPaint(m_hWnd, &ps);
     }
 
     void Win32MainWindow::OnCommand(WPARAM wParam, LPARAM lParam) {
-        if (HIWORD(wParam) != BN_CLICKED) return;
-        if (!m_viewModel) return;
-
-        HWND hCtrl = reinterpret_cast<HWND>(lParam);
-        if (!hCtrl) return;
-
-        int len = GetWindowTextLengthW(hCtrl);
-        if (len <= 0) return;
-
-        std::vector<wchar_t> buf(static_cast<size_t>(len) + 1);
-        GetWindowTextW(hCtrl, buf.data(), len + 1);
-
-        m_viewModel->SetTypeDescription(std::wstring(buf.data()));
-    }
-
-    void Win32MainWindow::OnSize(int clientWidth, int clientHeight) {
-        (void)clientWidth;
-        (void)clientHeight;
-        RecalcWidgetRects();
+        m_typeSelectorGroup.OnCommand(wParam, lParam);
     }
 
 }
