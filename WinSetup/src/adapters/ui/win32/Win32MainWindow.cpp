@@ -27,7 +27,6 @@ namespace winsetup::adapters::ui {
     }
 
     Win32MainWindow::~Win32MainWindow() {
-        StopTimer();
         if (m_viewModel)
             m_viewModel->RemoveAllPropertyChangedHandlers();
         if (m_hWnd) {
@@ -69,12 +68,12 @@ namespace winsetup::adapters::ui {
         RECT  windowRect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
         AdjustWindowRect(&windowRect, dwStyle, FALSE);
 
-        int adjustedWidth = windowRect.right - windowRect.left;
-        int adjustedHeight = windowRect.bottom - windowRect.top;
-        int posX = (GetSystemMetrics(SM_CXSCREEN) - adjustedWidth) / 2;
-        int posY = (GetSystemMetrics(SM_CYSCREEN) - adjustedHeight) / 2;
+        const int adjustedWidth = windowRect.right - windowRect.left;
+        const int adjustedHeight = windowRect.bottom - windowRect.top;
+        const int posX = (GetSystemMetrics(SM_CXSCREEN) - adjustedWidth) / 2;
+        const int posY = (GetSystemMetrics(SM_CYSCREEN) - adjustedHeight) / 2;
 
-        std::wstring title = m_viewModel
+        const std::wstring title = m_viewModel
             ? m_viewModel->GetWindowTitle()
             : L"WinSetup - PC Reinstallation Tool";
 
@@ -109,16 +108,6 @@ namespace winsetup::adapters::ui {
         return msg.wParam == 0;
     }
 
-    void Win32MainWindow::StartTimer() {
-        if (m_hWnd)
-            SetTimer(m_hWnd, TIMER_ID_PROGRESS, 1000, nullptr);
-    }
-
-    void Win32MainWindow::StopTimer() {
-        if (m_hWnd)
-            KillTimer(m_hWnd, TIMER_ID_PROGRESS);
-    }
-
     void Win32MainWindow::InitializeWidgets() {
         RECT clientRect = {};
         GetClientRect(m_hWnd, &clientRect);
@@ -128,14 +117,23 @@ namespace winsetup::adapters::ui {
         const int statusH = 60;
         const int typeDescH = 40;
         const int gap = 8;
+        const int innerPadTop = 28;
+        const int innerPadBot = 12;
         const int btnRows = 2;
         const int btnH = 32;
         const int btnGapV = 8;
-        const int innerPadTop = 28;
-        const int innerPadBot = 12;
-        const int selectorH = innerPadTop + (btnRows * btnH) + ((btnRows - 1) * btnGapV) + innerPadBot;
-        const int selectorY = statusH + typeDescH + gap;
+        const int selectorH = innerPadTop + (btnRows * btnH)
+            + ((btnRows - 1) * btnGapV) + innerPadBot;
+        const int panelW = cw - marginH * 2;
 
+        // ── StatusPanel ────────────────────────────────────────────────
+        const int statusPanelH = statusH + typeDescH + gap;
+        m_statusPanel.SetViewModel(m_viewModel);
+        m_statusPanel.Create(m_hWnd, m_hInstance,
+            marginH, 0, panelW, statusPanelH);
+
+        // ── TypeSelectorGroup ──────────────────────────────────────────
+        const int selectorY = statusPanelH + gap;
         m_selectorRect = {
             marginH,
             selectorY,
@@ -153,51 +151,25 @@ namespace winsetup::adapters::ui {
 
         RebuildTypeSelector();
 
-        // ── 옵션 토글 버튼 (1열 2행) ────────────────────────────────────
-        const int optionAreaY = m_selectorRect.bottom + gap * 2;
-        const int optionBtnW = cw - marginH * 2;
-        const int optionBtnH = 36;
+        // ── OptionPanel ────────────────────────────────────────────────
+        const int optionY = m_selectorRect.bottom + gap * 2;
+        const int optionH = 36 * 2 + gap;
+        m_optionPanel.SetViewModel(m_viewModel);
+        m_optionPanel.Create(m_hWnd, m_hInstance,
+            marginH, optionY, panelW, optionH);
 
-        m_btnDataPreserve.Create(
-            m_hWnd, L"데이터 보존",
-            marginH, optionAreaY,
-            optionBtnW, optionBtnH,
-            ID_TOGGLE_DATA_PRESERVE, m_hInstance);
+        // ── ActionPanel ────────────────────────────────────────────────
+        const int actionY = optionY + optionH + gap;
+        const int actionH = 44 + gap * 2 + 36;
+        m_actionPanel.SetViewModel(m_viewModel);
+        m_actionPanel.Create(m_hWnd, m_hInstance,
+            marginH, actionY, panelW, actionH);
 
-        m_btnBitlocker.Create(
-            m_hWnd, L"BitLocker 설정",
-            marginH, optionAreaY + optionBtnH + gap,
-            optionBtnW, optionBtnH,
-            ID_TOGGLE_BITLOCKER, m_hInstance);
-
-        if (m_viewModel) {
-            m_btnDataPreserve.SetChecked(m_viewModel->GetDataPreservation());
-            m_btnBitlocker.SetChecked(m_viewModel->GetBitlockerEnabled());
-        }
-
-        // ── 시작/중지 버튼 ────────────────────────────────────────────────
-        const int startStopY = optionAreaY + (optionBtnH + gap) * 2 + gap;
-        const int startStopH = 44;
-
-        m_btnStartStop.Create(
-            m_hWnd, L"시작",
-            marginH, startStopY,
-            optionBtnW, startStopH,
-            ID_BTN_START_STOP, m_hInstance);
-
-        m_btnStartStop.SetFontSize(15);
-
-        // ── 프로그레스바 + 예상 시간 (2*1, 70% / 30%) ────────────────────
-        const int progressAreaY = startStopY + startStopH + gap * 2;
-        const int progressH = 36;
-
-        m_progressBar.Create(
-            m_hWnd, m_hInstance,
-            marginH, progressAreaY,
-            optionBtnW, progressH,
-            ID_PROGRESS_BAR);
-
-        m_progressBar.Reset();
+        // ── 위젯 목록 등록 (순회용) ────────────────────────────────────
+        m_widgets.clear();
+        m_widgets.push_back(&m_statusPanel);
+        m_widgets.push_back(&m_optionPanel);
+        m_widgets.push_back(&m_actionPanel);
     }
 
     void Win32MainWindow::RebuildTypeSelector() {
@@ -207,129 +179,29 @@ namespace winsetup::adapters::ui {
         m_typeSelectorGroup.Rebuild(types);
     }
 
-    void Win32MainWindow::DrawStatusText(HDC hdc) {
-        if (!m_viewModel) return;
+    void Win32MainWindow::OnViewModelPropertyChanged(
+        const std::wstring& propertyName)
+    {
+        if (propertyName == L"WindowTitle") {
+            UpdateWindowTitle();
+            return;
+        }
+        if (propertyName == L"InstallationTypes") {
+            RebuildTypeSelector();
+            return;
+        }
+        if (propertyName == L"IsProcessing" && m_viewModel) {
+            const bool processing = m_viewModel->IsProcessing();
+            m_typeSelectorGroup.SetEnabled(!processing);
+        }
 
-        RECT clientRect = {};
-        GetClientRect(m_hWnd, &clientRect);
-
-        const int marginH = 16;
-        const int statusH = 60;
-        const int typeDescH = 40;
-        const int gap = 8;
-
-        RECT statusRect = { 0, 0, clientRect.right, statusH };
-
-        HFONT hFont = CreateFontW(
-            18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-        HFONT hOldFont = static_cast<HFONT>(SelectObject(hdc, hFont));
-
-        SetBkMode(hdc, TRANSPARENT);
-        SetTextColor(hdc, RGB(0, 0, 0));
-        DrawTextW(hdc, m_viewModel->GetStatusText().c_str(), -1, &statusRect,
-            DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-
-        SelectObject(hdc, hOldFont);
-        DeleteObject(hFont);
-
-        RECT typeRect = {
-            marginH, statusH + gap,
-            clientRect.right - marginH, statusH + gap + typeDescH
-        };
-
-        HBRUSH hBg = CreateSolidBrush(RGB(255, 255, 255));
-        FillRect(hdc, &typeRect, hBg);
-        DeleteObject(hBg);
-
-        HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(210, 210, 210));
-        HPEN hOldPen = static_cast<HPEN>(SelectObject(hdc, hBorderPen));
-        SelectObject(hdc, GetStockObject(NULL_BRUSH));
-        Rectangle(hdc, typeRect.left, typeRect.top, typeRect.right, typeRect.bottom);
-        SelectObject(hdc, hOldPen);
-        DeleteObject(hBorderPen);
-
-        HFONT hTypeFont = CreateFontW(
-            14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-        HFONT hOldTypeFont = static_cast<HFONT>(SelectObject(hdc, hTypeFont));
-
-        const bool         empty = m_typeDescription.empty();
-        const std::wstring text = empty ? L"타입을 선택해주세요." : m_typeDescription;
-
-        SetBkMode(hdc, TRANSPARENT);
-        SetTextColor(hdc, empty ? RGB(160, 160, 160) : RGB(30, 30, 30));
-        DrawTextW(hdc, text.c_str(), -1, &typeRect,
-            DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-
-        SelectObject(hdc, hOldTypeFont);
-        DeleteObject(hTypeFont);
-    }
-
-    void Win32MainWindow::OnViewModelPropertyChanged(const std::wstring& propertyName) {
-        if (propertyName == L"StatusText")        UpdateStatusText();
-        else if (propertyName == L"TypeDescription")   UpdateTypeDescription();
-        else if (propertyName == L"WindowTitle")       UpdateWindowTitle();
-        else if (propertyName == L"InstallationTypes") RebuildTypeSelector();
-        else if (propertyName == L"DataPreservation")  UpdateDataPreservation();
-        else if (propertyName == L"BitlockerEnabled")  UpdateBitlockerEnabled();
-        else if (propertyName == L"IsProcessing")      UpdateProcessingState();
-        else if (propertyName == L"Progress")          UpdateProgress();
-    }
-
-    void Win32MainWindow::UpdateStatusText() {
-        if (m_hWnd) InvalidateRect(m_hWnd, nullptr, TRUE);
-    }
-
-    void Win32MainWindow::UpdateTypeDescription() {
-        if (!m_viewModel || !m_hWnd) return;
-        m_typeDescription = m_viewModel->GetTypeDescription();
-        InvalidateRect(m_hWnd, nullptr, TRUE);
+        for (auto* widget : m_widgets)
+            widget->OnPropertyChanged(propertyName);
     }
 
     void Win32MainWindow::UpdateWindowTitle() {
         if (m_hWnd && m_viewModel)
             SetWindowTextW(m_hWnd, m_viewModel->GetWindowTitle().c_str());
-    }
-
-    void Win32MainWindow::UpdateDataPreservation() {
-        if (!m_viewModel || !m_btnDataPreserve.Handle()) return;
-        m_btnDataPreserve.SetChecked(m_viewModel->GetDataPreservation());
-        InvalidateRect(m_btnDataPreserve.Handle(), nullptr, TRUE);
-    }
-
-    void Win32MainWindow::UpdateBitlockerEnabled() {
-        if (!m_viewModel || !m_btnBitlocker.Handle()) return;
-        m_btnBitlocker.SetChecked(m_viewModel->GetBitlockerEnabled());
-        InvalidateRect(m_btnBitlocker.Handle(), nullptr, TRUE);
-    }
-
-    void Win32MainWindow::UpdateProcessingState() {
-        if (!m_viewModel || !m_btnStartStop.Handle()) return;
-
-        const bool processing = m_viewModel->IsProcessing();
-
-        m_btnStartStop.SetText(processing ? L"중지" : L"시작");
-        m_btnDataPreserve.SetEnabled(!processing);
-        m_btnBitlocker.SetEnabled(!processing);
-        m_typeSelectorGroup.SetEnabled(!processing);
-
-        if (processing) {
-            m_progressBar.Reset();
-            StartTimer();
-        }
-        else {
-            StopTimer();
-            m_progressBar.Reset();
-        }
-    }
-
-    void Win32MainWindow::UpdateProgress() {
-        if (!m_viewModel) return;
-        m_progressBar.SetProgress(m_viewModel->GetProgress());
-        m_progressBar.SetRemainingSeconds(m_viewModel->GetRemainingSeconds());
     }
 
     void Win32MainWindow::OnCreate() {
@@ -338,7 +210,6 @@ namespace winsetup::adapters::ui {
     }
 
     void Win32MainWindow::OnDestroy() {
-        StopTimer();
         if (m_logger) m_logger->Info(L"Window destroyed");
         ToggleButton::Cleanup();
         PostQuitMessage(0);
@@ -347,57 +218,25 @@ namespace winsetup::adapters::ui {
     void Win32MainWindow::OnPaint() {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(m_hWnd, &ps);
-        DrawStatusText(hdc);
+
+        for (auto* widget : m_widgets)
+            widget->OnPaint(hdc);
+
         m_typeSelectorGroup.OnPaint(hdc);
+
         EndPaint(m_hWnd, &ps);
     }
 
     void Win32MainWindow::OnTimer(WPARAM timerId) {
-        if (timerId != TIMER_ID_PROGRESS) return;
-        if (!m_viewModel || !m_viewModel->IsProcessing()) return;
-
-        m_viewModel->TickTimer();
-
-        if (m_viewModel->GetProgress() >= 100) {
-            StopTimer();
-            m_viewModel->SetProcessing(false);
-        }
+        for (auto* widget : m_widgets)
+            widget->OnTimer(static_cast<UINT_PTR>(timerId));
     }
 
     void Win32MainWindow::OnCommand(WPARAM wParam, LPARAM lParam) {
-        const int ctrlId = LOWORD(wParam);
-        const int notifCode = HIWORD(wParam);
-
-        if (notifCode == BN_CLICKED) {
-            if (ctrlId == ID_TOGGLE_DATA_PRESERVE && m_viewModel) {
-                const bool current = m_btnDataPreserve.IsChecked();
-                m_viewModel->SetDataPreservation(current);
-                if (m_logger)
-                    m_logger->Debug(
-                        std::wstring(L"DataPreservation toggled: ") +
-                        (current ? L"ON" : L"OFF"));
+        for (auto* widget : m_widgets) {
+            if (widget->OnCommand(wParam, lParam))
                 return;
-            }
-            if (ctrlId == ID_TOGGLE_BITLOCKER && m_viewModel) {
-                const bool current = m_btnBitlocker.IsChecked();
-                m_viewModel->SetBitlockerEnabled(current);
-                if (m_logger)
-                    m_logger->Debug(
-                        std::wstring(L"BitlockerEnabled toggled: ") +
-                        (current ? L"ON" : L"OFF"));
-                return;
-            }
-            if (ctrlId == ID_BTN_START_STOP && m_viewModel) {
-                const bool nowProcessing = !m_viewModel->IsProcessing();
-                m_viewModel->SetProcessing(nowProcessing);
-                if (m_logger)
-                    m_logger->Info(
-                        std::wstring(L"Process ") +
-                        (nowProcessing ? L"started" : L"stopped"));
-                return;
-            }
         }
-
         m_typeSelectorGroup.OnCommand(wParam, lParam);
     }
 
@@ -408,7 +247,8 @@ namespace winsetup::adapters::ui {
         if (uMsg == WM_NCCREATE) {
             auto* pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
             pThis = static_cast<Win32MainWindow*>(pCreate->lpCreateParams);
-            SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pThis));
+            SetWindowLongPtrW(hwnd, GWLP_USERDATA,
+                reinterpret_cast<LONG_PTR>(pThis));
             pThis->m_hWnd = hwnd;
         }
         else {
@@ -419,13 +259,15 @@ namespace winsetup::adapters::ui {
         return DefWindowProcW(hwnd, uMsg, wParam, lParam);
     }
 
-    LRESULT Win32MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    LRESULT Win32MainWindow::HandleMessage(
+        UINT uMsg, WPARAM wParam, LPARAM lParam)
+    {
         switch (uMsg) {
-        case WM_CREATE:   OnCreate();                 return 0;
-        case WM_DESTROY:  OnDestroy();                return 0;
-        case WM_PAINT:    OnPaint();                  return 0;
-        case WM_COMMAND:  OnCommand(wParam, lParam);  return 0;
-        case WM_TIMER:    OnTimer(wParam);            return 0;
+        case WM_CREATE:  OnCreate();                return 0;
+        case WM_DESTROY: OnDestroy();               return 0;
+        case WM_PAINT:   OnPaint();                 return 0;
+        case WM_COMMAND: OnCommand(wParam, lParam); return 0;
+        case WM_TIMER:   OnTimer(wParam);           return 0;
         case WM_CLOSE:
             DestroyWindow(m_hWnd);
             return 0;

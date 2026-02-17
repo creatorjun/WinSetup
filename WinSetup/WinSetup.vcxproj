@@ -46,6 +46,9 @@
     <ClCompile Include="src\adapters\ui\win32\controls\TextWidget.cpp" />
     <ClCompile Include="src\adapters\ui\win32\controls\ToggleButton.cpp" />
     <ClCompile Include="src\adapters\ui\win32\controls\TypeSelectorGroup.cpp" />
+    <ClCompile Include="src\adapters\ui\win32\panels\ActionPanel.cpp" />
+    <ClCompile Include="src\adapters\ui\win32\panels\OptionPanel.cpp" />
+    <ClCompile Include="src\adapters\ui\win32\panels\StatusPanel.cpp" />
     <ClCompile Include="src\adapters\ui\win32\Win32MainWindow.cpp" />
     <ClCompile Include="src\adapters\ui\win32\Win32ProgressBar.cpp" />
     <ClCompile Include="src\application\async\CancellationToken.cpp" />
@@ -148,6 +151,9 @@
     <ClInclude Include="src\adapters\ui\win32\controls\TextWidget.h" />
     <ClInclude Include="src\adapters\ui\win32\controls\ToggleButton.h" />
     <ClInclude Include="src\adapters\ui\win32\controls\TypeSelectorGroup.h" />
+    <ClInclude Include="src\adapters\ui\win32\panels\ActionPanel.h" />
+    <ClInclude Include="src\adapters\ui\win32\panels\OptionPanel.h" />
+    <ClInclude Include="src\adapters\ui\win32\panels\StatusPanel.h" />
     <ClInclude Include="src\adapters\ui\win32\Win32MainWindow.h" />
     <ClInclude Include="src\adapters\ui\win32\Win32ProgressBar.h" />
     <ClInclude Include="src\application\async\Awaitable.h" />

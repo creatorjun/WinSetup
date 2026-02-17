@@ -216,6 +216,15 @@
     <ClCompile Include="src\adapters\ui\win32\controls\TypeSelectorGroup.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="src\adapters\ui\win32\panels\StatusPanel.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\ui\win32\panels\OptionPanel.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\adapters\ui\win32\panels\ActionPanel.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\main\ServiceRegistration.h">
@@ -579,6 +588,15 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\adapters\ui\win32\controls\TypeSelectorGroup.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\ui\win32\panels\StatusPanel.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\ui\win32\panels\OptionPanel.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\ui\win32\panels\ActionPanel.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

@@ -3,14 +3,16 @@
 
 #include <abstractions/ui/IWindow.h>
 #include <abstractions/ui/IMainViewModel.h>
+#include <abstractions/ui/IWidget.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
 #include <adapters/ui/win32/controls/TypeSelectorGroup.h>
-#include <adapters/ui/win32/controls/ToggleButton.h>
-#include <adapters/ui/win32/controls/SimpleButton.h>
-#include <adapters/ui/win32/Win32ProgressBar.h>
+#include <adapters/ui/win32/panels/StatusPanel.h>
+#include <adapters/ui/win32/panels/OptionPanel.h>
+#include <adapters/ui/win32/panels/ActionPanel.h>
 #include <Windows.h>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace winsetup::adapters::ui {
 
@@ -37,19 +39,9 @@ namespace winsetup::adapters::ui {
     private:
         void InitializeWidgets();
         void RebuildTypeSelector();
-        void DrawStatusText(HDC hdc);
 
         void OnViewModelPropertyChanged(const std::wstring& propertyName);
-        void UpdateStatusText();
-        void UpdateTypeDescription();
         void UpdateWindowTitle();
-        void UpdateDataPreservation();
-        void UpdateBitlockerEnabled();
-        void UpdateProcessingState();
-        void UpdateProgress();
-
-        void StartTimer();
-        void StopTimer();
 
         void OnCreate();
         void OnDestroy();
@@ -58,7 +50,8 @@ namespace winsetup::adapters::ui {
         void OnTimer(WPARAM timerId);
 
         LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
-        static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+        static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg,
+            WPARAM wParam, LPARAM lParam);
 
         HWND      m_hWnd;
         HINSTANCE m_hInstance;
@@ -68,21 +61,16 @@ namespace winsetup::adapters::ui {
 
         TypeSelectorGroup m_typeSelectorGroup;
         RECT              m_selectorRect;
-        std::wstring      m_typeDescription;
 
-        ToggleButton   m_btnDataPreserve;
-        ToggleButton   m_btnBitlocker;
-        SimpleButton   m_btnStartStop;
-        Win32ProgressBar m_progressBar;
+        StatusPanel m_statusPanel;
+        OptionPanel m_optionPanel;
+        ActionPanel m_actionPanel;
+
+        std::vector<abstractions::IWidget*> m_widgets;
 
         static constexpr int  WINDOW_WIDTH = 640;
         static constexpr int  WINDOW_HEIGHT = 520;
         static constexpr int  TYPE_SELECTOR_GROUP_ID = 100;
-        static constexpr int  ID_TOGGLE_DATA_PRESERVE = 4000;
-        static constexpr int  ID_TOGGLE_BITLOCKER = 4001;
-        static constexpr int  ID_BTN_START_STOP = 4002;
-        static constexpr int  ID_PROGRESS_BAR = 4003;
-        static constexpr UINT TIMER_ID_PROGRESS = 1001;
         static constexpr auto CLASS_NAME = L"WinSetupMainWindow";
     };
 
