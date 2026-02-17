@@ -1,11 +1,14 @@
 ﻿// src/application/viewmodels/MainViewModel.cpp
-#include "MainViewModel.h"
-#include <application/usecases/system/LoadConfigurationUseCase.h>
+#include <application/viewmodels/MainViewModel.h>
 
 namespace winsetup::application {
 
-    MainViewModel::MainViewModel(std::shared_ptr<abstractions::ILogger> logger)
-        : mLogger(std::move(logger))
+    MainViewModel::MainViewModel(
+        std::shared_ptr<LoadConfigurationUseCase> loadConfigUseCase,
+        std::shared_ptr<abstractions::ILogger> logger
+    )
+        : mLoadConfigUseCase(std::move(loadConfigUseCase))
+        , mLogger(std::move(logger))
         , mConfig(nullptr)
         , mStatusText(L"Ready")
         , mWindowTitle(L"WinSetup - PC Reinstallation Tool")
@@ -41,9 +44,8 @@ namespace winsetup::application {
         mIsInitializing = true;
         SetStatusText(L"Initializing...");
 
-        if (mLogger) {
+        if (mLogger)
             mLogger->Info(L"MainViewModel initialization started");
-        }
 
         auto configResult = LoadConfiguration();
         if (!configResult.HasValue()) {
@@ -55,23 +57,18 @@ namespace winsetup::application {
         mIsInitializing = false;
         SetStatusText(L"Ready");
 
-        if (mLogger) {
+        if (mLogger)
             mLogger->Info(L"MainViewModel initialization completed");
-        }
 
-        return domain::Expected<void>();
+        return domain::Expected<void>{};
     }
 
     domain::Expected<void> MainViewModel::LoadConfiguration() {
-        LoadConfigurationUseCase useCase(mLogger);
-        auto result = useCase.Execute(L"config.ini");
-
-        if (!result.HasValue()) {
+        auto result = mLoadConfigUseCase->Execute(L"config.ini");
+        if (!result.HasValue())
             return result.GetError();
-        }
-
         mConfig = result.Value();
-        return domain::Expected<void>();
+        return domain::Expected<void>{};
     }
 
     void MainViewModel::AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) {
@@ -83,9 +80,8 @@ namespace winsetup::application {
     }
 
     void MainViewModel::NotifyPropertyChanged(const std::wstring& propertyName) {
-        for (const auto& handler : mPropertyChangedHandlers) {
+        for (const auto& handler : mPropertyChangedHandlers)
             handler(propertyName);
-        }
     }
 
 }

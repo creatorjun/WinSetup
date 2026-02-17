@@ -1,47 +1,76 @@
 ﻿// src/main/ServiceRegistration.cpp
-#include "ServiceRegistration.h"
+#include <main/ServiceRegistration.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
+#include <abstractions/repositories/IConfigRepository.h>
 #include <abstractions/ui/IMainViewModel.h>
+#include <adapters/persistence/config/IniConfigRepository.h>
 #include <adapters/platform/win32/logging/Win32Logger.h>
+#include <application/usecases/system/LoadConfigurationUseCase.h>
 #include <application/viewmodels/MainViewModel.h>
 
 namespace winsetup {
 
-    void ServiceRegistration::RegisterAllServices(application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterAllServices(application::DIContainer& container) {
         RegisterInfrastructureServices(container);
         RegisterDomainServices(container);
+        RegisterRepositoryServices(container);
+        RegisterUseCaseServices(container);
         RegisterApplicationServices(container);
         RegisterPlatformServices(container);
         RegisterUIServices(container);
     }
 
-    void ServiceRegistration::RegisterInfrastructureServices(application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterInfrastructureServices(application::DIContainer& container) {
         auto logger = std::make_shared<adapters::platform::Win32Logger>(L"log/log.txt");
-        container.RegisterInstance<abstractions::ILogger>(logger);
+        container.RegisterInstance<abstractions::ILogger>(
+            std::static_pointer_cast<abstractions::ILogger>(logger)
+        );
     }
 
-    void ServiceRegistration::RegisterDomainServices(application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterDomainServices(application::DIContainer& container) {
     }
 
-    void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterRepositoryServices(application::DIContainer& container) {
+        auto repository = std::make_shared<adapters::persistence::IniConfigRepository>();
+        container.RegisterInstance<abstractions::IConfigRepository>(
+            std::static_pointer_cast<abstractions::IConfigRepository>(repository)
+        );
+    }
+
+    void ServiceRegistration::RegisterUseCaseServices(application::DIContainer& container) {
         auto loggerResult = container.Resolve<abstractions::ILogger>();
-        if (loggerResult.HasValue()) {
-            auto logger = loggerResult.Value();
-            auto viewModel = std::make_shared<application::MainViewModel>(logger);
-            container.RegisterInstance<abstractions::IMainViewModel>(viewModel);
-        }
+        if (!loggerResult.HasValue()) return;
+
+        auto repositoryResult = container.Resolve<abstractions::IConfigRepository>();
+        if (!repositoryResult.HasValue()) return;
+
+        auto useCase = std::make_shared<application::LoadConfigurationUseCase>(
+            repositoryResult.Value(),
+            loggerResult.Value()
+        );
+        container.RegisterInstance<application::LoadConfigurationUseCase>(useCase);
     }
 
-    void ServiceRegistration::RegisterPlatformServices(application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container) {
+        auto loggerResult = container.Resolve<abstractions::ILogger>();
+        if (!loggerResult.HasValue()) return;
+
+        auto useCaseResult = container.Resolve<application::LoadConfigurationUseCase>();
+        if (!useCaseResult.HasValue()) return;
+
+        auto viewModel = std::make_shared<application::MainViewModel>(
+            useCaseResult.Value(),
+            loggerResult.Value()
+        );
+        container.RegisterInstance<abstractions::IMainViewModel>(
+            std::static_pointer_cast<abstractions::IMainViewModel>(viewModel)
+        );
     }
 
-    void ServiceRegistration::RegisterUIServices(application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterPlatformServices(application::DIContainer& container) {
+    }
+
+    void ServiceRegistration::RegisterUIServices(application::DIContainer& container) {
     }
 
 }

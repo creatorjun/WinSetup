@@ -3,6 +3,7 @@
 
 #include <domain/primitives/Expected.h>
 #include <domain/entities/SetupConfig.h>
+#include <abstractions/repositories/IConfigRepository.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
 #include <memory>
 #include <string>
@@ -12,6 +13,7 @@ namespace winsetup::application {
     class LoadConfigurationUseCase {
     public:
         explicit LoadConfigurationUseCase(
+            std::shared_ptr<abstractions::IConfigRepository> repository,
             std::shared_ptr<abstractions::ILogger> logger
         );
         ~LoadConfigurationUseCase() = default;
@@ -20,6 +22,7 @@ namespace winsetup::application {
             Execute(const std::wstring& configPath = L"config.ini");
 
     private:
+        std::shared_ptr<abstractions::IConfigRepository> mRepository;
         std::shared_ptr<abstractions::ILogger> mLogger;
     };
 
