@@ -1,127 +1,91 @@
 ﻿// src/application/viewmodels/MainViewModel.cpp
 #include "MainViewModel.h"
+#include <application/usecases/system/LoadConfigurationUseCase.h>
 
 namespace winsetup::application {
 
     MainViewModel::MainViewModel(std::shared_ptr<abstractions::ILogger> logger)
         : mLogger(std::move(logger))
-        , mStatusText(L"초기화 중...")
-        , mWindowTitle(L"WinSetup - PC 초기화")
-        , mCurrentState(State::Initializing)
+        , mConfig(nullptr)
+        , mStatusText(L"Ready")
+        , mWindowTitle(L"WinSetup - PC Reinstallation Tool")
+        , mIsInitializing(false)
+        , mIsProcessing(false)
+        , mIsCompleted(false)
     {
-        if (mLogger) {
-            mLogger->Debug(L"MainViewModel created");
-        }
     }
 
-    void MainViewModel::AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback)
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-        mPropertyChangedHandlers.push_back(std::move(callback));
-    }
-
-    void MainViewModel::RemoveAllPropertyChangedHandlers()
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-        mPropertyChangedHandlers.clear();
-    }
-
-    void MainViewModel::NotifyPropertyChanged(const std::wstring& propertyName)
-    {
-        std::vector<abstractions::PropertyChangedCallback> handlersCopy;
-
-        {
-            std::lock_guard<std::mutex> lock(mMutex);
-            handlersCopy = mPropertyChangedHandlers;
-        }
-
-        for (const auto& handler : handlersCopy) {
-            handler(propertyName);
-        }
-
-        if (mLogger) {
-            mLogger->Trace(L"Property changed: " + propertyName);
-        }
-    }
-
-    std::wstring MainViewModel::GetStatusText() const
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
+    std::wstring MainViewModel::GetStatusText() const {
         return mStatusText;
     }
 
-    void MainViewModel::SetStatusText(const std::wstring& text)
-    {
-        {
-            std::lock_guard<std::mutex> lock(mMutex);
-            if (mStatusText == text) {
-                return;
-            }
+    void MainViewModel::SetStatusText(const std::wstring& text) {
+        if (mStatusText != text) {
             mStatusText = text;
-        }
-
-        NotifyPropertyChanged(L"StatusText");
-
-        if (mLogger) {
-            mLogger->Info(L"Status: " + text);
+            NotifyPropertyChanged(L"StatusText");
         }
     }
 
-    std::wstring MainViewModel::GetWindowTitle() const
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
+    std::wstring MainViewModel::GetWindowTitle() const {
         return mWindowTitle;
     }
 
-    void MainViewModel::SetWindowTitle(const std::wstring& title)
-    {
-        {
-            std::lock_guard<std::mutex> lock(mMutex);
-            if (mWindowTitle == title) {
-                return;
-            }
+    void MainViewModel::SetWindowTitle(const std::wstring& title) {
+        if (mWindowTitle != title) {
             mWindowTitle = title;
+            NotifyPropertyChanged(L"WindowTitle");
         }
-
-        NotifyPropertyChanged(L"WindowTitle");
     }
 
-    bool MainViewModel::IsInitializing() const
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-        return mCurrentState == State::Initializing;
-    }
-
-    bool MainViewModel::IsProcessing() const
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-        return mCurrentState == State::Processing;
-    }
-
-    bool MainViewModel::IsCompleted() const
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-        return mCurrentState == State::Completed;
-    }
-
-    domain::Expected<void> MainViewModel::Initialize()
-    {
-        if (mLogger) {
-            mLogger->Info(L"MainViewModel initializing...");
-        }
-
-        {
-            std::lock_guard<std::mutex> lock(mMutex);
-            mCurrentState = State::Processing;
-        }
-
-        SetStatusText(L"시스템 준비 완료");
+    domain::Expected<void> MainViewModel::Initialize() {
+        mIsInitializing = true;
+        SetStatusText(L"Initializing...");
 
         if (mLogger) {
-            mLogger->Info(L"MainViewModel initialized successfully");
+            mLogger->Info(L"MainViewModel initialization started");
+        }
+
+        auto configResult = LoadConfiguration();
+        if (!configResult.HasValue()) {
+            mIsInitializing = false;
+            SetStatusText(L"Failed to load configuration");
+            return configResult.GetError();
+        }
+
+        mIsInitializing = false;
+        SetStatusText(L"Ready");
+
+        if (mLogger) {
+            mLogger->Info(L"MainViewModel initialization completed");
         }
 
         return domain::Expected<void>();
+    }
+
+    domain::Expected<void> MainViewModel::LoadConfiguration() {
+        LoadConfigurationUseCase useCase(mLogger);
+        auto result = useCase.Execute(L"config.ini");
+
+        if (!result.HasValue()) {
+            return result.GetError();
+        }
+
+        mConfig = result.Value();
+        return domain::Expected<void>();
+    }
+
+    void MainViewModel::AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) {
+        mPropertyChangedHandlers.push_back(std::move(callback));
+    }
+
+    void MainViewModel::RemoveAllPropertyChangedHandlers() {
+        mPropertyChangedHandlers.clear();
+    }
+
+    void MainViewModel::NotifyPropertyChanged(const std::wstring& propertyName) {
+        for (const auto& handler : mPropertyChangedHandlers) {
+            handler(propertyName);
+        }
     }
 
 }

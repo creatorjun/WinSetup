@@ -3,40 +3,63 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 namespace winsetup::domain {
 
+    struct BackupTarget {
+        std::wstring name;
+        std::wstring path;
+
+        BackupTarget() = default;
+        BackupTarget(const std::wstring& n, const std::wstring& p)
+            : name(n), path(p) {
+        }
+    };
+
+    struct InstallationType {
+        std::wstring name;
+        std::wstring description;
+
+        InstallationType() = default;
+        InstallationType(const std::wstring& n, const std::wstring& d)
+            : name(n), description(d) {
+        }
+    };
+
     class SetupConfig {
     public:
-        SetupConfig() = default;
+        SetupConfig();
+        ~SetupConfig() = default;
 
-        [[nodiscard]] const std::wstring& GetWimPath() const noexcept { return m_wimPath; }
-        [[nodiscard]] int GetWimIndex() const noexcept { return m_wimIndex; }
-        [[nodiscard]] uint32_t GetTargetDiskIndex() const noexcept { return m_targetDiskIndex; }
-        [[nodiscard]] const std::wstring& GetComputerName() const noexcept { return m_computerName; }
-        [[nodiscard]] bool GetAutoReboot() const noexcept { return m_autoReboot; }
-        [[nodiscard]] const std::vector<std::wstring>& GetDriverPaths() const noexcept { return m_driverPaths; }
+        [[nodiscard]] const std::wstring& GetUserProfile() const noexcept { return mUserProfile; }
+        void SetUserProfile(const std::wstring& profile) { mUserProfile = profile; }
 
-        void SetWimPath(const std::wstring& path) { m_wimPath = path; }
-        void SetWimPath(std::wstring&& path) noexcept { m_wimPath = std::move(path); }
-        void SetWimIndex(int index) noexcept { m_wimIndex = index; }
-        void SetTargetDiskIndex(uint32_t index) noexcept { m_targetDiskIndex = index; }
-        void SetComputerName(const std::wstring& name) { m_computerName = name; }
-        void SetComputerName(std::wstring&& name) noexcept { m_computerName = std::move(name); }
-        void SetAutoReboot(bool reboot) noexcept { m_autoReboot = reboot; }
-        void AddDriverPath(const std::wstring& path) { m_driverPaths.push_back(path); }
+        [[nodiscard]] bool HasDataPartition() const noexcept { return mHasDataPartition; }
+        void SetDataPartition(bool hasPartition) noexcept { mHasDataPartition = hasPartition; }
 
-        [[nodiscard]] bool IsValid() const noexcept {
-            return !m_wimPath.empty() && m_wimIndex >= 0;
-        }
+        [[nodiscard]] const std::vector<BackupTarget>& GetBackupTargets() const noexcept { return mBackupTargets; }
+        void AddBackupTarget(const std::wstring& name, const std::wstring& path);
+        void ClearBackupTargets() { mBackupTargets.clear(); }
+
+        [[nodiscard]] const std::vector<InstallationType>& GetInstallationTypes() const noexcept { return mInstallationTypes; }
+        void AddInstallationType(const std::wstring& name, const std::wstring& description);
+        void ClearInstallationTypes() { mInstallationTypes.clear(); }
+
+        [[nodiscard]] bool HasEstimatedTime(const std::wstring& motherboardModel) const;
+        [[nodiscard]] uint32_t GetEstimatedTime(const std::wstring& motherboardModel) const;
+        void SetEstimatedTime(const std::wstring& motherboardModel, uint32_t seconds);
+
+        [[nodiscard]] std::wstring ResolveBackupPath(const std::wstring& path) const;
+
+        [[nodiscard]] bool IsValid() const noexcept;
 
     private:
-        std::wstring m_wimPath;
-        int m_wimIndex = -1;
-        uint32_t m_targetDiskIndex = 0;
-        std::wstring m_computerName;
-        bool m_autoReboot = false;
-        std::vector<std::wstring> m_driverPaths;
+        std::wstring mUserProfile;
+        bool mHasDataPartition;
+        std::vector<BackupTarget> mBackupTargets;
+        std::vector<InstallationType> mInstallationTypes;
+        std::map<std::wstring, uint32_t> mEstimatedTimes;
     };
 
 }

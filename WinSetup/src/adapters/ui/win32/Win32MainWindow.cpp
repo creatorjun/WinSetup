@@ -223,7 +223,8 @@ namespace winsetup::adapters::ui {
 
         int statusHeight = static_cast<int>(clientRect.bottom * STATUSAREA_HEIGHT_RATIO);
         RECT statusRect = clientRect;
-        statusRect.top = clientRect.bottom - statusHeight;
+        statusRect.top = 0;
+        statusRect.bottom = statusHeight;
 
         HFONT hFont = CreateFontW(
             18, 0, 0, 0, FW_NORMAL,
@@ -252,5 +253,6 @@ namespace winsetup::adapters::ui {
         SelectObject(hdc, hOldFont);
         DeleteObject(hFont);
     }
+
 
 }

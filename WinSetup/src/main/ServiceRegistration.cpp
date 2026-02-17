@@ -18,7 +18,7 @@ namespace winsetup {
 
     void ServiceRegistration::RegisterInfrastructureServices(application::DIContainer& container)
     {
-        auto logger = std::make_shared<adapters::platform::Win32Logger>(L"log/winsetup.log");
+        auto logger = std::make_shared<adapters::platform::Win32Logger>(L"log/log.txt");
         container.RegisterInstance<abstractions::ILogger>(logger);
     }
 
