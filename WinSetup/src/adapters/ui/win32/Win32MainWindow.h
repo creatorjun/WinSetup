@@ -4,6 +4,8 @@
 #include <abstractions/ui/IWindow.h>
 #include <abstractions/ui/IMainViewModel.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
+#include <adapters/platform/win32/memory/UniqueHandle.h>
+#include <adapters/platform/win32/core/Win32HandleFactory.h>
 #include <Windows.h>
 #include <memory>
 #include <string>
@@ -14,8 +16,7 @@ namespace winsetup::adapters::ui {
     public:
         explicit Win32MainWindow(
             std::shared_ptr<abstractions::ILogger> logger,
-            std::shared_ptr<abstractions::IMainViewModel> viewModel
-        );
+            std::shared_ptr<abstractions::IMainViewModel> viewModel);
         ~Win32MainWindow() override;
 
         Win32MainWindow(const Win32MainWindow&) = delete;
@@ -23,13 +24,11 @@ namespace winsetup::adapters::ui {
 
         bool Create(HINSTANCE hInstance, int nCmdShow);
 
-        void Show() override;
-        void Hide() override;
-
-        [[nodiscard]] bool IsValid()          const noexcept override;
-        [[nodiscard]] bool RunMessageLoop()   override;
-
-        [[nodiscard]] HWND GetHWND()          const noexcept;
+        void Show()                          override;
+        void Hide()                          override;
+        [[nodiscard]] bool IsValid()  const noexcept override;
+        [[nodiscard]] bool RunMessageLoop()  override;
+        [[nodiscard]] HWND GetHWND()  const noexcept;
 
     private:
         static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -39,19 +38,26 @@ namespace winsetup::adapters::ui {
         void OnDestroy();
         void OnPaint();
         void DrawStatusText(HDC hdc);
+
         void OnViewModelPropertyChanged(const std::wstring& propertyName);
         void UpdateStatusText();
         void UpdateWindowTitle();
 
+        void InitializeFonts();
+
         HWND      mHwnd;
         HINSTANCE mHInstance;
+
         std::shared_ptr<abstractions::ILogger>        mLogger;
         std::shared_ptr<abstractions::IMainViewModel> mViewModel;
+
+        platform::UniqueHandle mStatusFont;
 
         static constexpr const wchar_t* CLASSNAME = L"WinSetupMainWindow";
         static constexpr int            WINDOW_WIDTH = 640;
         static constexpr int            WINDOW_HEIGHT = 480;
         static constexpr float          STATUS_AREA_HEIGHT_RATIO = 0.15f;
+        static constexpr int            STATUS_FONT_SIZE = 18;
     };
 
 }
