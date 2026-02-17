@@ -3,34 +3,45 @@
 #include <abstractions/infrastructure/logging/ILogger.h>
 #include <abstractions/repositories/IConfigRepository.h>
 #include <abstractions/ui/IMainViewModel.h>
+#include <abstractions/ui/IWindow.h>
 #include <adapters/persistence/config/IniConfigRepository.h>
 #include <adapters/platform/win32/logging/Win32Logger.h>
+#include <adapters/ui/win32/Win32MainWindow.h>
 #include <application/usecases/system/LoadConfigurationUseCase.h>
 #include <application/viewmodels/MainViewModel.h>
 
 namespace winsetup {
 
-    void ServiceRegistration::RegisterAllServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterAllServices(
+        application::DIContainer& container,
+        HINSTANCE hInstance)
+    {
         RegisterInfrastructureServices(container);
         RegisterDomainServices(container);
         RegisterRepositoryServices(container);
         RegisterUseCaseServices(container);
         RegisterApplicationServices(container);
         RegisterPlatformServices(container);
-        RegisterUIServices(container);
+        RegisterUIServices(container, hInstance, SW_SHOWDEFAULT);
     }
 
-    void ServiceRegistration::RegisterInfrastructureServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterInfrastructureServices(
+        application::DIContainer& container)
+    {
         auto logger = std::make_shared<adapters::platform::Win32Logger>(L"log/log.txt");
         container.RegisterInstance<abstractions::ILogger>(
             std::static_pointer_cast<abstractions::ILogger>(logger)
         );
     }
 
-    void ServiceRegistration::RegisterDomainServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterDomainServices(
+        application::DIContainer& container)
+    {
     }
 
-    void ServiceRegistration::RegisterRepositoryServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterRepositoryServices(
+        application::DIContainer& container)
+    {
         container.RegisterInstance<abstractions::IConfigRepository>(
             std::static_pointer_cast<abstractions::IConfigRepository>(
                 std::make_shared<adapters::persistence::IniConfigRepository>()
@@ -38,7 +49,9 @@ namespace winsetup {
         );
     }
 
-    void ServiceRegistration::RegisterUseCaseServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterUseCaseServices(
+        application::DIContainer& container)
+    {
         auto repositoryResult = container.Resolve<abstractions::IConfigRepository>();
         if (!repositoryResult.HasValue()) return;
 
@@ -53,7 +66,9 @@ namespace winsetup {
         );
     }
 
-    void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterApplicationServices(
+        application::DIContainer& container)
+    {
         auto useCaseResult = container.Resolve<application::LoadConfigurationUseCase>();
         if (!useCaseResult.HasValue()) return;
 
@@ -70,10 +85,31 @@ namespace winsetup {
         );
     }
 
-    void ServiceRegistration::RegisterPlatformServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterPlatformServices(
+        application::DIContainer& container)
+    {
     }
 
-    void ServiceRegistration::RegisterUIServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterUIServices(
+        application::DIContainer& container,
+        HINSTANCE hInstance,
+        int nCmdShow)
+    {
+        auto loggerResult = container.Resolve<abstractions::ILogger>();
+        if (!loggerResult.HasValue()) return;
+
+        auto viewModelResult = container.Resolve<abstractions::IMainViewModel>();
+        if (!viewModelResult.HasValue()) return;
+
+        auto window = std::make_shared<adapters::ui::Win32MainWindow>(
+            loggerResult.Value(),
+            viewModelResult.Value()
+        );
+        window->Create(hInstance, nCmdShow);
+
+        container.RegisterInstance<abstractions::IWindow>(
+            std::static_pointer_cast<abstractions::IWindow>(window)
+        );
     }
 
 }

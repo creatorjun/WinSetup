@@ -3,7 +3,7 @@
 #include <application/core/DIContainer.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
 #include <abstractions/ui/IMainViewModel.h>
-#include <adapters/ui/win32/Win32MainWindow.h>
+#include <abstractions/ui/IWindow.h>
 #include <main/ServiceRegistration.h>
 #include <memory>
 
@@ -11,14 +11,13 @@ int WINAPI wWinMain(
     _In_     HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_     LPWSTR    lpCmdLine,
-    _In_     int       nCmdShow
-)
+    _In_     int       nCmdShow)
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
     winsetup::application::DIContainer container;
-    winsetup::ServiceRegistration::RegisterAllServices(container);
+    winsetup::ServiceRegistration::RegisterAllServices(container, hInstance);
 
     auto loggerResult = container.Resolve<winsetup::abstractions::ILogger>();
     if (!loggerResult.HasValue()) {
@@ -35,21 +34,34 @@ int WINAPI wWinMain(
     }
     auto viewModel = viewModelResult.Value();
 
-    auto mainWindow = std::make_shared<winsetup::adapters::ui::Win32MainWindow>(logger, viewModel);
-    if (!mainWindow->Create(hInstance, nCmdShow)) {
+    logger->Info(L"Initializing ViewModel...");
+    auto initResult = viewModel->Initialize();
+    if (!initResult.HasValue()) {
+        logger->Error(L"Failed to initialize ViewModel: " + initResult.GetError().GetMessage());
+        MessageBoxW(nullptr, L"Failed to initialize ViewModel", L"Error", MB_OK | MB_ICONERROR);
+        return -1;
+    }
+    logger->Info(L"ViewModel initialized successfully");
+
+    auto windowResult = container.Resolve<winsetup::abstractions::IWindow>();
+    if (!windowResult.HasValue()) {
+        logger->Error(L"Failed to resolve IWindow");
+        MessageBoxW(nullptr, L"Failed to resolve IWindow", L"Error", MB_OK | MB_ICONERROR);
+        return -1;
+    }
+    auto mainWindow = windowResult.Value();
+
+    if (!mainWindow->IsValid()) {
         logger->Error(L"Failed to create main window");
         MessageBoxW(nullptr, L"Failed to create main window", L"Error", MB_OK | MB_ICONERROR);
         return -1;
     }
 
-    auto initResult = viewModel->Initialize();
-    if (!initResult.HasValue())
-        logger->Error(L"Failed to initialize ViewModel: " + initResult.GetError().GetMessage());
+    mainWindow->Show();
 
     logger->Info(L"Application started successfully");
-
     const bool exitOk = mainWindow->RunMessageLoop();
-
     logger->Info(L"Application terminated");
+
     return exitOk ? 0 : 1;
 }

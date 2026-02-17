@@ -2,6 +2,7 @@
 #pragma once
 
 #include <application/core/DIContainer.h>
+#include <Windows.h>
 
 namespace winsetup {
 
@@ -9,7 +10,10 @@ namespace winsetup {
     public:
         ServiceRegistration() = delete;
 
-        static void RegisterAllServices(application::DIContainer& container);
+        static void RegisterAllServices(
+            application::DIContainer& container,
+            HINSTANCE hInstance
+        );
 
     private:
         static void RegisterInfrastructureServices(application::DIContainer& container);
@@ -18,7 +22,11 @@ namespace winsetup {
         static void RegisterUseCaseServices(application::DIContainer& container);
         static void RegisterApplicationServices(application::DIContainer& container);
         static void RegisterPlatformServices(application::DIContainer& container);
-        static void RegisterUIServices(application::DIContainer& container);
+        static void RegisterUIServices(
+            application::DIContainer& container,
+            HINSTANCE hInstance,
+            int nCmdShow
+        );
     };
 
 }
