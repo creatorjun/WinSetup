@@ -2,6 +2,7 @@
 #include "SMBIOSParser.h"
 #include "SMBIOSStructures.h"
 #include "../core/Win32ErrorHandler.h"
+#include <Windows.h>
 #include <algorithm>
 #include <cstring>
 #include <cwctype>
@@ -9,21 +10,20 @@
 namespace winsetup::adapters::platform {
 
     namespace {
-        const char* GetStringFromTable(const BYTE* tableStart, BYTE stringIndex) {
+
+        const char* GetStringFromTable(const uint8_t* tableStart, uint8_t stringIndex) {
             if (stringIndex == 0) {
                 return "";
             }
 
-            const BYTE* ptr = tableStart;
-
+            const uint8_t* ptr = tableStart;
             ptr += ptr[1];
 
-            BYTE currentIndex = 1;
+            uint8_t currentIndex = 1;
             while (*ptr != 0 || *(ptr + 1) != 0) {
                 if (currentIndex == stringIndex) {
                     return reinterpret_cast<const char*>(ptr);
                 }
-
                 while (*ptr != 0) {
                     ptr++;
                 }
@@ -61,6 +61,7 @@ namespace winsetup::adapters::platform {
 
             return str;
         }
+
     }
 
     SMBIOSParser::SMBIOSParser()
@@ -87,7 +88,7 @@ namespace winsetup::adapters::platform {
             };
         }
 
-        mRawData = new (std::nothrow) BYTE[bufferSize];
+        mRawData = new (std::nothrow) uint8_t[bufferSize];
         if (!mRawData) {
             return domain::Error{
                 L"Failed to allocate memory for SMBIOS table",
@@ -107,7 +108,7 @@ namespace winsetup::adapters::platform {
             };
         }
 
-        mDataSize = bufferSize;
+        mDataSize = static_cast<uint32_t>(bufferSize);
 
         auto parseResult = ParseTables();
         if (!parseResult.HasValue()) {
@@ -127,7 +128,6 @@ namespace winsetup::adapters::platform {
         }
 
         SMBIOSInfo info{};
-
         info.biosInfo = mBIOSInfo;
         info.systemInfo = mSystemInfo;
         info.baseboardInfo = mBaseboardInfo;
@@ -282,10 +282,9 @@ namespace winsetup::adapters::platform {
         }
 
         const RawSMBIOSData* rawTable = reinterpret_cast<const RawSMBIOSData*>(mRawData);
-
-        const BYTE* tableData = rawTable->SMBIOSTableData;
-        const BYTE* tableEnd = mRawData + mDataSize;
-        const BYTE* currentPtr = tableData;
+        const uint8_t* tableData = rawTable->SMBIOSTableData;
+        const uint8_t* tableEnd = mRawData + mDataSize;
+        const uint8_t* currentPtr = tableData;
 
         while (currentPtr + sizeof(SMBIOSHeader) < tableEnd) {
             const SMBIOSHeader* header = reinterpret_cast<const SMBIOSHeader*>(currentPtr);
@@ -299,23 +298,12 @@ namespace winsetup::adapters::platform {
             }
 
             switch (header->Type) {
-            case 0:
-                ParseBIOSInformation(currentPtr);
-                break;
-            case 1:
-                ParseSystemInformation(currentPtr);
-                break;
-            case 2:
-                ParseBaseboardInformation(currentPtr);
-                break;
-            case 4:
-                ParseProcessorInformation(currentPtr);
-                break;
-            case 17:
-                ParseMemoryDevice(currentPtr);
-                break;
-            default:
-                break;
+            case 0:  ParseBIOSInformation(currentPtr); break;
+            case 1:  ParseSystemInformation(currentPtr); break;
+            case 2:  ParseBaseboardInformation(currentPtr); break;
+            case 4:  ParseProcessorInformation(currentPtr); break;
+            case 17: ParseMemoryDevice(currentPtr); break;
+            default: break;
             }
 
             currentPtr += header->Length;
@@ -336,7 +324,7 @@ namespace winsetup::adapters::platform {
         return domain::Expected<void>();
     }
 
-    void SMBIOSParser::ParseBIOSInformation(const BYTE* data) {
+    void SMBIOSParser::ParseBIOSInformation(const uint8_t* data) {
         const auto* bios = reinterpret_cast<const SMBIOSBIOSInformation*>(data);
 
         mBIOSInfo.vendor = ConvertToWString(GetStringFromTable(data, bios->Vendor));
@@ -344,7 +332,7 @@ namespace winsetup::adapters::platform {
         mBIOSInfo.releaseDate = ConvertToWString(GetStringFromTable(data, bios->BIOSReleaseDate));
     }
 
-    void SMBIOSParser::ParseSystemInformation(const BYTE* data) {
+    void SMBIOSParser::ParseSystemInformation(const uint8_t* data) {
         const auto* system = reinterpret_cast<const SMBIOSSystemInformation*>(data);
 
         mSystemInfo.manufacturer = ConvertToWString(GetStringFromTable(data, system->Manufacturer));
@@ -355,7 +343,7 @@ namespace winsetup::adapters::platform {
         std::memcpy(mSystemInfo.uuid, system->UUID, 16);
     }
 
-    void SMBIOSParser::ParseBaseboardInformation(const BYTE* data) {
+    void SMBIOSParser::ParseBaseboardInformation(const uint8_t* data) {
         const auto* baseboard = reinterpret_cast<const SMBIOSBaseboardInformation*>(data);
 
         mBaseboardInfo.manufacturer = ConvertToWString(GetStringFromTable(data, baseboard->Manufacturer));
@@ -364,7 +352,7 @@ namespace winsetup::adapters::platform {
         mBaseboardInfo.serialNumber = ConvertToWString(GetStringFromTable(data, baseboard->SerialNumber));
     }
 
-    void SMBIOSParser::ParseProcessorInformation(const BYTE* data) {
+    void SMBIOSParser::ParseProcessorInformation(const uint8_t* data) {
         const auto* processor = reinterpret_cast<const SMBIOSProcessorInformation*>(data);
 
         SMBIOSProcessorInfo info{};
@@ -378,7 +366,7 @@ namespace winsetup::adapters::platform {
         mProcessorInfo = info;
     }
 
-    void SMBIOSParser::ParseMemoryDevice(const BYTE* data) {
+    void SMBIOSParser::ParseMemoryDevice(const uint8_t* data) {
         const auto* memory = reinterpret_cast<const SMBIOSMemoryDevice*>(data);
 
         if (memory->Size == 0 || memory->Size == 0xFFFF) {

@@ -2,10 +2,9 @@
 #pragma once
 
 #include <domain/primitives/Expected.h>
-#include <Windows.h>
+#include <cstdint>
 #include <string>
 #include <vector>
-#include <cstdint>
 
 namespace winsetup::adapters::platform {
 
@@ -20,7 +19,7 @@ namespace winsetup::adapters::platform {
         std::wstring productName;
         std::wstring version;
         std::wstring serialNumber;
-        BYTE uuid[16];
+        uint8_t      uuid[16];
     };
 
     struct SMBIOSBaseboardInfo {
@@ -33,26 +32,26 @@ namespace winsetup::adapters::platform {
     struct SMBIOSProcessorInfo {
         std::wstring manufacturer;
         std::wstring version;
-        uint16_t maxSpeed;
-        uint16_t currentSpeed;
-        uint8_t coreCount;
-        uint8_t threadCount;
+        uint16_t     maxSpeed;
+        uint16_t     currentSpeed;
+        uint8_t      coreCount;
+        uint8_t      threadCount;
     };
 
     struct SMBIOSMemoryDeviceInfo {
         std::wstring manufacturer;
         std::wstring partNumber;
         std::wstring serialNumber;
-        uint64_t sizeBytes;
-        uint16_t speed;
-        uint8_t type;
+        uint64_t     sizeBytes;
+        uint16_t     speed;
+        uint8_t      type;
     };
 
     struct SMBIOSInfo {
-        SMBIOSBIOSInfo biosInfo;
-        SMBIOSSystemInfo systemInfo;
-        SMBIOSBaseboardInfo baseboardInfo;
-        SMBIOSProcessorInfo processorInfo;
+        SMBIOSBIOSInfo                      biosInfo;
+        SMBIOSSystemInfo                    systemInfo;
+        SMBIOSBaseboardInfo                 baseboardInfo;
+        SMBIOSProcessorInfo                 processorInfo;
         std::vector<SMBIOSMemoryDeviceInfo> memoryDevices;
     };
 
@@ -64,25 +63,16 @@ namespace winsetup::adapters::platform {
         SMBIOSParser(const SMBIOSParser&) = delete;
         SMBIOSParser& operator=(const SMBIOSParser&) = delete;
 
-        [[nodiscard]] domain::Expected<void> Initialize();
-
-        [[nodiscard]] domain::Expected<SMBIOSInfo> GetSystemInfo();
-
+        [[nodiscard]] domain::Expected<void>         Initialize();
+        [[nodiscard]] domain::Expected<SMBIOSInfo>   GetSystemInfo();
         [[nodiscard]] domain::Expected<std::wstring> GetBIOSVersion();
-
         [[nodiscard]] domain::Expected<std::wstring> GetBIOSVendor();
-
         [[nodiscard]] domain::Expected<std::wstring> GetMotherboardManufacturer();
-
         [[nodiscard]] domain::Expected<std::wstring> GetMotherboardProduct();
-
         [[nodiscard]] domain::Expected<std::wstring> GetMotherboardModel();
-
         [[nodiscard]] domain::Expected<std::wstring> GetSystemManufacturer();
-
         [[nodiscard]] domain::Expected<std::wstring> GetSystemProductName();
-
-        [[nodiscard]] domain::Expected<uint64_t> GetTotalMemoryBytes();
+        [[nodiscard]] domain::Expected<uint64_t>     GetTotalMemoryBytes();
 
         [[nodiscard]] bool IsParsed() const noexcept {
             return mParsed;
@@ -91,20 +81,20 @@ namespace winsetup::adapters::platform {
     private:
         [[nodiscard]] domain::Expected<void> ParseTables();
 
-        void ParseBIOSInformation(const BYTE* data);
-        void ParseSystemInformation(const BYTE* data);
-        void ParseBaseboardInformation(const BYTE* data);
-        void ParseProcessorInformation(const BYTE* data);
-        void ParseMemoryDevice(const BYTE* data);
+        void ParseBIOSInformation(const uint8_t* data);
+        void ParseSystemInformation(const uint8_t* data);
+        void ParseBaseboardInformation(const uint8_t* data);
+        void ParseProcessorInformation(const uint8_t* data);
+        void ParseMemoryDevice(const uint8_t* data);
 
-        BYTE* mRawData;
-        DWORD mDataSize;
-        bool mParsed;
+        uint8_t* mRawData;
+        uint32_t  mDataSize;
+        bool      mParsed;
 
-        SMBIOSBIOSInfo mBIOSInfo;
-        SMBIOSSystemInfo mSystemInfo;
-        SMBIOSBaseboardInfo mBaseboardInfo;
-        SMBIOSProcessorInfo mProcessorInfo;
+        SMBIOSBIOSInfo                      mBIOSInfo;
+        SMBIOSSystemInfo                    mSystemInfo;
+        SMBIOSBaseboardInfo                 mBaseboardInfo;
+        SMBIOSProcessorInfo                 mProcessorInfo;
         std::vector<SMBIOSMemoryDeviceInfo> mMemoryDevices;
     };
 
