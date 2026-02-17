@@ -20,8 +20,8 @@ namespace winsetup::adapters::ui {
         constexpr const wchar_t* FONT_NAME = L"Segoe UI";
     }
 
-    std::unordered_map<HWND, ToggleButton*> ToggleButton::s_instances;
-    std::unordered_map<int, std::vector<ToggleButton*>> ToggleButton::s_groups;
+    std::unordered_map<HWND, ToggleButton*>     ToggleButton::s_instances;
+    std::unordered_map<int, std::vector<HWND>>  ToggleButton::s_groups;
 
     ToggleButton::ToggleButton()
         : m_hwnd(nullptr)
@@ -38,22 +38,28 @@ namespace winsetup::adapters::ui {
         if (m_hwnd) {
             RemoveWindowSubclass(m_hwnd, ToggleButton::SubclassProc, 0);
             s_instances.erase(m_hwnd);
-        }
-        CleanupCache();
 
-        if (m_groupId != -1) {
-            auto& group = s_groups[m_groupId];
-            auto it = std::find(group.begin(), group.end(), this);
-            if (it != group.end()) {
-                group.erase(it);
+            if (m_groupId != -1) {
+                auto it = s_groups.find(m_groupId);
+                if (it != s_groups.end()) {
+                    auto& vec = it->second;
+                    vec.erase(std::remove(vec.begin(), vec.end(), m_hwnd), vec.end());
+                }
             }
         }
+        CleanupCache();
     }
 
     void ToggleButton::Initialize(HINSTANCE hInstance) {}
 
     void ToggleButton::Cleanup() {
         s_groups.clear();
+    }
+
+    bool ToggleButton::IsInstanceAlive(ToggleButton* ptr) noexcept {
+        if (!ptr || !ptr->m_hwnd) return false;
+        auto it = s_instances.find(ptr->m_hwnd);
+        return it != s_instances.end() && it->second == ptr;
     }
 
     HWND ToggleButton::Create(HWND hParent, const std::wstring& text, int x, int y, int width, int height, int id, HINSTANCE hInstance) {
@@ -85,16 +91,17 @@ namespace winsetup::adapters::ui {
 
     void ToggleButton::SetGroup(int groupId) {
         if (m_groupId != -1) {
-            auto& oldGroup = s_groups[m_groupId];
-            auto it = std::find(oldGroup.begin(), oldGroup.end(), this);
-            if (it != oldGroup.end()) {
-                oldGroup.erase(it);
+            auto it = s_groups.find(m_groupId);
+            if (it != s_groups.end()) {
+                auto& vec = it->second;
+                vec.erase(std::remove(vec.begin(), vec.end(), m_hwnd), vec.end());
             }
         }
 
         m_groupId = groupId;
-        if (groupId != -1) {
-            s_groups[groupId].push_back(this);
+
+        if (groupId != -1 && m_hwnd) {
+            s_groups[groupId].push_back(m_hwnd);
         }
     }
 
@@ -127,6 +134,65 @@ namespace winsetup::adapters::ui {
         if (needUpdate) {
             InvalidateCache();
         }
+    }
+
+    void ToggleButton::UncheckGroupMembers() {
+        if (m_groupId == -1) return;
+
+        auto it = s_groups.find(m_groupId);
+        if (it == s_groups.end()) return;
+
+        auto& vec = it->second;
+        std::vector<HWND> stale;
+
+        for (HWND hwnd : vec) {
+            auto instIt = s_instances.find(hwnd);
+            if (instIt == s_instances.end()) {
+                stale.push_back(hwnd);
+                continue;
+            }
+            ToggleButton* btn = instIt->second;
+            if (btn != this && btn->m_isChecked) {
+                btn->m_isChecked = false;
+                btn->InvalidateCache();
+            }
+        }
+
+        for (HWND hwnd : stale) {
+            vec.erase(std::remove(vec.begin(), vec.end(), hwnd), vec.end());
+        }
+    }
+
+    void ToggleButton::SetChecked(bool checked) {
+        if (m_isChecked != checked) {
+            m_isChecked = checked;
+            InvalidateCache();
+        }
+    }
+
+    void ToggleButton::SetEnabled(bool enabled) {
+        if (!m_hwnd) return;
+        EnableWindow(m_hwnd, enabled ? TRUE : FALSE);
+    }
+
+    bool ToggleButton::IsEnabled() const {
+        if (!m_hwnd) return false;
+        return IsWindowEnabled(m_hwnd) != FALSE;
+    }
+
+    void ToggleButton::SetText(const std::wstring& text) {
+        if (!m_hwnd) return;
+        SetWindowTextW(m_hwnd, text.c_str());
+        InvalidateCache();
+    }
+
+    std::wstring ToggleButton::GetText() const {
+        if (!m_hwnd) return L"";
+        int len = GetWindowTextLength(m_hwnd);
+        if (len == 0) return L"";
+        std::vector<wchar_t> buf(static_cast<size_t>(len) + 1);
+        GetWindowTextW(m_hwnd, buf.data(), len + 1);
+        return std::wstring(buf.data());
     }
 
     LRESULT CALLBACK ToggleButton::SubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
@@ -279,52 +345,6 @@ namespace winsetup::adapters::ui {
             DrawTextW(hdc, text.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             SelectObject(hdc, hOldFont);
         }
-    }
-
-    void ToggleButton::UncheckGroupMembers() {
-        if (m_groupId == -1) return;
-
-        auto it = s_groups.find(m_groupId);
-        if (it == s_groups.end()) return;
-
-        for (auto* btn : it->second) {
-            if (btn != this && btn->m_isChecked) {
-                btn->m_isChecked = false;
-                btn->InvalidateCache();
-            }
-        }
-    }
-
-    void ToggleButton::SetChecked(bool checked) {
-        if (m_isChecked != checked) {
-            m_isChecked = checked;
-            InvalidateCache();
-        }
-    }
-
-    void ToggleButton::SetEnabled(bool enabled) {
-        if (!m_hwnd) return;
-        EnableWindow(m_hwnd, enabled ? TRUE : FALSE);
-    }
-
-    bool ToggleButton::IsEnabled() const {
-        if (!m_hwnd) return false;
-        return IsWindowEnabled(m_hwnd) != FALSE;
-    }
-
-    void ToggleButton::SetText(const std::wstring& text) {
-        if (!m_hwnd) return;
-        SetWindowTextW(m_hwnd, text.c_str());
-        InvalidateCache();
-    }
-
-    std::wstring ToggleButton::GetText() const {
-        if (!m_hwnd) return L"";
-        int len = GetWindowTextLength(m_hwnd);
-        if (len == 0) return L"";
-        std::vector<wchar_t> buf(static_cast<size_t>(len) + 1);
-        GetWindowTextW(m_hwnd, buf.data(), len + 1);
-        return std::wstring(buf.data());
     }
 
 }

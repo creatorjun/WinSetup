@@ -15,26 +15,31 @@ namespace winsetup::application {
     public:
         explicit MainViewModel(
             std::shared_ptr<LoadConfigurationUseCase> loadConfigUseCase,
-            std::shared_ptr<abstractions::ILogger> logger
-        );
+            std::shared_ptr<abstractions::ILogger> logger);
         ~MainViewModel() override = default;
 
-        [[nodiscard]] std::wstring GetStatusText() const override;
-        void SetStatusText(const std::wstring& text) override;
+        MainViewModel(const MainViewModel&) = delete;
+        MainViewModel& operator=(const MainViewModel&) = delete;
 
-        [[nodiscard]] std::wstring GetWindowTitle() const override;
+        [[nodiscard]] std::wstring GetStatusText()    const override;
+        void SetStatusText(const std::wstring& text)  override;
+
+        [[nodiscard]] std::wstring GetWindowTitle()   const override;
         void SetWindowTitle(const std::wstring& title) override;
 
-        [[nodiscard]] bool IsInitializing() const override { return mIsInitializing; }
-        [[nodiscard]] bool IsProcessing()  const override { return mIsProcessing; }
-        [[nodiscard]] bool IsCompleted()   const override { return mIsCompleted; }
+        [[nodiscard]] std::wstring GetTypeDescription() const override;
+        void SetTypeDescription(const std::wstring& description) override;
+
+        [[nodiscard]] bool IsInitializing() const override { return m_isInitializing; }
+        [[nodiscard]] bool IsProcessing()   const override { return m_isProcessing; }
+        [[nodiscard]] bool IsCompleted()    const override { return m_isCompleted; }
 
         domain::Expected<void> Initialize() override;
 
         void AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) override;
         void RemoveAllPropertyChangedHandlers() override;
 
-        [[nodiscard]] std::shared_ptr<domain::SetupConfig> GetConfig() const { return mConfig; }
+        [[nodiscard]] std::shared_ptr<domain::SetupConfig> GetConfig() const { return m_config; }
 
     protected:
         void NotifyPropertyChanged(const std::wstring& propertyName) override;
@@ -42,18 +47,19 @@ namespace winsetup::application {
     private:
         domain::Expected<void> LoadConfiguration();
 
-        std::shared_ptr<LoadConfigurationUseCase> mLoadConfigUseCase;
-        std::shared_ptr<abstractions::ILogger>    mLogger;
-        std::shared_ptr<domain::SetupConfig>      mConfig;
+        std::shared_ptr<LoadConfigurationUseCase>          m_loadConfigUseCase;
+        std::shared_ptr<abstractions::ILogger>             m_logger;
+        std::shared_ptr<domain::SetupConfig>               m_config;
 
-        std::wstring mStatusText;
-        std::wstring mWindowTitle;
+        std::wstring m_statusText;
+        std::wstring m_windowTitle;
+        std::wstring m_typeDescription;
 
-        bool mIsInitializing{ false };
-        bool mIsProcessing{ false };
-        bool mIsCompleted{ false };
+        bool m_isInitializing = false;
+        bool m_isProcessing = false;
+        bool m_isCompleted = false;
 
-        std::vector<abstractions::PropertyChangedCallback> mPropertyChangedHandlers;
+        std::vector<abstractions::PropertyChangedCallback> m_propertyChangedHandlers;
     };
 
 }

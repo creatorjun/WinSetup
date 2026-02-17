@@ -51,17 +51,19 @@ namespace winsetup::adapters::ui {
         void CleanupCache();
         void UpdateState(bool hovering, bool pressed);
 
+        [[nodiscard]] static bool IsInstanceAlive(ToggleButton* ptr) noexcept;
+
         HWND m_hwnd;
         bool m_isChecked;
         bool m_isHovering;
         bool m_isPressed;
         bool m_wasEnabled;
-        int m_groupId;
+        int  m_groupId;
         adapters::platform::UniqueHandle m_hFont;
         RenderCache m_cache;
 
-        static std::unordered_map<HWND, ToggleButton*> s_instances;
-        static std::unordered_map<int, std::vector<ToggleButton*>> s_groups;
+        static std::unordered_map<HWND, ToggleButton*>           s_instances;
+        static std::unordered_map<int, std::vector<HWND>>        s_groups;
     };
 
 }

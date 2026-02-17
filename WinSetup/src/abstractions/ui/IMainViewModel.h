@@ -18,6 +18,9 @@ namespace winsetup::abstractions {
         [[nodiscard]] virtual std::wstring GetWindowTitle() const = 0;
         virtual void SetWindowTitle(const std::wstring& title) = 0;
 
+        [[nodiscard]] virtual std::wstring GetTypeDescription() const = 0;
+        virtual void SetTypeDescription(const std::wstring& description) = 0;
+
         [[nodiscard]] virtual bool IsInitializing() const = 0;
         [[nodiscard]] virtual bool IsProcessing() const = 0;
         [[nodiscard]] virtual bool IsCompleted() const = 0;

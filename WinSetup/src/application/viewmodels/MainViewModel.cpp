@@ -5,85 +5,92 @@ namespace winsetup::application {
 
     MainViewModel::MainViewModel(
         std::shared_ptr<LoadConfigurationUseCase> loadConfigUseCase,
-        std::shared_ptr<abstractions::ILogger> logger
-    )
-        : mLoadConfigUseCase(std::move(loadConfigUseCase))
-        , mLogger(std::move(logger))
-        , mConfig(nullptr)
-        , mStatusText(L"Ready")
-        , mWindowTitle(L"WinSetup - PC Reinstallation Tool")
-        , mIsInitializing(false)
-        , mIsProcessing(false)
-        , mIsCompleted(false)
+        std::shared_ptr<abstractions::ILogger> logger)
+        : m_loadConfigUseCase(std::move(loadConfigUseCase))
+        , m_logger(std::move(logger))
+        , m_config(nullptr)
+        , m_statusText(L"Ready")
+        , m_windowTitle(L"WinSetup - PC Reinstallation Tool")
+        , m_typeDescription(L"타입을 선택해주세요.")
+        , m_isInitializing(false)
+        , m_isProcessing(false)
+        , m_isCompleted(false)
     {
     }
 
     std::wstring MainViewModel::GetStatusText() const {
-        return mStatusText;
+        return m_statusText;
     }
 
     void MainViewModel::SetStatusText(const std::wstring& text) {
-        if (mStatusText != text) {
-            mStatusText = text;
+        if (m_statusText != text) {
+            m_statusText = text;
             NotifyPropertyChanged(L"StatusText");
         }
     }
 
     std::wstring MainViewModel::GetWindowTitle() const {
-        return mWindowTitle;
+        return m_windowTitle;
     }
 
     void MainViewModel::SetWindowTitle(const std::wstring& title) {
-        if (mWindowTitle != title) {
-            mWindowTitle = title;
+        if (m_windowTitle != title) {
+            m_windowTitle = title;
             NotifyPropertyChanged(L"WindowTitle");
         }
     }
 
+    std::wstring MainViewModel::GetTypeDescription() const {
+        return m_typeDescription;
+    }
+
+    void MainViewModel::SetTypeDescription(const std::wstring& description) {
+        if (m_typeDescription != description) {
+            m_typeDescription = description;
+            NotifyPropertyChanged(L"TypeDescription");
+        }
+    }
+
     domain::Expected<void> MainViewModel::Initialize() {
-        mIsInitializing = true;
+        m_isInitializing = true;
         SetStatusText(L"Initializing...");
 
-        if (mLogger)
-            mLogger->Info(L"MainViewModel initialization started");
+        if (m_logger) m_logger->Info(L"MainViewModel initialization started");
 
         auto configResult = LoadConfiguration();
         if (!configResult.HasValue()) {
-            mIsInitializing = false;
+            m_isInitializing = false;
             SetStatusText(L"Failed to load configuration");
             return configResult.GetError();
         }
 
-        mIsInitializing = false;
+        m_isInitializing = false;
         SetStatusText(L"Ready");
 
-        if (mLogger)
-            mLogger->Info(L"MainViewModel initialization completed");
-
-        return domain::Expected<void>{};
+        if (m_logger) m_logger->Info(L"MainViewModel initialization completed");
+        return domain::Expected<void>();
     }
 
     domain::Expected<void> MainViewModel::LoadConfiguration() {
-        auto result = mLoadConfigUseCase->Execute(L"config.ini");
+        auto result = m_loadConfigUseCase->Execute(L"config.ini");
         if (!result.HasValue()) {
-            if (mLogger)
-                mLogger->Error(L"Failed to load configuration: " + result.GetError().GetMessage());
+            if (m_logger) m_logger->Error(L"Failed to load configuration: " + result.GetError().GetMessage());
             return result.GetError();
         }
-        mConfig = result.Value();
-        return domain::Expected<void>{};
+        m_config = result.Value();
+        return domain::Expected<void>();
     }
 
     void MainViewModel::AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) {
-        mPropertyChangedHandlers.push_back(std::move(callback));
+        m_propertyChangedHandlers.push_back(std::move(callback));
     }
 
     void MainViewModel::RemoveAllPropertyChangedHandlers() {
-        mPropertyChangedHandlers.clear();
+        m_propertyChangedHandlers.clear();
     }
 
     void MainViewModel::NotifyPropertyChanged(const std::wstring& propertyName) {
-        for (const auto& handler : mPropertyChangedHandlers)
+        for (const auto& handler : m_propertyChangedHandlers)
             handler(propertyName);
     }
 
