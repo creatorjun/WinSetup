@@ -1,1 +1,4 @@
-﻿// src\resources\resource.h
+﻿// src/resources/resource.h
+#pragma once
+
+#define IDI_MAINICON    101

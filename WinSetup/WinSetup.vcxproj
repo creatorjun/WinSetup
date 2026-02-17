@@ -65,6 +65,7 @@
     <ClCompile Include="src\application\usecases\install\RestoreUserDataUseCase.cpp" />
     <ClCompile Include="src\application\usecases\system\AnalyzeSystemUseCase.cpp" />
     <ClCompile Include="src\application\usecases\system\LoadConfigurationUseCase.cpp" />
+    <ClCompile Include="src\application\viewmodels\MainViewModel.cpp" />
     <ClCompile Include="src\domain\entities\DiskInfo.cpp" />
     <ClCompile Include="src\domain\entities\PartitionInfo.cpp" />
     <ClCompile Include="src\domain\entities\SetupConfig.cpp" />
@@ -102,14 +103,15 @@
     <ClInclude Include="src\abstractions\services\platform\ISystemInfoService.h" />
     <ClInclude Include="src\abstractions\services\platform\ITextEncoder.h" />
     <ClInclude Include="src\abstractions\infrastructure\async\IThreadPool.h" />
-    <ClInclude Include="src\abstractions\services\platform\IThreadPool.h" />
     <ClInclude Include="src\abstractions\services\storage\IDiskService.h" />
     <ClInclude Include="src\abstractions\services\storage\IDriverService.h" />
     <ClInclude Include="src\abstractions\services\storage\IImagingService.h" />
     <ClInclude Include="src\abstractions\services\storage\IPartitionService.h" />
     <ClInclude Include="src\abstractions\services\storage\IStorageScanner.h" />
     <ClInclude Include="src\abstractions\services\storage\IVolumeService.h" />
+    <ClInclude Include="src\abstractions\ui\IMainViewModel.h" />
     <ClInclude Include="src\abstractions\ui\IProgressBar.h" />
+    <ClInclude Include="src\abstractions\ui\IPropertyChanged.h" />
     <ClInclude Include="src\abstractions\ui\IWidget.h" />
     <ClInclude Include="src\abstractions\ui\IWindow.h" />
     <ClInclude Include="src\adapters\imaging\DismAdapter.h" />
@@ -168,6 +170,7 @@
     <ClInclude Include="src\application\usecases\install\RestoreUserDataUseCase.h" />
     <ClInclude Include="src\application\usecases\system\AnalyzeSystemUseCase.h" />
     <ClInclude Include="src\application\usecases\system\LoadConfigurationUseCase.h" />
+    <ClInclude Include="src\application\viewmodels\MainViewModel.h" />
     <ClInclude Include="src\domain\entities\DiskInfo.h" />
     <ClInclude Include="src\domain\entities\PartitionInfo.h" />
     <ClInclude Include="src\domain\entities\SetupConfig.h" />
@@ -211,6 +214,13 @@
   </ItemGroup>
   <ItemGroup>
     <Library Include="src\lib\libwim.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="src\resources\kdic.ico" />
+    <Image Include="src\resources\logo.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="src\resources\Resource.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>

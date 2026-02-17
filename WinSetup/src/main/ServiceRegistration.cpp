@@ -1,72 +1,47 @@
 ﻿// src/main/ServiceRegistration.cpp
 #include "ServiceRegistration.h"
 #include <abstractions/infrastructure/logging/ILogger.h>
-#include <abstractions/services/storage/IDiskService.h>
-#include <abstractions/services/storage/IVolumeService.h>
-#include <abstractions/services/storage/IImagingService.h>
-#include <abstractions/services/platform/ISystemInfoService.h>
+#include <abstractions/ui/IMainViewModel.h>
 #include <adapters/platform/win32/logging/Win32Logger.h>
-#include <adapters/platform/win32/storage/Win32DiskService.h>
-#include <adapters/platform/win32/storage/Win32VolumeService.h>
-#include <adapters/platform/win32/system/Win32SystemInfoService.h>
-#include <adapters/imaging/WimlibOptimizer.h>
+#include <application/viewmodels/MainViewModel.h>
 
-namespace winsetup::main {
+namespace winsetup {
 
-    domain::Expected<void> ServiceRegistration::RegisterAll(
-        std::shared_ptr<application::DIContainer> container)
+    void ServiceRegistration::RegisterAllServices(application::DIContainer& container)
     {
-        if (!container) {
-            return domain::Error{
-                L"Container is null",
-                0,
-                domain::ErrorCategory::System
-            };
+        RegisterInfrastructureServices(container);
+        RegisterDomainServices(container);
+        RegisterApplicationServices(container);
+        RegisterPlatformServices(container);
+        RegisterUIServices(container);
+    }
+
+    void ServiceRegistration::RegisterInfrastructureServices(application::DIContainer& container)
+    {
+        auto logger = std::make_shared<adapters::platform::Win32Logger>(L"log/winsetup.log");
+        container.RegisterInstance<abstractions::ILogger>(logger);
+    }
+
+    void ServiceRegistration::RegisterDomainServices(application::DIContainer& container)
+    {
+    }
+
+    void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container)
+    {
+        auto loggerResult = container.Resolve<abstractions::ILogger>();
+        if (loggerResult.HasValue()) {
+            auto logger = loggerResult.Value();
+            auto viewModel = std::make_shared<application::MainViewModel>(logger);
+            container.RegisterInstance<abstractions::IMainViewModel>(viewModel);
         }
-
-        RegisterInfrastructure(*container);
-        RegisterServices(*container);
-        RegisterUseCases(*container);
-        RegisterUI(*container);
-
-        return domain::Expected<void>();
     }
 
-    void ServiceRegistration::RegisterInfrastructure(application::DIContainer& container) {
-        container.Register<abstractions::ILogger, adapters::platform::Win32Logger>(
-            application::ServiceLifetime::Singleton
-        );
+    void ServiceRegistration::RegisterPlatformServices(application::DIContainer& container)
+    {
     }
 
-    void ServiceRegistration::RegisterServices(application::DIContainer& container) {
-        container.RegisterWithDependencies<
-            abstractions::IDiskService,
-            adapters::platform::Win32DiskService,
-            abstractions::ILogger
-        >(application::ServiceLifetime::Singleton);
-
-        container.RegisterWithDependencies<
-            abstractions::IVolumeService,
-            adapters::platform::Win32VolumeService,
-            abstractions::ILogger
-        >(application::ServiceLifetime::Singleton);
-
-        container.RegisterWithDependencies<
-            abstractions::ISystemInfoService,
-            adapters::platform::Win32SystemInfoService,
-            abstractions::ILogger
-        >(application::ServiceLifetime::Singleton);
-
-        container.Register<
-            abstractions::IImagingService,
-            adapters::WimlibOptimizer
-        >(application::ServiceLifetime::Singleton);
-    }
-
-    void ServiceRegistration::RegisterUseCases(application::DIContainer& container) {
-    }
-
-    void ServiceRegistration::RegisterUI(application::DIContainer& container) {
+    void ServiceRegistration::RegisterUIServices(application::DIContainer& container)
+    {
     }
 
 }

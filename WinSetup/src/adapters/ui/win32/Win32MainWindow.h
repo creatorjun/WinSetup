@@ -5,23 +5,28 @@
 #include <string>
 #include <memory>
 #include <abstractions/infrastructure/logging/ILogger.h>
+#include <abstractions/ui/IMainViewModel.h>
+#include <abstractions/ui/IWindow.h>
 
 namespace winsetup::adapters::ui {
 
-    class Win32MainWindow {
+    class Win32MainWindow : public abstractions::IWindow {
     public:
-        explicit Win32MainWindow(std::shared_ptr<abstractions::ILogger> logger);
-        ~Win32MainWindow();
+        explicit Win32MainWindow(
+            std::shared_ptr<abstractions::ILogger> logger,
+            std::shared_ptr<abstractions::IMainViewModel> viewModel
+        );
+        ~Win32MainWindow() override;
 
         Win32MainWindow(const Win32MainWindow&) = delete;
         Win32MainWindow& operator=(const Win32MainWindow&) = delete;
 
-        [[nodiscard]] bool Create(HINSTANCE hInstance, int nCmdShow);
-        [[nodiscard]] HWND GetHandle() const noexcept { return m_hwnd; }
+        bool Create(void* hInstance, int nCmdShow) override;
+        void Show() override;
+        void Hide() override;
+        void* GetHandle() const noexcept override { return mhwnd; }
 
-        void Show();
-        void Hide();
-        void SetTitle(const std::wstring& title);
+        [[nodiscard]] HWND GetHWND() const noexcept { return mhwnd; }
 
     private:
         static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -30,15 +35,21 @@ namespace winsetup::adapters::ui {
         void OnCreate();
         void OnDestroy();
         void OnPaint();
-        void OnSize(UINT width, UINT height);
+        void DrawStatusText(HDC hdc);
 
-        HWND m_hwnd;
-        HINSTANCE m_hInstance;
-        std::shared_ptr<abstractions::ILogger> m_logger;
+        void OnViewModelPropertyChanged(const std::wstring& propertyName);
+        void UpdateStatusText();
+        void UpdateWindowTitle();
 
-        static constexpr const wchar_t* CLASS_NAME = L"WinSetupMainWindow";
-        static constexpr int DEFAULT_WIDTH = 800;
-        static constexpr int DEFAULT_HEIGHT = 600;
+        HWND mhwnd;
+        HINSTANCE mhInstance;
+        std::shared_ptr<abstractions::ILogger> mLogger;
+        std::shared_ptr<abstractions::IMainViewModel> mViewModel;
+
+        static constexpr const wchar_t* CLASSNAME = L"WinSetupMainWindow";
+        static constexpr int WINDOW_WIDTH = 640;
+        static constexpr int WINDOW_HEIGHT = 480;
+        static constexpr float STATUSAREA_HEIGHT_RATIO = 0.15f;
     };
 
 }

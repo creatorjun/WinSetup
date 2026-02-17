@@ -207,6 +207,9 @@
     <ClCompile Include="src\adapters\platform\win32\memory\UniqueHandle.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="src\application\viewmodels\MainViewModel.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\main\ServiceRegistration.h">
@@ -548,9 +551,6 @@
     <ClInclude Include="src\lib\wimlib.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\services\platform\IThreadPool.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="src\adapters\platform\win32\memory\UniqueHandle.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -558,6 +558,15 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\adapters\platform\win32\memory\UniqueFindHandle.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\ui\IMainViewModel.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\ui\IPropertyChanged.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\viewmodels\MainViewModel.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -569,5 +578,18 @@
   </ItemGroup>
   <ItemGroup>
     <Library Include="src\lib\libwim.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="src\resources\kdic.ico">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="src\resources\logo.ico">
+      <Filter>리소스 파일</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="src\resources\Resource.rc">
+      <Filter>리소스 파일</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
