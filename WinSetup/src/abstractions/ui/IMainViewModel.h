@@ -25,6 +25,12 @@ namespace winsetup::abstractions {
         [[nodiscard]] virtual std::wstring GetTypeDescription() const = 0;
         virtual void SetTypeDescription(const std::wstring& key) = 0;
 
+        [[nodiscard]] virtual bool GetDataPreservation() const = 0;
+        virtual void SetDataPreservation(bool enabled) = 0;
+
+        [[nodiscard]] virtual bool GetBitlockerEnabled() const = 0;
+        virtual void SetBitlockerEnabled(bool enabled) = 0;
+
         [[nodiscard]] virtual bool IsInitializing() const = 0;
         [[nodiscard]] virtual bool IsProcessing()    const = 0;
         [[nodiscard]] virtual bool IsCompleted()     const = 0;

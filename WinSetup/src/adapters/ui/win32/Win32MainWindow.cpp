@@ -147,6 +147,36 @@ namespace winsetup::adapters::ui {
             });
 
         RebuildTypeSelector();
+
+        // ── 옵션 토글 버튼 영역 (1열 2행 세로 배열) ─────────────────────
+        const int optionAreaY = m_selectorRect.bottom + gap * 2;
+        const int optionBtnW = cw - marginH * 2;
+        const int optionBtnH = 36;
+
+        m_btnDataPreserve.Create(
+            m_hWnd,
+            L"데이터 보존",
+            marginH,
+            optionAreaY,
+            optionBtnW,
+            optionBtnH,
+            ID_TOGGLE_DATA_PRESERVE,
+            m_hInstance);
+
+        m_btnBitlocker.Create(
+            m_hWnd,
+            L"BitLocker 설정",
+            marginH,
+            optionAreaY + optionBtnH + gap,
+            optionBtnW,
+            optionBtnH,
+            ID_TOGGLE_BITLOCKER,
+            m_hInstance);
+
+        if (m_viewModel) {
+            m_btnDataPreserve.SetChecked(m_viewModel->GetDataPreservation());
+            m_btnBitlocker.SetChecked(m_viewModel->GetBitlockerEnabled());
+        }
     }
 
     void Win32MainWindow::RebuildTypeSelector() {
@@ -226,6 +256,8 @@ namespace winsetup::adapters::ui {
         else if (propertyName == L"TypeDescription")   UpdateTypeDescription();
         else if (propertyName == L"WindowTitle")       UpdateWindowTitle();
         else if (propertyName == L"InstallationTypes") RebuildTypeSelector();
+        else if (propertyName == L"DataPreservation")  UpdateDataPreservation();
+        else if (propertyName == L"BitlockerEnabled")  UpdateBitlockerEnabled();
     }
 
     void Win32MainWindow::UpdateStatusText() {
@@ -241,6 +273,69 @@ namespace winsetup::adapters::ui {
     void Win32MainWindow::UpdateWindowTitle() {
         if (m_hWnd && m_viewModel)
             SetWindowTextW(m_hWnd, m_viewModel->GetWindowTitle().c_str());
+    }
+
+    void Win32MainWindow::UpdateDataPreservation() {
+        if (!m_viewModel || !m_btnDataPreserve.Handle()) return;
+        m_btnDataPreserve.SetChecked(m_viewModel->GetDataPreservation());
+        InvalidateRect(m_btnDataPreserve.Handle(), nullptr, TRUE);
+    }
+
+    void Win32MainWindow::UpdateBitlockerEnabled() {
+        if (!m_viewModel || !m_btnBitlocker.Handle()) return;
+        m_btnBitlocker.SetChecked(m_viewModel->GetBitlockerEnabled());
+        InvalidateRect(m_btnBitlocker.Handle(), nullptr, TRUE);
+    }
+
+    void Win32MainWindow::OnCreate() {
+        if (m_logger) m_logger->Debug(L"Window WM_CREATE received");
+        InitializeWidgets();
+    }
+
+    void Win32MainWindow::OnDestroy() {
+        if (m_logger) m_logger->Info(L"Window destroyed");
+        ToggleButton::Cleanup();
+        PostQuitMessage(0);
+    }
+
+    void Win32MainWindow::OnPaint() {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(m_hWnd, &ps);
+        DrawStatusText(hdc);
+        m_typeSelectorGroup.OnPaint(hdc);
+        EndPaint(m_hWnd, &ps);
+    }
+
+    void Win32MainWindow::OnCommand(WPARAM wParam, LPARAM lParam) {
+        const int ctrlId = LOWORD(wParam);
+        const int notifCode = HIWORD(wParam);
+
+        if (notifCode == BN_CLICKED) {
+            if (ctrlId == ID_TOGGLE_DATA_PRESERVE && m_viewModel) {
+                // ToggleButton 내부에서 이미 SetChecked 처리 완료
+                // → ViewModel을 버튼의 현재 상태로 동기화
+                const bool current = m_btnDataPreserve.IsChecked();
+                m_viewModel->SetDataPreservation(current);
+                if (m_logger)
+                    m_logger->Debug(
+                        std::wstring(L"DataPreservation toggled: ") +
+                        (current ? L"ON" : L"OFF"));
+                return;
+            }
+            if (ctrlId == ID_TOGGLE_BITLOCKER && m_viewModel) {
+                // ToggleButton 내부에서 이미 SetChecked 처리 완료
+                // → ViewModel을 버튼의 현재 상태로 동기화
+                const bool current = m_btnBitlocker.IsChecked();
+                m_viewModel->SetBitlockerEnabled(current);
+                if (m_logger)
+                    m_logger->Debug(
+                        std::wstring(L"BitlockerEnabled toggled: ") +
+                        (current ? L"ON" : L"OFF"));
+                return;
+            }
+        }
+
+        m_typeSelectorGroup.OnCommand(wParam, lParam);
     }
 
     LRESULT CALLBACK Win32MainWindow::WindowProc(
@@ -273,29 +368,6 @@ namespace winsetup::adapters::ui {
         default:
             return DefWindowProcW(m_hWnd, uMsg, wParam, lParam);
         }
-    }
-
-    void Win32MainWindow::OnCreate() {
-        if (m_logger) m_logger->Debug(L"Window WM_CREATE received");
-        InitializeWidgets();
-    }
-
-    void Win32MainWindow::OnDestroy() {
-        if (m_logger) m_logger->Info(L"Window destroyed");
-        ToggleButton::Cleanup();
-        PostQuitMessage(0);
-    }
-
-    void Win32MainWindow::OnPaint() {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(m_hWnd, &ps);
-        DrawStatusText(hdc);
-        m_typeSelectorGroup.OnPaint(hdc);
-        EndPaint(m_hWnd, &ps);
-    }
-
-    void Win32MainWindow::OnCommand(WPARAM wParam, LPARAM lParam) {
-        m_typeSelectorGroup.OnCommand(wParam, lParam);
     }
 
 }

@@ -12,6 +12,12 @@ namespace winsetup::application {
         , m_config(nullptr)
         , m_statusText(L"Ready")
         , m_windowTitle(L"WinSetup - PC Reinstallation Tool")
+        , m_typeDescription(L"")
+        , m_isInitializing(false)
+        , m_isProcessing(false)
+        , m_isCompleted(false)
+        , m_dataPreservation(false)
+        , m_bitlockerEnabled(false)
     {
     }
 
@@ -54,6 +60,28 @@ namespace winsetup::application {
                 }
                 return;
             }
+        }
+    }
+
+    bool MainViewModel::GetDataPreservation() const {
+        return m_dataPreservation;
+    }
+
+    void MainViewModel::SetDataPreservation(bool enabled) {
+        if (m_dataPreservation != enabled) {
+            m_dataPreservation = enabled;
+            NotifyPropertyChanged(L"DataPreservation");
+        }
+    }
+
+    bool MainViewModel::GetBitlockerEnabled() const {
+        return m_bitlockerEnabled;
+    }
+
+    void MainViewModel::SetBitlockerEnabled(bool enabled) {
+        if (m_bitlockerEnabled != enabled) {
+            m_bitlockerEnabled = enabled;
+            NotifyPropertyChanged(L"BitlockerEnabled");
         }
     }
 

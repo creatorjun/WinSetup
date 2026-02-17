@@ -30,6 +30,12 @@ namespace winsetup::application {
         [[nodiscard]] std::wstring GetTypeDescription() const override;
         void SetTypeDescription(const std::wstring& key)      override;
 
+        [[nodiscard]] bool GetDataPreservation() const override;
+        void SetDataPreservation(bool enabled)         override;
+
+        [[nodiscard]] bool GetBitlockerEnabled() const override;
+        void SetBitlockerEnabled(bool enabled)        override;
+
         [[nodiscard]] bool IsInitializing() const override { return m_isInitializing; }
         [[nodiscard]] bool IsProcessing()   const override { return m_isProcessing; }
         [[nodiscard]] bool IsCompleted()    const override { return m_isCompleted; }
@@ -58,6 +64,8 @@ namespace winsetup::application {
         bool m_isInitializing = false;
         bool m_isProcessing = false;
         bool m_isCompleted = false;
+        bool m_dataPreservation = false;
+        bool m_bitlockerEnabled = false;
 
         std::vector<abstractions::PropertyChangedCallback> m_propertyChangedHandlers;
     };
