@@ -43,6 +43,7 @@
     <ClCompile Include="src\adapters\platform\win32\threading\Win32Thread.cpp" />
     <ClCompile Include="src\adapters\platform\win32\threading\Win32ThreadPool.cpp" />
     <ClCompile Include="src\adapters\ui\win32\controls\SimpleButton.cpp" />
+    <ClCompile Include="src\adapters\ui\win32\controls\TextWidget.cpp" />
     <ClCompile Include="src\adapters\ui\win32\controls\ToggleButton.cpp" />
     <ClCompile Include="src\adapters\ui\win32\Win32MainWindow.cpp" />
     <ClCompile Include="src\adapters\ui\win32\Win32ProgressBar.cpp" />
@@ -143,6 +144,7 @@
     <ClInclude Include="src\adapters\platform\win32\threading\Win32Thread.h" />
     <ClInclude Include="src\adapters\platform\win32\threading\Win32ThreadPool.h" />
     <ClInclude Include="src\adapters\ui\win32\controls\SimpleButton.h" />
+    <ClInclude Include="src\adapters\ui\win32\controls\TextWidget.h" />
     <ClInclude Include="src\adapters\ui\win32\controls\ToggleButton.h" />
     <ClInclude Include="src\adapters\ui\win32\Win32MainWindow.h" />
     <ClInclude Include="src\adapters\ui\win32\Win32ProgressBar.h" />

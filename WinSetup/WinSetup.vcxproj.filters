@@ -210,6 +210,9 @@
     <ClCompile Include="src\application\viewmodels\MainViewModel.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="src\adapters\ui\win32\controls\TextWidget.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\main\ServiceRegistration.h">
@@ -567,6 +570,9 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\application\viewmodels\MainViewModel.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\ui\win32\controls\TextWidget.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

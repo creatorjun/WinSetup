@@ -13,8 +13,6 @@ namespace winsetup::adapters::ui {
         , m_hInstance(nullptr)
         , m_logger(std::move(logger))
         , m_viewModel(std::move(viewModel))
-        , m_statusFont(nullptr)
-        , m_typeFont(nullptr)
     {
         if (m_viewModel)
             m_viewModel->AddPropertyChangedHandler(
@@ -26,9 +24,10 @@ namespace winsetup::adapters::ui {
     Win32MainWindow::~Win32MainWindow() {
         if (m_viewModel)
             m_viewModel->RemoveAllPropertyChangedHandlers();
-        if (m_statusFont) { DeleteObject(m_statusFont); m_statusFont = nullptr; }
-        if (m_typeFont) { DeleteObject(m_typeFont);   m_typeFont = nullptr; }
-        if (m_hwnd) { DestroyWindow(m_hwnd);      m_hwnd = nullptr; }
+        if (m_hwnd) {
+            DestroyWindow(m_hwnd);
+            m_hwnd = nullptr;
+        }
     }
 
     bool Win32MainWindow::Create(HINSTANCE hInstance, int nCmdShow) {
@@ -102,6 +101,79 @@ namespace winsetup::adapters::ui {
         return msg.wParam == 0;
     }
 
+    void Win32MainWindow::InitializeWidgets() {
+        TextWidgetStyle statusStyle;
+        statusStyle.fontSize = 18;
+        statusStyle.fontWeight = FW_NORMAL;
+        statusStyle.textColor = RGB(0, 0, 0);
+        statusStyle.placeholderColor = RGB(160, 160, 160);
+        statusStyle.bgColor = RGB(255, 255, 255);
+        statusStyle.drawBackground = false;
+        statusStyle.drawTopBorder = false;
+        statusStyle.drawBottomBorder = false;
+        statusStyle.dtFormat = DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS;
+        statusStyle.paddingLeft = PAD_TEXT;
+        statusStyle.paddingRight = PAD_TEXT;
+        statusStyle.paddingTop = 0;
+        statusStyle.paddingBottom = 0;
+        m_statusWidget.SetStyle(statusStyle);
+
+        if (m_viewModel)
+            m_statusWidget.SetText(m_viewModel->GetStatusText());
+
+        TextWidgetStyle typeStyle;
+        typeStyle.fontSize = 14;
+        typeStyle.fontWeight = FW_NORMAL;
+        typeStyle.textColor = RGB(30, 30, 30);
+        typeStyle.placeholderColor = RGB(160, 160, 160);
+        typeStyle.bgColor = RGB(245, 245, 245);
+        typeStyle.drawBackground = true;
+        typeStyle.drawTopBorder = true;
+        typeStyle.drawBottomBorder = true;
+        typeStyle.borderColor = RGB(210, 210, 210);
+        typeStyle.dtFormat = DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS;
+        typeStyle.paddingLeft = MARGIN_H + PAD_TEXT;
+        typeStyle.paddingRight = MARGIN_H + PAD_TEXT;
+        typeStyle.paddingTop = 0;
+        typeStyle.paddingBottom = 0;
+        m_typeWidget.SetStyle(typeStyle);
+        m_typeWidget.SetPlaceholder(L"타입을 선택해주세요.");
+
+        if (m_viewModel)
+            m_typeWidget.SetText(m_viewModel->GetTypeDescription());
+
+        RecalcWidgetRects();
+    }
+
+    void Win32MainWindow::RecalcWidgetRects() {
+        if (!m_hwnd) return;
+
+        RECT clientRect;
+        GetClientRect(m_hwnd, &clientRect);
+
+        const int cw = clientRect.right;
+        const int ch = clientRect.bottom;
+        const int statusHeight = static_cast<int>(ch * STATUS_AREA_HEIGHT_RATIO);
+        const int typeHeight = static_cast<int>(ch * TYPE_AREA_HEIGHT_RATIO);
+
+        RECT statusRect = {
+            MARGIN_H,
+            MARGIN_V,
+            cw - MARGIN_H,
+            statusHeight - MARGIN_V
+        };
+
+        RECT typeRect = {
+            0,
+            statusHeight,
+            cw,
+            statusHeight + typeHeight
+        };
+
+        m_statusWidget.SetRect(statusRect);
+        m_typeWidget.SetRect(typeRect);
+    }
+
     void Win32MainWindow::OnViewModelPropertyChanged(const std::wstring& propertyName) {
         if (propertyName == L"StatusText")      UpdateStatusText();
         else if (propertyName == L"TypeDescription") UpdateTypeDescription();
@@ -109,43 +181,21 @@ namespace winsetup::adapters::ui {
     }
 
     void Win32MainWindow::UpdateStatusText() {
-        if (!m_hwnd) return;
-        RECT clientRect;
-        GetClientRect(m_hwnd, &clientRect);
-        int  statusHeight = static_cast<int>(clientRect.bottom * STATUS_AREA_HEIGHT_RATIO);
-        RECT invalidRect = { 0, 0, clientRect.right, statusHeight };
-        InvalidateRect(m_hwnd, &invalidRect, FALSE);
+        if (!m_viewModel) return;
+        m_statusWidget.SetText(m_viewModel->GetStatusText());
+        m_statusWidget.Invalidate(m_hwnd);
     }
 
     void Win32MainWindow::UpdateTypeDescription() {
-        if (!m_hwnd) return;
-        RECT clientRect;
-        GetClientRect(m_hwnd, &clientRect);
-        int  statusHeight = static_cast<int>(clientRect.bottom * STATUS_AREA_HEIGHT_RATIO);
-        int  typeHeight = static_cast<int>(clientRect.bottom * TYPE_AREA_HEIGHT_RATIO);
-        RECT invalidRect = { 0, statusHeight, clientRect.right, statusHeight + typeHeight };
-        InvalidateRect(m_hwnd, &invalidRect, FALSE);
+        if (!m_viewModel) return;
+        std::wstring desc = m_viewModel->GetTypeDescription();
+        m_typeWidget.SetText(desc == L"타입을 선택해주세요." ? L"" : desc);
+        m_typeWidget.Invalidate(m_hwnd);
     }
 
     void Win32MainWindow::UpdateWindowTitle() {
         if (m_hwnd && m_viewModel)
             SetWindowTextW(m_hwnd, m_viewModel->GetWindowTitle().c_str());
-    }
-
-    void Win32MainWindow::InitializeFonts() {
-        m_statusFont = CreateFontW(
-            STATUS_FONT_SIZE, 0, 0, 0,
-            FW_NORMAL, FALSE, FALSE, FALSE,
-            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
-            L"Segoe UI");
-
-        m_typeFont = CreateFontW(
-            TYPE_FONT_SIZE, 0, 0, 0,
-            FW_NORMAL, FALSE, FALSE, FALSE,
-            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
-            L"Segoe UI");
     }
 
     LRESULT CALLBACK Win32MainWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -169,6 +219,9 @@ namespace winsetup::adapters::ui {
         case WM_DESTROY:  OnDestroy();                return 0;
         case WM_PAINT:    OnPaint();                  return 0;
         case WM_COMMAND:  OnCommand(wParam, lParam);  return 0;
+        case WM_SIZE:
+            OnSize(LOWORD(lParam), HIWORD(lParam));
+            return 0;
         case WM_GETMINMAXINFO: {
             auto* lpMMI = reinterpret_cast<LPMINMAXINFO>(lParam);
             lpMMI->ptMinTrackSize.x = WINDOW_WIDTH;
@@ -187,7 +240,7 @@ namespace winsetup::adapters::ui {
 
     void Win32MainWindow::OnCreate() {
         if (m_logger) m_logger->Debug(L"Window WM_CREATE received");
-        InitializeFonts();
+        InitializeWidgets();
     }
 
     void Win32MainWindow::OnDestroy() {
@@ -198,8 +251,10 @@ namespace winsetup::adapters::ui {
     void Win32MainWindow::OnPaint() {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(m_hwnd, &ps);
-        DrawStatusText(hdc);
-        DrawTypeText(hdc);
+
+        m_statusWidget.Draw(hdc);
+        m_typeWidget.Draw(hdc);
+
         EndPaint(m_hwnd, &ps);
     }
 
@@ -219,69 +274,10 @@ namespace winsetup::adapters::ui {
         m_viewModel->SetTypeDescription(std::wstring(buf.data()));
     }
 
-    void Win32MainWindow::DrawStatusText(HDC hdc) {
-        if (!m_viewModel) return;
-
-        RECT clientRect;
-        GetClientRect(m_hwnd, &clientRect);
-
-        int  statusHeight = static_cast<int>(clientRect.bottom * STATUS_AREA_HEIGHT_RATIO);
-        RECT statusRect = { 0, 0, clientRect.right, statusHeight };
-
-        HFONT    hFont = m_statusFont
-            ? m_statusFont
-            : reinterpret_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
-        HGDIOBJ  hOldFont = SelectObject(hdc, hFont);
-
-        SetBkMode(hdc, TRANSPARENT);
-        SetTextColor(hdc, RGB(0, 0, 0));
-
-        std::wstring text = m_viewModel->GetStatusText();
-        DrawTextW(hdc, text.c_str(), -1, &statusRect,
-            DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-
-        SelectObject(hdc, hOldFont);
-    }
-
-    void Win32MainWindow::DrawTypeText(HDC hdc) {
-        if (!m_viewModel) return;
-
-        RECT clientRect;
-        GetClientRect(m_hwnd, &clientRect);
-
-        int  statusHeight = static_cast<int>(clientRect.bottom * STATUS_AREA_HEIGHT_RATIO);
-        int  typeHeight = static_cast<int>(clientRect.bottom * TYPE_AREA_HEIGHT_RATIO);
-        RECT typeRect = { 0, statusHeight, clientRect.right, statusHeight + typeHeight };
-
-        HBRUSH hBg = CreateSolidBrush(RGB(245, 245, 245));
-        FillRect(hdc, &typeRect, hBg);
-        DeleteObject(hBg);
-
-        HPEN hBorderPen = CreatePen(PS_SOLID, 1, RGB(210, 210, 210));
-        HPEN hOldPen = static_cast<HPEN>(SelectObject(hdc, hBorderPen));
-        MoveToEx(hdc, typeRect.left, typeRect.top, nullptr);
-        LineTo(hdc, typeRect.right, typeRect.top);
-        MoveToEx(hdc, typeRect.left, typeRect.bottom - 1, nullptr);
-        LineTo(hdc, typeRect.right, typeRect.bottom - 1);
-        SelectObject(hdc, hOldPen);
-        DeleteObject(hBorderPen);
-
-        HFONT   hFont = m_typeFont
-            ? m_typeFont
-            : reinterpret_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
-        HGDIOBJ hOldFont = SelectObject(hdc, hFont);
-
-        SetBkMode(hdc, TRANSPARENT);
-
-        std::wstring desc = m_viewModel->GetTypeDescription();
-        bool         isPlaceholder = (desc == L"타입을 선택해주세요.");
-        SetTextColor(hdc, isPlaceholder ? RGB(160, 160, 160) : RGB(30, 30, 30));
-
-        RECT textRect = { typeRect.left + 12, typeRect.top, typeRect.right - 12, typeRect.bottom };
-        DrawTextW(hdc, desc.c_str(), -1, &textRect,
-            DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-
-        SelectObject(hdc, hOldFont);
+    void Win32MainWindow::OnSize(int clientWidth, int clientHeight) {
+        (void)clientWidth;
+        (void)clientHeight;
+        RecalcWidgetRects();
     }
 
 }
