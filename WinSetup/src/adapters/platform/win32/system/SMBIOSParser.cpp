@@ -238,6 +238,7 @@ namespace winsetup::adapters::platform {
 
     void SMBIOSParser::ParseMemoryDevice(const uint8_t* data) {
         const auto* memory = reinterpret_cast<const SMBIOSMemoryDevice*>(data);
+
         if (memory->Size == 0 || memory->Size == 0xFFFF) return;
 
         SMBIOSMemoryDeviceInfo info;
@@ -251,8 +252,14 @@ namespace winsetup::adapters::platform {
             info.sizeBytes = static_cast<uint64_t>(memory->ExtendedSize) * 1024ULL * 1024ULL;
         }
         else {
-            uint64_t sizeMB = (memory->Size & 0x8000) ? (memory->Size & 0x7FFF) : (memory->Size * 1024ULL);
-            info.sizeBytes = sizeMB * 1024ULL * 1024ULL;
+            if (memory->Size & 0x8000) {
+                const uint64_t sizeKB = static_cast<uint64_t>(memory->Size & 0x7FFF);
+                info.sizeBytes = sizeKB * 1024ULL;
+            }
+            else {
+                const uint64_t sizeMB = static_cast<uint64_t>(memory->Size);
+                info.sizeBytes = sizeMB * 1024ULL * 1024ULL;
+            }
         }
 
         mMemoryDevices.push_back(info);

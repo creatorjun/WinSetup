@@ -37,6 +37,7 @@
     <ClCompile Include="src\adapters\platform\win32\storage\IOCTLWrapper.cpp" />
     <ClCompile Include="src\adapters\platform\win32\storage\MFTScanner.cpp" />
     <ClCompile Include="src\adapters\platform\win32\storage\Win32DiskService.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\storage\Win32FileCopyService.cpp" />
     <ClCompile Include="src\adapters\platform\win32\storage\Win32VolumeService.cpp" />
     <ClCompile Include="src\adapters\platform\win32\system\SMBIOSParser.cpp" />
     <ClCompile Include="src\adapters\platform\win32\system\Win32SystemInfoService.cpp" />
@@ -110,6 +111,7 @@
     <ClInclude Include="src\abstractions\infrastructure\async\IThreadPool.h" />
     <ClInclude Include="src\abstractions\services\storage\IDiskService.h" />
     <ClInclude Include="src\abstractions\services\storage\IDriverService.h" />
+    <ClInclude Include="src\abstractions\services\storage\IFileCopyService.h" />
     <ClInclude Include="src\abstractions\services\storage\IImagingService.h" />
     <ClInclude Include="src\abstractions\services\storage\IPartitionService.h" />
     <ClInclude Include="src\abstractions\services\storage\IStorageScanner.h" />
@@ -140,6 +142,7 @@
     <ClInclude Include="src\adapters\platform\win32\storage\IOCTLWrapper.h" />
     <ClInclude Include="src\adapters\platform\win32\storage\MFTScanner.h" />
     <ClInclude Include="src\adapters\platform\win32\storage\Win32DiskService.h" />
+    <ClInclude Include="src\adapters\platform\win32\storage\Win32FileCopyService.h" />
     <ClInclude Include="src\adapters\platform\win32\storage\Win32VolumeService.h" />
     <ClInclude Include="src\adapters\platform\win32\system\FirmwareTableReader.h" />
     <ClInclude Include="src\adapters\platform\win32\system\SMBIOSParser.h" />
@@ -226,7 +229,6 @@
     <Library Include="src\lib\libwim.lib" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="src\resources\kdic.ico" />
     <Image Include="src\resources\logo.ico" />
   </ItemGroup>
   <ItemGroup>

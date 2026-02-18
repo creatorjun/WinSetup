@@ -1,20 +1,19 @@
 ﻿// src/main/ServiceRegistration.cpp
 #include "ServiceRegistration.h"
-
-#include <abstractions/infrastructure/logging/ILogger.h>
-#include <abstractions/repositories/IConfigRepository.h>
-#include <abstractions/services/platform/ISystemInfoService.h>
-#include <abstractions/ui/IMainViewModel.h>
-#include <abstractions/ui/IWindow.h>
-
-#include <adapters/persistence/config/IniConfigRepository.h>
-#include <adapters/platform/win32/logging/Win32Logger.h>
-#include <adapters/platform/win32/system/Win32SystemInfoService.h>
-#include <adapters/ui/win32/Win32MainWindow.h>
-
-#include <application/usecases/system/LoadConfigurationUseCase.h>
-#include <application/usecases/system/AnalyzeSystemUseCase.h>
-#include <application/viewmodels/MainViewModel.h>
+#include "abstractions/infrastructure/logging/ILogger.h"
+#include "abstractions/repositories/IConfigRepository.h"
+#include "abstractions/services/platform/ISystemInfoService.h"
+#include "abstractions/services/storage/IFileCopyService.h"
+#include "abstractions/ui/IMainViewModel.h"
+#include "abstractions/ui/IWindow.h"
+#include "adapters/persistence/config/IniConfigRepository.h"
+#include "adapters/platform/win32/logging/Win32Logger.h"
+#include "adapters/platform/win32/storage/Win32FileCopyService.h"
+#include "adapters/platform/win32/system/Win32SystemInfoService.h"
+#include "adapters/ui/win32/Win32MainWindow.h"
+#include "application/usecases/system/AnalyzeSystemUseCase.h"
+#include "application/usecases/system/LoadConfigurationUseCase.h"
+#include "application/viewmodels/MainViewModel.h"
 
 namespace winsetup {
 
@@ -26,6 +25,7 @@ namespace winsetup {
         RegisterDomainServices(container);
         RegisterRepositoryServices(container);
         RegisterPlatformServices(container);
+        RegisterStorageServices(container);
         RegisterUseCaseServices(container);
         RegisterApplicationServices(container);
         RegisterUIServices(container, hInstance);
@@ -36,12 +36,11 @@ namespace winsetup {
     ) {
         auto logger = std::make_shared<adapters::platform::Win32Logger>(L"log/log.txt");
         container.RegisterInstance<abstractions::ILogger>(
-            std::static_pointer_cast<abstractions::ILogger>(logger)
-        );
+            std::static_pointer_cast<abstractions::ILogger>(logger));
     }
 
     void ServiceRegistration::RegisterDomainServices(
-        application::DIContainer& /*container*/
+        application::DIContainer& container
     ) {
     }
 
@@ -50,9 +49,7 @@ namespace winsetup {
     ) {
         container.RegisterInstance<abstractions::IConfigRepository>(
             std::static_pointer_cast<abstractions::IConfigRepository>(
-                std::make_shared<adapters::persistence::IniConfigRepository>()
-            )
-        );
+                std::make_shared<adapters::persistence::IniConfigRepository>()));
     }
 
     void ServiceRegistration::RegisterPlatformServices(
@@ -63,9 +60,18 @@ namespace winsetup {
 
         container.RegisterInstance<abstractions::ISystemInfoService>(
             std::static_pointer_cast<abstractions::ISystemInfoService>(
-                std::make_shared<adapters::platform::Win32SystemInfoService>(logger)
-            )
-        );
+                std::make_shared<adapters::platform::Win32SystemInfoService>(logger)));
+    }
+
+    void ServiceRegistration::RegisterStorageServices(
+        application::DIContainer& container
+    ) {
+        auto loggerResult = container.Resolve<abstractions::ILogger>();
+        auto logger = loggerResult.HasValue() ? loggerResult.Value() : nullptr;
+
+        container.RegisterInstance<abstractions::IFileCopyService>(
+            std::static_pointer_cast<abstractions::IFileCopyService>(
+                std::make_shared<adapters::platform::Win32FileCopyService>(logger)));
     }
 
     void ServiceRegistration::RegisterUseCaseServices(
@@ -80,12 +86,10 @@ namespace winsetup {
         auto sysInfo = sysInfoResult.HasValue() ? sysInfoResult.Value() : nullptr;
 
         container.RegisterInstance<application::LoadConfigurationUseCase>(
-            std::make_shared<application::LoadConfigurationUseCase>(repo, logger)
-        );
+            std::make_shared<application::LoadConfigurationUseCase>(repo, logger));
 
         container.RegisterInstance<application::AnalyzeSystemUseCase>(
-            std::make_shared<application::AnalyzeSystemUseCase>(sysInfo, logger)
-        );
+            std::make_shared<application::AnalyzeSystemUseCase>(sysInfo, logger));
     }
 
     void ServiceRegistration::RegisterApplicationServices(
@@ -93,19 +97,16 @@ namespace winsetup {
     ) {
         auto loggerResult = container.Resolve<abstractions::ILogger>();
         auto loadConfigResult = container.Resolve<application::LoadConfigurationUseCase>();
-        auto analyzeSystemResult = container.Resolve<application::AnalyzeSystemUseCase>();
+        auto analyzeResult = container.Resolve<application::AnalyzeSystemUseCase>();
 
         auto logger = loggerResult.HasValue() ? loggerResult.Value() : nullptr;
         auto loadConfigUC = loadConfigResult.HasValue() ? loadConfigResult.Value() : nullptr;
-        auto analyzeSystemUC = analyzeSystemResult.HasValue() ? analyzeSystemResult.Value() : nullptr;
+        auto analyzeUC = analyzeResult.HasValue() ? analyzeResult.Value() : nullptr;
 
         container.RegisterInstance<abstractions::IMainViewModel>(
             std::static_pointer_cast<abstractions::IMainViewModel>(
                 std::make_shared<application::MainViewModel>(
-                    loadConfigUC, analyzeSystemUC, logger
-                )
-            )
-        );
+                    loadConfigUC, analyzeUC, logger)));
     }
 
     void ServiceRegistration::RegisterUIServices(
@@ -124,8 +125,7 @@ namespace winsetup {
         window->Create(hInstance, SW_SHOWDEFAULT);
 
         container.RegisterInstance<abstractions::IWindow>(
-            std::static_pointer_cast<abstractions::IWindow>(window)
-        );
+            std::static_pointer_cast<abstractions::IWindow>(window));
     }
 
 }

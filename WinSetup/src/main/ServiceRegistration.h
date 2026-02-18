@@ -1,7 +1,6 @@
 ﻿// src/main/ServiceRegistration.h
 #pragma once
-
-#include <application/core/DIContainer.h>
+#include "application/core/DIContainer.h"
 #include <Windows.h>
 
 namespace winsetup {
@@ -20,6 +19,7 @@ namespace winsetup {
         static void RegisterDomainServices(application::DIContainer& container);
         static void RegisterRepositoryServices(application::DIContainer& container);
         static void RegisterPlatformServices(application::DIContainer& container);
+        static void RegisterStorageServices(application::DIContainer& container);
         static void RegisterUseCaseServices(application::DIContainer& container);
         static void RegisterApplicationServices(application::DIContainer& container);
         static void RegisterUIServices(
