@@ -41,7 +41,7 @@ namespace winsetup::adapters::ui {
                 reinterpret_cast<DWORD_PTR>(this));
 
         m_hTimeWnd = CreateWindowExW(
-            0, L"STATIC", L"예상 시간 : 00분 00초",
+            0, L"STATIC", L"예상 시간 : --분 --초",
             WS_CHILD | WS_VISIBLE | SS_OWNERDRAW,
             x + barW + 8, y, timeW, height, hParent,
             reinterpret_cast<HMENU>(static_cast<UINT_PTR>(id + 1)),
@@ -132,8 +132,7 @@ namespace winsetup::adapters::ui {
         }
 
         if (!m_cache.isDirty) {
-            BitBlt(hdc, 0, 0, rc.right, rc.bottom,
-                m_cache.hMemDC, 0, 0, SRCCOPY);
+            BitBlt(hdc, 0, 0, rc.right, rc.bottom, m_cache.hMemDC, 0, 0, SRCCOPY);
             return;
         }
 
@@ -145,34 +144,21 @@ namespace winsetup::adapters::ui {
 
         const int barY = (rc.bottom - BAR_HEIGHT_MIN) / 2;
         const int barH = BAR_HEIGHT_MIN;
-
         RECT trackRect = { rc.left, barY, rc.right, barY + barH };
-
-        HBRUSH hTrack = CreateSolidBrush(COLOR_TRACK);
-        FillRect(memDC, &trackRect, hTrack);
-        DeleteObject(hTrack);
 
         HPEN hPen = CreatePen(PS_SOLID, 1, COLOR_BORDER);
         HPEN hOldPen = static_cast<HPEN>(SelectObject(memDC, hPen));
         SelectObject(memDC, GetStockObject(NULL_BRUSH));
-        RoundRect(memDC,
-            trackRect.left, trackRect.top,
-            trackRect.right, trackRect.bottom, 4, 4);
+        RoundRect(memDC, trackRect.left, trackRect.top, trackRect.right, trackRect.bottom, 4, 4);
         SelectObject(memDC, hOldPen);
         DeleteObject(hPen);
 
         if (m_percent > 0) {
             const int fillW = static_cast<int>(
-                static_cast<double>(trackRect.right - trackRect.left) *
-                m_percent / 100.0);
+                static_cast<double>(trackRect.right - trackRect.left) * m_percent / 100.0);
 
             if (fillW > 0) {
-                RECT fillRect = {
-                    trackRect.left,
-                    trackRect.top,
-                    trackRect.left + fillW,
-                    trackRect.bottom
-                };
+                RECT fillRect = { trackRect.left, trackRect.top, trackRect.left + fillW, trackRect.bottom };
                 HBRUSH hFill = CreateSolidBrush(COLOR_FILL);
                 FillRect(memDC, &fillRect, hFill);
                 DeleteObject(hFill);
@@ -181,26 +167,43 @@ namespace winsetup::adapters::ui {
 
         wchar_t pctBuf[8];
         swprintf_s(pctBuf, L"%d%%", m_percent);
-
-        HFONT hFont = CreateFontW(
-            11, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+        HFONT hFont = CreateFontW(11, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+            DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
         HGDIOBJ hOldFont = SelectObject(memDC, hFont);
-
         SetBkMode(memDC, TRANSPARENT);
         SetTextColor(memDC, COLOR_TEXT_FG);
-        DrawTextW(memDC, pctBuf, -1,
-            const_cast<RECT*>(&rc),
-            DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
+        DrawTextW(memDC, pctBuf, -1, const_cast<RECT*>(&rc), DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         SelectObject(memDC, hOldFont);
         DeleteObject(hFont);
 
         const_cast<Win32ProgressBar*>(this)->m_cache.isDirty = false;
+        BitBlt(hdc, 0, 0, rc.right, rc.bottom, m_cache.hMemDC, 0, 0, SRCCOPY);
+    }
 
-        BitBlt(hdc, 0, 0, rc.right, rc.bottom,
-            m_cache.hMemDC, 0, 0, SRCCOPY);
+    void Win32ProgressBar::DrawTime(HDC hdc) const {
+        if (!m_hTimeWnd) return;
+        RECT rc;
+        GetClientRect(m_hTimeWnd, &rc);
+
+        HBRUSH hBg = CreateSolidBrush(COLOR_TEXT_BG);
+        FillRect(hdc, &rc, hBg);
+        DeleteObject(hBg);
+
+        wchar_t buf[64];
+        GetWindowTextW(m_hTimeWnd, buf, 64);
+
+        HFONT hFont = CreateFontW(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+            DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+        HFONT hOldFont = static_cast<HFONT>(SelectObject(hdc, hFont));
+
+        SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(hdc, COLOR_TEXT_FG);
+        DrawTextW(hdc, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+        SelectObject(hdc, hOldFont);
+        DeleteObject(hFont);
     }
 
     LRESULT CALLBACK Win32ProgressBar::ProgressSubclassProc(
@@ -218,48 +221,11 @@ namespace winsetup::adapters::ui {
             EndPaint(hWnd, &ps);
             return 0;
         }
-        case WM_ERASEBKGND:
-            return 1;
-        case WM_SIZE:
-            pBar->CleanupCache();
-            return 0;
-        case WM_NCDESTROY:
-            RemoveWindowSubclass(hWnd, ProgressSubclassProc, uIdSubclass);
-            break;
+        case WM_ERASEBKGND: return 1;
+        case WM_SIZE:       pBar->CleanupCache(); return 0;
+        case WM_NCDESTROY:  RemoveWindowSubclass(hWnd, ProgressSubclassProc, uIdSubclass); break;
         }
-
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-    }
-
-    void Win32ProgressBar::DrawTime(HDC hdc) const {
-        if (!m_hTimeWnd) return;
-
-        RECT rc;
-        GetClientRect(m_hTimeWnd, &rc);
-
-        // 1. 배경을 COLOR_TEXT_BG(흰색)로 채움 (240 회색 제거)
-        HBRUSH hBg = CreateSolidBrush(COLOR_TEXT_BG);
-        FillRect(hdc, &rc, hBg);
-        DeleteObject(hBg);
-
-        // 2. 텍스트 정보 가져오기
-        wchar_t buf[64];
-        GetWindowTextW(m_hTimeWnd, buf, 64);
-
-        // 3. 폰트 설정
-        HFONT hFont = CreateFontW(
-            13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-        HFONT hOldFont = static_cast<HFONT>(SelectObject(hdc, hFont));
-
-        // 4. 텍스트 그리기 (배경 투명하게 설정하여 위에서 칠한 색상 유지)
-        SetBkMode(hdc, TRANSPARENT);
-        SetTextColor(hdc, COLOR_TEXT_FG);
-        DrawTextW(hdc, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-        SelectObject(hdc, hOldFont);
-        DeleteObject(hFont);
     }
 
     LRESULT CALLBACK Win32ProgressBar::TimeSubclassProc(
@@ -277,13 +243,10 @@ namespace winsetup::adapters::ui {
             EndPaint(hWnd, &ps);
             return 0;
         }
-        case WM_ERASEBKGND:
-            return 1;
-        case WM_NCDESTROY:
-            RemoveWindowSubclass(hWnd, TimeSubclassProc, uIdSubclass);
-            break;
+        case WM_ERASEBKGND: return 1;
+        case WM_NCDESTROY:  RemoveWindowSubclass(hWnd, TimeSubclassProc, uIdSubclass); break;
         }
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
     }
 
-}
+} // namespace winsetup::adapters::ui

@@ -1,5 +1,6 @@
 ﻿// src/application/viewmodels/MainViewModel.cpp
 #include <application/viewmodels/MainViewModel.h>
+#include <domain/primitives/Error.h> // Error 생성을 위해 필수 포함
 #include <cstdint>
 
 namespace winsetup::application {
@@ -63,6 +64,7 @@ namespace winsetup::application {
                 if (mTypeDescription != t.description) {
                     mTypeDescription = t.description;
                     NotifyPropertyChanged(L"TypeDescription");
+                    // [변경] 타입 버튼 클릭 시에는 시간 업데이트 알림을 보내지 않음
                 }
                 return;
             }
@@ -70,7 +72,6 @@ namespace winsetup::application {
     }
 
     bool MainViewModel::GetDataPreservation() const { return mDataPreservation; }
-
     void MainViewModel::SetDataPreservation(bool enabled) {
         if (mDataPreservation != enabled) {
             mDataPreservation = enabled;
@@ -79,7 +80,6 @@ namespace winsetup::application {
     }
 
     bool MainViewModel::GetBitlockerEnabled() const { return mBitlockerEnabled; }
-
     void MainViewModel::SetBitlockerEnabled(bool enabled) {
         if (mBitlockerEnabled != enabled) {
             mBitlockerEnabled = enabled;
@@ -102,6 +102,7 @@ namespace winsetup::application {
             }
             NotifyPropertyChanged(L"IsProcessing");
             NotifyPropertyChanged(L"Progress");
+            NotifyPropertyChanged(L"RemainingSeconds");
         }
     }
 
@@ -118,11 +119,10 @@ namespace winsetup::application {
         }
         else {
             mRemainingSeconds = mTotalSeconds - mElapsedSeconds;
-            mProgress = static_cast<int>(
-                static_cast<double>(mElapsedSeconds) /
-                static_cast<double>(mTotalSeconds) * 100.0);
+            mProgress = static_cast<int>(static_cast<double>(mElapsedSeconds) / static_cast<double>(mTotalSeconds) * 100.0);
         }
         NotifyPropertyChanged(L"Progress");
+        NotifyPropertyChanged(L"RemainingSeconds");
     }
 
     domain::Expected<void> MainViewModel::Initialize() {
@@ -131,11 +131,8 @@ namespace winsetup::application {
         if (mLogger) mLogger->Info(L"MainViewModel: Initialization started.");
 
         auto sysResult = RunAnalyzeSystem();
-        if (!sysResult.HasValue()) {
-            if (mLogger) mLogger->Warning(L"MainViewModel: System analysis failed: " + sysResult.GetError().GetMessage());
-        }
-
         auto cfgResult = RunLoadConfiguration();
+
         if (!cfgResult.HasValue()) {
             mIsInitializing = false;
             SetStatusText(L"Failed to load configuration");
@@ -144,36 +141,34 @@ namespace winsetup::application {
 
         mIsInitializing = false;
         SetStatusText(L"Ready");
+
+        // [변경] INI 로드 및 초기화가 끝난 후 한 번에 업데이트
         NotifyPropertyChanged(L"InstallationTypes");
+        NotifyPropertyChanged(L"RemainingSeconds"); // 초기 예상 시간 반영
+
         if (mLogger) mLogger->Info(L"MainViewModel: Initialization completed.");
         return domain::Expected<void>{};
     }
 
     domain::Expected<void> MainViewModel::RunAnalyzeSystem() {
         if (!mAnalyzeSystemUseCase)
-            return domain::Error(L"AnalyzeSystemUseCase not registered", static_cast<uint32_t>(0), domain::ErrorCategory::System);
+            return domain::Error(L"AnalyzeSystemUseCase not registered", 0, domain::ErrorCategory::System);
 
         SetStatusText(L"Reading system information...");
         auto result = mAnalyzeSystemUseCase->Execute();
         if (!result.HasValue()) return result.GetError();
 
         mSystemInfo = result.Value();
-        if (mLogger && mSystemInfo)
-            mLogger->Info(L"MainViewModel: Motherboard = " + mSystemInfo->GetMotherboardModel());
-
         return domain::Expected<void>{};
     }
 
     domain::Expected<void> MainViewModel::RunLoadConfiguration() {
         if (!mLoadConfigUseCase)
-            return domain::Error(L"LoadConfigurationUseCase not registered", static_cast<uint32_t>(0), domain::ErrorCategory::System);
+            return domain::Error(L"LoadConfigurationUseCase not registered", 0, domain::ErrorCategory::System);
 
         SetStatusText(L"Loading configuration...");
         auto result = mLoadConfigUseCase->Execute(L"config.ini");
-        if (!result.HasValue()) {
-            if (mLogger) mLogger->Error(L"MainViewModel: Failed to load configuration: " + result.GetError().GetMessage());
-            return result.GetError();
-        }
+        if (!result.HasValue()) return result.GetError();
 
         mConfig = result.Value();
         mElapsedSeconds = 0u;
@@ -183,16 +178,10 @@ namespace winsetup::application {
 
         if (mSystemInfo) {
             const std::wstring model = mSystemInfo->GetMotherboardModel();
-            const uint32_t     estimatedSecs = mConfig->GetEstimatedTime(model);
+            const uint32_t estimatedSecs = mConfig->GetEstimatedTime(model);
             if (estimatedSecs > 0u) {
                 mTotalSeconds = estimatedSecs;
                 mRemainingSeconds = estimatedSecs;
-                if (mLogger)
-                    mLogger->Info(L"MainViewModel: Estimated time for model [" + model + L"] = " + std::to_wstring(estimatedSecs) + L"s");
-            }
-            else {
-                if (mLogger)
-                    mLogger->Warning(L"MainViewModel: No estimated time for model [" + model + L"], using default " + std::to_wstring(kDefaultTotalSeconds) + L"s");
             }
         }
 
@@ -211,5 +200,4 @@ namespace winsetup::application {
         for (const auto& handler : mPropertyChangedHandlers)
             handler(propertyName);
     }
-
-} // namespace winsetup::application
+}
