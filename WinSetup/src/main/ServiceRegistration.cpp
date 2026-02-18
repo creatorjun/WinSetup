@@ -19,9 +19,7 @@
 
 namespace winsetup {
 
-    void ServiceRegistration::RegisterAllServices(
-        application::DIContainer& container, HINSTANCE hInstance)
-    {
+    void ServiceRegistration::RegisterAllServices(application::DIContainer& container, HINSTANCE hInstance) {
         RegisterInfrastructureServices(container);
         RegisterDomainServices(container);
         RegisterRepositoryServices(container);
@@ -32,100 +30,100 @@ namespace winsetup {
         RegisterUIServices(container, hInstance);
     }
 
-    void ServiceRegistration::RegisterInfrastructureServices(
-        application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterInfrastructureServices(application::DIContainer& container) {
         auto logger = std::make_shared<adapters::platform::Win32Logger>(L"log/log.txt");
         container.RegisterInstance<abstractions::ILogger>(
-            std::static_pointer_cast<abstractions::ILogger>(logger));
+            std::static_pointer_cast<abstractions::ILogger>(logger)
+        );
     }
 
-    void ServiceRegistration::RegisterDomainServices(
-        application::DIContainer& /*container*/) {
+    void ServiceRegistration::RegisterDomainServices(application::DIContainer& container) {
     }
 
-    void ServiceRegistration::RegisterRepositoryServices(
-        application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterRepositoryServices(application::DIContainer& container) {
         container.RegisterInstance<abstractions::IConfigRepository>(
             std::static_pointer_cast<abstractions::IConfigRepository>(
-                std::make_shared<adapters::persistence::IniConfigRepository>()));
+                std::make_shared<adapters::persistence::IniConfigRepository>()
+            )
+        );
     }
 
-    void ServiceRegistration::RegisterPlatformServices(
-        application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterPlatformServices(application::DIContainer& container) {
         auto loggerResult = container.Resolve<abstractions::ILogger>();
-        auto logger = loggerResult.HasValue() ? loggerResult.Value() : nullptr;
+        if (!loggerResult.HasValue()) return;
 
         container.RegisterInstance<abstractions::ISystemInfoService>(
             std::static_pointer_cast<abstractions::ISystemInfoService>(
-                std::make_shared<adapters::platform::Win32SystemInfoService>(logger)));
+                std::make_shared<adapters::platform::Win32SystemInfoService>(loggerResult.Value())
+            )
+        );
     }
 
-    void ServiceRegistration::RegisterStorageServices(
-        application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterStorageServices(application::DIContainer& container) {
         auto loggerResult = container.Resolve<abstractions::ILogger>();
-        auto logger = loggerResult.HasValue() ? loggerResult.Value() : nullptr;
+        if (!loggerResult.HasValue()) return;
 
         container.RegisterInstance<abstractions::IFileCopyService>(
             std::static_pointer_cast<abstractions::IFileCopyService>(
-                std::make_shared<adapters::platform::Win32FileCopyService>(logger)));
+                std::make_shared<adapters::platform::Win32FileCopyService>(loggerResult.Value())
+            )
+        );
     }
 
-    void ServiceRegistration::RegisterUseCaseServices(
-        application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterUseCaseServices(application::DIContainer& container) {
         auto loggerResult = container.Resolve<abstractions::ILogger>();
         auto repoResult = container.Resolve<abstractions::IConfigRepository>();
         auto sysInfoResult = container.Resolve<abstractions::ISystemInfoService>();
 
-        auto logger = loggerResult.HasValue() ? loggerResult.Value() : nullptr;
-        auto repo = repoResult.HasValue() ? repoResult.Value() : nullptr;
-        auto sysInfo = sysInfoResult.HasValue() ? sysInfoResult.Value() : nullptr;
+        if (!loggerResult.HasValue() || !repoResult.HasValue() || !sysInfoResult.HasValue()) return;
 
         container.RegisterInstance<abstractions::ILoadConfigurationUseCase>(
             std::static_pointer_cast<abstractions::ILoadConfigurationUseCase>(
-                std::make_shared<application::LoadConfigurationUseCase>(repo, logger)));
+                std::make_shared<application::LoadConfigurationUseCase>(
+                    repoResult.Value(), loggerResult.Value()
+                )
+            )
+        );
 
         container.RegisterInstance<abstractions::IAnalyzeSystemUseCase>(
             std::static_pointer_cast<abstractions::IAnalyzeSystemUseCase>(
-                std::make_shared<application::AnalyzeSystemUseCase>(sysInfo, logger)));
+                std::make_shared<application::AnalyzeSystemUseCase>(
+                    sysInfoResult.Value(), loggerResult.Value()
+                )
+            )
+        );
     }
 
-    void ServiceRegistration::RegisterApplicationServices(
-        application::DIContainer& container)
-    {
+    void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container) {
         auto loggerResult = container.Resolve<abstractions::ILogger>();
         auto loadConfigResult = container.Resolve<abstractions::ILoadConfigurationUseCase>();
         auto analyzeResult = container.Resolve<abstractions::IAnalyzeSystemUseCase>();
 
-        auto logger = loggerResult.HasValue() ? loggerResult.Value() : nullptr;
-        auto loadConfigUC = loadConfigResult.HasValue() ? loadConfigResult.Value() : nullptr;
-        auto analyzeUC = analyzeResult.HasValue() ? analyzeResult.Value() : nullptr;
+        if (!loggerResult.HasValue() || !loadConfigResult.HasValue() || !analyzeResult.HasValue()) return;
 
         container.RegisterInstance<abstractions::IMainViewModel>(
             std::static_pointer_cast<abstractions::IMainViewModel>(
-                std::make_shared<application::MainViewModel>(loadConfigUC, analyzeUC, logger)));
+                std::make_shared<application::MainViewModel>(
+                    loadConfigResult.Value(), analyzeResult.Value(), loggerResult.Value()
+                )
+            )
+        );
     }
 
-    void ServiceRegistration::RegisterUIServices(
-        application::DIContainer& container, HINSTANCE hInstance)
-    {
+    void ServiceRegistration::RegisterUIServices(application::DIContainer& container, HINSTANCE hInstance) {
         auto loggerResult = container.Resolve<abstractions::ILogger>();
         auto viewModelResult = container.Resolve<abstractions::IMainViewModel>();
 
         if (!loggerResult.HasValue() || !viewModelResult.HasValue()) return;
 
-        auto logger = loggerResult.Value();
-        auto viewModel = viewModelResult.Value();
-
-        auto window = std::make_shared<adapters::ui::Win32MainWindow>(logger, viewModel);
+        auto window = std::make_shared<adapters::ui::Win32MainWindow>(
+            loggerResult.Value(), viewModelResult.Value()
+        );
         window->Create(hInstance, SW_SHOWDEFAULT);
 
         container.RegisterInstance<abstractions::IWindow>(
-            std::static_pointer_cast<abstractions::IWindow>(window));
+            std::static_pointer_cast<abstractions::IWindow>(window)
+        );
     }
 
-} // namespace winsetup
+}

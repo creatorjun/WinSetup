@@ -29,14 +29,14 @@ namespace winsetup::abstractions {
     public:
         virtual ~IFileCopyService() = default;
 
-        [[nodiscard]] virtual winsetup::domain::Expected<void> CopyFile(
+        [[nodiscard]] virtual domain::Expected<void> CopyFile(
             const std::wstring& srcPath,
             const std::wstring& dstPath,
             const FileCopyOptions& options,
             FileCopyProgressCallback progressCallback
         ) = 0;
 
-        [[nodiscard]] virtual winsetup::domain::Expected<void> CopyDirectory(
+        [[nodiscard]] virtual domain::Expected<void> CopyDirectory(
             const std::wstring& srcDir,
             const std::wstring& dstDir,
             const FileCopyOptions& options,

@@ -2,7 +2,7 @@
 
 ## 🔴 Critical — 즉시 수정 필요
 
-### 1. `MainViewModel`이 구체 UseCase 클래스를 직접 의존
+### 1. `MainViewModel`이 구체 UseCase 클래스를 직접 의존 (해결됨)
 
 **위치**: `src/application/viewmodels/MainViewModel.h`
 
@@ -57,7 +57,7 @@ class MainViewModel : public abstractions::IMainViewModel {
 
 ---
 
-### 2. `IMainViewModel`이 Domain 엔티티를 직접 노출
+### 2. `IMainViewModel`이 Domain 엔티티를 직접 노출 (시스템 정보의 유일성 확보를 위해서 허용)
 
 **위치**: `src/abstractions/ui/IMainViewModel.h`
 
@@ -93,7 +93,7 @@ virtual std::vector<InstallationTypeDto> GetInstallationTypes() const = 0; // �
 
 ---
 
-### 3. `IFileCopyService`의 네임스페이스 불일치
+### 3. `IFileCopyService`의 네임스페이스 불일치 (해결됨)
 
 **위치**: `src/abstractions/services/storage/IFileCopyService.h`
 
@@ -118,7 +118,7 @@ virtual std::vector<InstallationTypeDto> GetInstallationTypes() const = 0; // �
 
 ## 🟠 Major — 가능한 빠른 수정 권장
 
-### 4. `ServiceRegistration`이 `DIContainer::Register<>` 미활용
+### 4. `ServiceRegistration`이 `DIContainer::Register<>` 미활용 (해결됨)
 
 **위치**: `src/main/ServiceRegistration.cpp`
 
