@@ -227,6 +227,26 @@ namespace winsetup::application {
         mRemainingSeconds = kDefaultTotalSeconds;
         mProgress = 0;
 
+        if (mSystemInfo) {
+            const std::wstring& model = mSystemInfo->GetMotherboardModel();
+            const uint32_t estimatedSeconds = mConfig->GetEstimatedTime(model);
+            if (estimatedSeconds > 0u) {
+                mTotalSeconds = estimatedSeconds;
+                mRemainingSeconds = estimatedSeconds;
+                if (mLogger) {
+                    mLogger->Info(L"[MainViewModel] Estimated time for [" + model + L"]: "
+                        + std::to_wstring(estimatedSeconds) + L"s");
+                }
+            }
+            else {
+                if (mLogger) {
+                    mLogger->Warning(L"[MainViewModel] No estimated time for [" + model
+                        + L"], using default: "
+                        + std::to_wstring(kDefaultTotalSeconds) + L"s");
+                }
+            }
+        }
+
         return domain::Expected<void>();
     }
 
