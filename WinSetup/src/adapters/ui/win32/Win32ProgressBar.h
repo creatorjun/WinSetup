@@ -51,12 +51,12 @@ namespace winsetup::adapters::ui {
         void InvalidateCache();
         void CleanupCache();
 
-        static constexpr COLORREF COLOR_TRACK = RGB(229, 229, 229);
+        static constexpr COLORREF COLOR_TRACK = RGB(255, 255, 255);
         static constexpr COLORREF COLOR_FILL = RGB(0, 120, 215);
         static constexpr COLORREF COLOR_BORDER = RGB(172, 172, 172);
-        static constexpr COLORREF COLOR_TEXT_BG = RGB(245, 245, 245);
+        static constexpr COLORREF COLOR_TEXT_BG = RGB(255, 255, 255);
         static constexpr COLORREF COLOR_TEXT_FG = RGB(30, 30, 30);
-        static constexpr int      BAR_HEIGHT_MIN = 12;
+        static constexpr int      BAR_HEIGHT_MIN = 24;
     };
 
 }

@@ -69,7 +69,7 @@ namespace winsetup::adapters::ui {
         std::vector<abstractions::IWidget*> m_widgets;
 
         static constexpr int  WINDOW_WIDTH = 640;
-        static constexpr int  WINDOW_HEIGHT = 520;
+        static constexpr int  WINDOW_HEIGHT = 480;
         static constexpr int  TYPE_SELECTOR_GROUP_ID = 100;
         static constexpr auto CLASS_NAME = L"WinSetupMainWindow";
     };
