@@ -87,14 +87,19 @@ namespace winsetup::adapters::ui {
         if (!hCtrl) return;
 
         for (size_t i = 0; i < mButtons.size(); ++i) {
-            if (!mButtons[i]) continue;
-            if (mButtons[i]->Handle() == hCtrl) {
-                if (i < mTypes.size())
-                    mSelectedKey = mTypes[i].name;
-                if (mOnSelectionChanged)
-                    mOnSelectionChanged(mSelectedKey);
+            if (!mButtons[i] || mButtons[i]->Handle() != hCtrl) continue;
+
+            if (i < mTypes.size() && mTypes[i].name == mSelectedKey) {
+                mButtons[i]->SetChecked(true);
                 return;
             }
+
+            if (i < mTypes.size())
+                mSelectedKey = mTypes[i].name;
+
+            if (mOnSelectionChanged)
+                mOnSelectionChanged(mSelectedKey);
+            return;
         }
     }
 
