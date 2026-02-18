@@ -57,7 +57,7 @@ class MainViewModel : public abstractions::IMainViewModel {
 
 ---
 
-### 2. `IMainViewModel`이 Domain 엔티티를 직접 노출 (시스템 정보의 유일성 확보를 위해서 허용)
+### 2. `IMainViewModel`이 Domain 엔티티를 직접 노출 (시스템 정보의 유일성 확보를 위해서 허용하되 최대한 클린 아키텍처 유지)
 
 **위치**: `src/abstractions/ui/IMainViewModel.h`
 
