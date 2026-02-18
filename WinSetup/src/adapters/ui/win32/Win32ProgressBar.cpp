@@ -30,39 +30,26 @@ namespace winsetup::adapters::ui {
         const int barW = width - timeW - 8;
 
         m_hProgressWnd = CreateWindowExW(
-            0,
-            L"STATIC",
-            nullptr,
+            0, L"STATIC", nullptr,
             WS_CHILD | WS_VISIBLE | SS_OWNERDRAW,
-            x, y, barW, height,
-            hParent,
+            x, y, barW, height, hParent,
             reinterpret_cast<HMENU>(static_cast<UINT_PTR>(id)),
-            hInstance,
-            nullptr);
+            hInstance, nullptr);
 
         if (m_hProgressWnd)
             SetWindowSubclass(m_hProgressWnd, ProgressSubclassProc, 0,
                 reinterpret_cast<DWORD_PTR>(this));
 
         m_hTimeWnd = CreateWindowExW(
-            0,
-            L"STATIC",
-            L"예상 시간 : 00분 00초",
-            WS_CHILD | WS_VISIBLE | SS_CENTER | SS_CENTERIMAGE,
-            x + barW + 8, y, timeW, height,
-            hParent,
+            0, L"STATIC", L"예상 시간 : 00분 00초",
+            WS_CHILD | WS_VISIBLE | SS_OWNERDRAW,
+            x + barW + 8, y, timeW, height, hParent,
             reinterpret_cast<HMENU>(static_cast<UINT_PTR>(id + 1)),
-            hInstance,
-            nullptr);
+            hInstance, nullptr);
 
-        if (m_hTimeWnd) {
-            HFONT hFont = CreateFontW(
-                13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-            SendMessageW(m_hTimeWnd, WM_SETFONT,
-                reinterpret_cast<WPARAM>(hFont), TRUE);
-        }
+        if (m_hTimeWnd)
+            SetWindowSubclass(m_hTimeWnd, TimeSubclassProc, 0,
+                reinterpret_cast<DWORD_PTR>(this));
     }
 
     void Win32ProgressBar::SetProgress(int percent) {
@@ -121,6 +108,7 @@ namespace winsetup::adapters::ui {
                 m_remainingSeconds % 60);
 
         SetWindowTextW(m_hTimeWnd, buf);
+        InvalidateRect(m_hTimeWnd, nullptr, TRUE);
     }
 
     void Win32ProgressBar::DrawProgress(HDC hdc) const {
@@ -240,6 +228,61 @@ namespace winsetup::adapters::ui {
             break;
         }
 
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    void Win32ProgressBar::DrawTime(HDC hdc) const {
+        if (!m_hTimeWnd) return;
+
+        RECT rc;
+        GetClientRect(m_hTimeWnd, &rc);
+
+        // 1. 배경을 COLOR_TEXT_BG(흰색)로 채움 (240 회색 제거)
+        HBRUSH hBg = CreateSolidBrush(COLOR_TEXT_BG);
+        FillRect(hdc, &rc, hBg);
+        DeleteObject(hBg);
+
+        // 2. 텍스트 정보 가져오기
+        wchar_t buf[64];
+        GetWindowTextW(m_hTimeWnd, buf, 64);
+
+        // 3. 폰트 설정
+        HFONT hFont = CreateFontW(
+            13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+        HFONT hOldFont = static_cast<HFONT>(SelectObject(hdc, hFont));
+
+        // 4. 텍스트 그리기 (배경 투명하게 설정하여 위에서 칠한 색상 유지)
+        SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(hdc, COLOR_TEXT_FG);
+        DrawTextW(hdc, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+        SelectObject(hdc, hOldFont);
+        DeleteObject(hFont);
+    }
+
+    LRESULT CALLBACK Win32ProgressBar::TimeSubclassProc(
+        HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+        UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+    {
+        Win32ProgressBar* pBar = reinterpret_cast<Win32ProgressBar*>(dwRefData);
+        if (!pBar) return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+        switch (uMsg) {
+        case WM_PAINT: {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hWnd, &ps);
+            pBar->DrawTime(hdc);
+            EndPaint(hWnd, &ps);
+            return 0;
+        }
+        case WM_ERASEBKGND:
+            return 1;
+        case WM_NCDESTROY:
+            RemoveWindowSubclass(hWnd, TimeSubclassProc, uIdSubclass);
+            break;
+        }
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
     }
 

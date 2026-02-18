@@ -26,9 +26,14 @@ namespace winsetup::adapters::ui {
 
     private:
         void DrawProgress(HDC hdc) const;
+        void DrawTime(HDC hdc) const;
         void UpdateTimeText();
 
         static LRESULT CALLBACK ProgressSubclassProc(
+            HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+            UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+
+        static LRESULT CALLBACK TimeSubclassProc(
             HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
             UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
 
