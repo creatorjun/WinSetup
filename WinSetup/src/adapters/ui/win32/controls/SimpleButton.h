@@ -25,7 +25,7 @@ namespace winsetup::adapters::ui {
 
         [[nodiscard]] bool IsEnabled() const;
         [[nodiscard]] std::wstring GetText() const;
-        [[nodiscard]] HWND Handle() const noexcept { return m_hwnd; }
+        [[nodiscard]] HWND Handle() const noexcept { return mHwnd; }
 
     private:
         struct RenderCache {
@@ -42,14 +42,14 @@ namespace winsetup::adapters::ui {
         void CleanupCache();
         void UpdateState(bool hovering, bool pressed);
 
-        HWND m_hwnd;
-        bool m_isHovering;
-        bool m_isPressed;
-        bool m_wasEnabled;
-        adapters::platform::UniqueHandle m_hFont;
-        RenderCache m_cache;
+        HWND mHwnd;
+        bool mIsHovering;
+        bool mIsPressed;
+        bool mWasEnabled;
+        adapters::platform::UniqueHandle mHFont;
+        RenderCache mCache;
 
-        static std::unordered_map<HWND, SimpleButton*> s_instances;
+        static std::unordered_map<HWND, SimpleButton*> sInstances;
     };
 
 }

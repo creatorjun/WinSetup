@@ -29,18 +29,18 @@ namespace winsetup::adapters::ui {
         void SetEnabled(bool enabled);
         void SetText(const std::wstring& text);
 
-        [[nodiscard]] bool IsChecked() const noexcept { return m_isChecked; }
+        [[nodiscard]] bool IsChecked() const noexcept { return mIsChecked; }
         [[nodiscard]] bool IsEnabled() const;
-        [[nodiscard]] int GetGroup() const noexcept { return m_groupId; }
+        [[nodiscard]] int  GetGroup() const noexcept { return mGroupId; }
         [[nodiscard]] std::wstring GetText() const;
-        [[nodiscard]] HWND Handle() const noexcept { return m_hwnd; }
+        [[nodiscard]] HWND Handle() const noexcept { return mHwnd; }
 
     private:
         struct RenderCache {
             adapters::platform::UniqueHandle hBitmap;
             adapters::platform::UniqueHandle hMemDC;
-            int width = 0;
-            int height = 0;
+            int  width = 0;
+            int  height = 0;
             bool isDirty = true;
         };
 
@@ -53,17 +53,17 @@ namespace winsetup::adapters::ui {
 
         [[nodiscard]] static bool IsInstanceAlive(ToggleButton* ptr) noexcept;
 
-        HWND m_hwnd;
-        bool m_isChecked;
-        bool m_isHovering;
-        bool m_isPressed;
-        bool m_wasEnabled;
-        int  m_groupId;
-        adapters::platform::UniqueHandle m_hFont;
-        RenderCache m_cache;
+        HWND mHwnd;
+        bool mIsChecked;
+        bool mIsHovering;
+        bool mIsPressed;
+        bool mWasEnabled;
+        int  mGroupId;
+        adapters::platform::UniqueHandle mHFont;
+        RenderCache mCache;
 
-        static std::unordered_map<HWND, ToggleButton*>           s_instances;
-        static std::unordered_map<int, std::vector<HWND>>        s_groups;
+        static std::unordered_map<HWND, ToggleButton*>    sInstances;
+        static std::unordered_map<int, std::vector<HWND>> sGroups;
     };
 
 }

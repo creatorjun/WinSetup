@@ -31,7 +31,7 @@ namespace winsetup::adapters::ui {
         void OnPropertyChanged(const std::wstring& propertyName) override;
 
         [[nodiscard]] bool IsValid() const noexcept override {
-            return m_btnStartStop.Handle() != nullptr;
+            return mBtnStartStop.Handle() != nullptr;
         }
 
     private:
@@ -39,17 +39,17 @@ namespace winsetup::adapters::ui {
         void StopTimer();
         void UpdateProgress();
 
-        std::shared_ptr<abstractions::IMainViewModel> m_viewModel;
+        std::shared_ptr<abstractions::IMainViewModel> mViewModel;
 
-        HWND         m_hParent = nullptr;
-        SimpleButton m_btnStartStop;
-        Win32ProgressBar m_progressBar;
+        HWND             mHParent = nullptr;
+        SimpleButton     mBtnStartStop;
+        Win32ProgressBar mProgressBar;
 
-        static constexpr int    BTN_HEIGHT = 44;
-        static constexpr int    PROGRESS_H = 36;
-        static constexpr int    GAP = 8;
-        static constexpr int    ID_BTN_START_STOP = 4002;
-        static constexpr int    ID_PROGRESS_BAR = 4003;
+        static constexpr int      BTN_HEIGHT = 44;
+        static constexpr int      PROGRESS_H = 36;
+        static constexpr int      GAP = 8;
+        static constexpr int      ID_BTN_START_STOP = 4002;
+        static constexpr int      ID_PROGRESS_BAR = 4003;
         static constexpr UINT_PTR TIMER_ID = 1001;
     };
 

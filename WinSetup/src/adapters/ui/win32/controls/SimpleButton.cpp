@@ -19,40 +19,40 @@ namespace winsetup::adapters::ui {
         constexpr const wchar_t* FONT_NAME = L"Segoe UI";
     }
 
-    std::unordered_map<HWND, SimpleButton*> SimpleButton::s_instances;
+    std::unordered_map<HWND, SimpleButton*> SimpleButton::sInstances;
 
     SimpleButton::SimpleButton()
-        : m_hwnd(nullptr)
-        , m_isHovering(false)
-        , m_isPressed(false)
-        , m_wasEnabled(true)
-        , m_hFont()
+        : mHwnd(nullptr)
+        , mIsHovering(false)
+        , mIsPressed(false)
+        , mWasEnabled(true)
+        , mHFont()
     {
     }
 
     SimpleButton::~SimpleButton() {
-        if (m_hwnd) {
-            RemoveWindowSubclass(m_hwnd, SimpleButton::SubclassProc, 0);
-            s_instances.erase(m_hwnd);
+        if (mHwnd) {
+            RemoveWindowSubclass(mHwnd, SimpleButton::SubclassProc, 0);
+            sInstances.erase(mHwnd);
         }
         CleanupCache();
     }
 
     HWND SimpleButton::Create(HWND hParent, const std::wstring& text, int x, int y, int width, int height, int id, HINSTANCE hInstance) {
-        m_hwnd = CreateWindowW(
+        mHwnd = CreateWindowW(
             L"BUTTON", text.c_str(),
             WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_OWNERDRAW,
             x, y, width, height,
             hParent, reinterpret_cast<HMENU>(static_cast<UINT_PTR>(id)), hInstance, nullptr
         );
 
-        if (m_hwnd) {
-            s_instances[m_hwnd] = this;
-            SetWindowSubclass(m_hwnd, SimpleButton::SubclassProc, 0, reinterpret_cast<DWORD_PTR>(this));
+        if (mHwnd) {
+            sInstances[mHwnd] = this;
+            SetWindowSubclass(mHwnd, SimpleButton::SubclassProc, 0, reinterpret_cast<DWORD_PTR>(this));
             SetFontSize(13);
         }
 
-        return m_hwnd;
+        return mHwnd;
     }
 
     void SimpleButton::SetFontSize(int size) {
@@ -61,33 +61,33 @@ namespace winsetup::adapters::ui {
             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
             CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, FONT_NAME
         );
-        m_hFont = platform::Win32HandleFactory::MakeGdiObject(hFont);
+        mHFont = platform::Win32HandleFactory::MakeGdiObject(hFont);
         InvalidateCache();
     }
 
     void SimpleButton::InvalidateCache() {
-        m_cache.isDirty = true;
-        if (m_hwnd) {
-            InvalidateRect(m_hwnd, nullptr, FALSE);
+        mCache.isDirty = true;
+        if (mHwnd) {
+            InvalidateRect(mHwnd, nullptr, FALSE);
         }
     }
 
     void SimpleButton::CleanupCache() {
-        m_cache.hBitmap = adapters::platform::UniqueHandle();
-        m_cache.hMemDC = adapters::platform::UniqueHandle();
-        m_cache.isDirty = true;
+        mCache.hBitmap = adapters::platform::UniqueHandle();
+        mCache.hMemDC = adapters::platform::UniqueHandle();
+        mCache.isDirty = true;
     }
 
     void SimpleButton::UpdateState(bool hovering, bool pressed) {
         bool needUpdate = false;
 
-        if (m_isHovering != hovering) {
-            m_isHovering = hovering;
+        if (mIsHovering != hovering) {
+            mIsHovering = hovering;
             needUpdate = true;
         }
 
-        if (m_isPressed != pressed) {
-            m_isPressed = pressed;
+        if (mIsPressed != pressed) {
+            mIsPressed = pressed;
             needUpdate = true;
         }
 
@@ -102,29 +102,29 @@ namespace winsetup::adapters::ui {
         if (pButton) {
             switch (uMsg) {
             case WM_MOUSEMOVE:
-                if (!pButton->m_isHovering) {
-                    pButton->UpdateState(true, pButton->m_isPressed);
+                if (!pButton->mIsHovering) {
+                    pButton->UpdateState(true, pButton->mIsPressed);
                     TRACKMOUSEEVENT tme{ sizeof(TRACKMOUSEEVENT), TME_LEAVE, hWnd, 0 };
                     TrackMouseEvent(&tme);
                 }
                 break;
 
             case WM_MOUSELEAVE:
-                if (pButton->m_isHovering || pButton->m_isPressed) {
+                if (pButton->mIsHovering || pButton->mIsPressed) {
                     pButton->UpdateState(false, false);
                 }
                 break;
 
             case WM_LBUTTONDOWN:
-                if (!pButton->m_isPressed) {
-                    pButton->UpdateState(pButton->m_isHovering, true);
+                if (!pButton->mIsPressed) {
+                    pButton->UpdateState(pButton->mIsHovering, true);
                 }
                 break;
 
             case WM_LBUTTONUP:
-                if (pButton->m_isPressed) {
-                    pButton->UpdateState(pButton->m_isHovering, false);
-                    if (pButton->m_isHovering) {
+                if (pButton->mIsPressed) {
+                    pButton->UpdateState(pButton->mIsHovering, false);
+                    if (pButton->mIsHovering) {
                         SendMessage(GetParent(hWnd), WM_COMMAND, MAKEWPARAM(GetDlgCtrlID(hWnd), BN_CLICKED), reinterpret_cast<LPARAM>(hWnd));
                     }
                 }
@@ -132,8 +132,8 @@ namespace winsetup::adapters::ui {
 
             case WM_ENABLE: {
                 bool isEnabled = (wParam != 0);
-                if (pButton->m_wasEnabled != isEnabled) {
-                    pButton->m_wasEnabled = isEnabled;
+                if (pButton->mWasEnabled != isEnabled) {
+                    pButton->mWasEnabled = isEnabled;
                     pButton->InvalidateCache();
                 }
                 break;
@@ -150,32 +150,32 @@ namespace winsetup::adapters::ui {
                 RECT rc;
                 GetClientRect(hWnd, &rc);
 
-                if (!pButton->m_cache.hMemDC || pButton->m_cache.isDirty ||
-                    pButton->m_cache.width != rc.right || pButton->m_cache.height != rc.bottom)
+                if (!pButton->mCache.hMemDC || pButton->mCache.isDirty ||
+                    pButton->mCache.width != rc.right || pButton->mCache.height != rc.bottom)
                 {
-                    if (pButton->m_cache.width != rc.right || pButton->m_cache.height != rc.bottom) {
+                    if (pButton->mCache.width != rc.right || pButton->mCache.height != rc.bottom) {
                         pButton->CleanupCache();
                     }
 
-                    if (!pButton->m_cache.hMemDC) {
-                        HDC hMemDC = CreateCompatibleDC(hdc);
+                    if (!pButton->mCache.hMemDC) {
+                        HDC     hMemDC = CreateCompatibleDC(hdc);
                         HBITMAP hBitmap = CreateCompatibleBitmap(hdc, rc.right, rc.bottom);
 
-                        pButton->m_cache.hMemDC = platform::Win32HandleFactory::MakeDC(hMemDC);
-                        pButton->m_cache.hBitmap = platform::Win32HandleFactory::MakeGdiObject(hBitmap);
+                        pButton->mCache.hMemDC = platform::Win32HandleFactory::MakeDC(hMemDC);
+                        pButton->mCache.hBitmap = platform::Win32HandleFactory::MakeGdiObject(hBitmap);
 
-                        SelectObject(platform::Win32HandleFactory::ToWin32DC(pButton->m_cache.hMemDC),
-                            platform::Win32HandleFactory::ToWin32Bitmap(pButton->m_cache.hBitmap));
-                        pButton->m_cache.width = rc.right;
-                        pButton->m_cache.height = rc.bottom;
+                        SelectObject(platform::Win32HandleFactory::ToWin32DC(pButton->mCache.hMemDC),
+                            platform::Win32HandleFactory::ToWin32Bitmap(pButton->mCache.hBitmap));
+                        pButton->mCache.width = rc.right;
+                        pButton->mCache.height = rc.bottom;
                     }
 
-                    pButton->DrawButton(platform::Win32HandleFactory::ToWin32DC(pButton->m_cache.hMemDC));
-                    pButton->m_cache.isDirty = false;
+                    pButton->DrawButton(platform::Win32HandleFactory::ToWin32DC(pButton->mCache.hMemDC));
+                    pButton->mCache.isDirty = false;
                 }
 
                 BitBlt(hdc, 0, 0, rc.right, rc.bottom,
-                    platform::Win32HandleFactory::ToWin32DC(pButton->m_cache.hMemDC),
+                    platform::Win32HandleFactory::ToWin32DC(pButton->mCache.hMemDC),
                     0, 0, SRCCOPY);
 
                 EndPaint(hWnd, &ps);
@@ -187,7 +187,7 @@ namespace winsetup::adapters::ui {
 
             case WM_NCDESTROY:
                 RemoveWindowSubclass(hWnd, SimpleButton::SubclassProc, uIdSubclass);
-                s_instances.erase(hWnd);
+                sInstances.erase(hWnd);
                 break;
             }
         }
@@ -197,20 +197,20 @@ namespace winsetup::adapters::ui {
 
     void SimpleButton::DrawButton(HDC hdc) {
         RECT rc;
-        GetClientRect(m_hwnd, &rc);
+        GetClientRect(mHwnd, &rc);
 
-        bool isEnabled = IsWindowEnabled(m_hwnd) != FALSE;
+        bool isEnabled = IsWindowEnabled(mHwnd) != FALSE;
 
         COLORREF bgColor, textColor;
         if (!isEnabled) {
             bgColor = DISABLED_BG;
             textColor = DISABLED_TEXT;
         }
-        else if (m_isPressed) {
+        else if (mIsPressed) {
             bgColor = CHECKED_BG;
             textColor = CHECKED_TEXT;
         }
-        else if (m_isHovering) {
+        else if (mIsHovering) {
             bgColor = HOVER_BG;
             textColor = NORMAL_TEXT;
         }
@@ -232,8 +232,8 @@ namespace winsetup::adapters::ui {
         if (!text.empty()) {
             SetBkMode(hdc, TRANSPARENT);
             SetTextColor(hdc, textColor);
-            HFONT hFont = m_hFont ? platform::Win32HandleFactory::ToWin32Font(m_hFont)
-                : reinterpret_cast<HFONT>(SendMessage(m_hwnd, WM_GETFONT, 0, 0));
+            HFONT   hFont = mHFont ? platform::Win32HandleFactory::ToWin32Font(mHFont)
+                : reinterpret_cast<HFONT>(SendMessage(mHwnd, WM_GETFONT, 0, 0));
             HGDIOBJ hOldFont = SelectObject(hdc, hFont);
             DrawTextW(hdc, text.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             SelectObject(hdc, hOldFont);
@@ -241,27 +241,27 @@ namespace winsetup::adapters::ui {
     }
 
     void SimpleButton::SetEnabled(bool enabled) {
-        if (!m_hwnd) return;
-        EnableWindow(m_hwnd, enabled ? TRUE : FALSE);
+        if (!mHwnd) return;
+        EnableWindow(mHwnd, enabled ? TRUE : FALSE);
     }
 
     bool SimpleButton::IsEnabled() const {
-        if (!m_hwnd) return false;
-        return IsWindowEnabled(m_hwnd) != FALSE;
+        if (!mHwnd) return false;
+        return IsWindowEnabled(mHwnd) != FALSE;
     }
 
     void SimpleButton::SetText(const std::wstring& text) {
-        if (!m_hwnd) return;
-        SetWindowTextW(m_hwnd, text.c_str());
+        if (!mHwnd) return;
+        SetWindowTextW(mHwnd, text.c_str());
         InvalidateCache();
     }
 
     std::wstring SimpleButton::GetText() const {
-        if (!m_hwnd) return L"";
-        int len = GetWindowTextLength(m_hwnd);
+        if (!mHwnd) return L"";
+        int len = GetWindowTextLength(mHwnd);
         if (len == 0) return L"";
         std::vector<wchar_t> buf(static_cast<size_t>(len) + 1);
-        GetWindowTextW(m_hwnd, buf.data(), len + 1);
+        GetWindowTextW(mHwnd, buf.data(), len + 1);
         return std::wstring(buf.data());
     }
 

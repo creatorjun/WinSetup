@@ -386,3 +386,236 @@ public:
 | 10 | `DomainEvent` vs `IEvent` | 이중 계층구조 미연결 | 🟡 Minor |
 
 > **수정 우선순위**: 1번(UseCase 인터페이스 추출) → 2번(DTO 도입) → 10번(EventBus 연결) 순으로 진행 시 테스트 가능성이 가장 빠르게 향상됩니다.
+
+
+# WinSetup 잔여 개선 과제 (구현 완료 범위 기준)
+
+현재 **87점 → 100점** 달성을 위한 3가지 잔여 과제입니다.
+
+---
+
+## 1. `IWidget` Win32 타입 → 플랫폼 독립 타입 추상화 (+7점)
+
+**위치**: `src/abstractions/ui/IWidget.h`
+
+### 문제
+```cpp
+// ❌ abstractions 계층에 Win32 플랫폼 타입 직접 노출
+#include <Windows.h>
+
+class IWidget {
+    virtual void Create(HWND hParent, HINSTANCE hInstance,
+                        int x, int y, int width, int height) = 0;
+};
+```
+`abstractions` 계층 인터페이스가 `HWND`, `HINSTANCE` Win32 타입에 직접 의존.  
+`IWidget`을 포함하는 모든 상위 헤더가 Win32 환경 없이 컴파일 불가.  
+Mock 구현 시에도 Win32 SDK가 필수가 되어 단위 테스트 환경이 오염됨.
+
+### 개선안
+
+```cpp
+// abstractions/ui/WidgetCreateParams.h — 신규 생성
+// Windows.h include 없음
+#pragma once
+#include <cstdint>
+
+namespace winsetup::abstractions {
+
+using NativeWindowHandle   = void*;
+using NativeInstanceHandle = void*;
+
+struct WidgetCreateParams {
+    NativeWindowHandle   parentHandle = nullptr;
+    NativeInstanceHandle instanceHandle = nullptr;
+    int x      = 0;
+    int y      = 0;
+    int width  = 0;
+    int height = 0;
+};
+
+} // namespace winsetup::abstractions
+```
+
+```cpp
+// abstractions/ui/IWidget.h — Windows.h 제거
+#pragma once
+#include <abstractions/ui/WidgetCreateParams.h>
+#include <string>
+
+namespace winsetup::abstractions {
+
+class IWidget {
+public:
+    virtual ~IWidget() = default;
+    virtual void Create(const WidgetCreateParams& params) = 0;  // ✅ Win32 타입 없음
+    virtual void OnPaint(void* hdc) = 0;
+    virtual bool OnCommand(uintptr_t wParam, intptr_t lParam) = 0;
+    virtual void OnTimer(uintptr_t timerId) = 0;
+    virtual void SetEnabled(bool enabled) = 0;
+    virtual void OnPropertyChanged(const std::wstring& propertyName) = 0;
+    [[nodiscard]] virtual bool IsValid() const noexcept = 0;
+};
+
+} // namespace winsetup::abstractions
+```
+
+```cpp
+// adapters/ui/win32/panels/OptionPanel.cpp — Adapter 계층에서만 Win32 타입 복원
+void OptionPanel::Create(const abstractions::WidgetCreateParams& params) {
+    HWND     hParent   = static_cast<HWND>(params.parentHandle);    // ✅ Adapter에서만 캐스팅
+    HINSTANCE hInstance = static_cast<HINSTANCE>(params.instanceHandle);
+    // ...
+}
+```
+
+---
+
+## 2. `ServiceLocator` 제거 및 생성자 주입 완전 통일 (+4점)
+
+**위치**: `src/application/core/ServiceLocator.h/.cpp`
+
+### 문제
+```cpp
+// ❌ DIContainer와 ServiceLocator 두 가지 접근 방식 병존
+// ServiceLocator — 전역 상태, 어디서든 호출 가능
+ServiceLocator::Get<ILogger>()->Info(L"...");  // ❌ 의존성 흐름 추적 불가
+ServiceLocator::Get<IDiskService>()->EnumerateDisks(); // ❌ 테스트 격리 불가
+```
+
+`ServiceLocator`는 의존성을 숨기는 Anti-pattern.  
+어느 클래스에서 무엇을 사용하는지 생성자만 보고 알 수 없어 의존성 그래프 추적이 불가능함.  
+테스트 시 Mock 교체를 위해 전역 상태를 조작해야 함.
+
+### 개선안
+
+```cpp
+// ❌ 제거 대상
+// src/application/core/ServiceLocator.h  → 삭제
+// src/application/core/ServiceLocator.cpp → 삭제
+```
+
+```cpp
+// ✅ 생성자 주입으로 완전 통일
+// ServiceLocator::Get<ILogger>() 호출부를 전부 생성자 파라미터로 교체
+
+// 기존 ServiceLocator 사용 예
+class Win32DiskService {
+    void SomeMethod() {
+        auto logger = ServiceLocator::Get<ILogger>(); // ❌
+        logger->Info(L"...");
+    }
+};
+
+// ✅ 수정 후 — 생성자에서 주입
+class Win32DiskService : public abstractions::IDiskService {
+public:
+    explicit Win32DiskService(std::shared_ptr<abstractions::ILogger> logger)
+        : mLogger(std::move(logger)) {}  // ✅ 의존성 명시적 선언
+private:
+    std::shared_ptr<abstractions::ILogger> mLogger;
+};
+```
+
+```cpp
+// ServiceRegistration.cpp — ServiceLocator 초기화 코드 제거
+// ❌ 제거
+ServiceLocator::Initialize(container);
+
+// ✅ 모든 의존성은 Register/Resolve 체인으로만 연결
+```
+
+---
+
+## 3. `MainViewModel::Initialize()` 단계 분리 (+2점)
+
+**위치**: `src/application/viewmodels/MainViewModel.cpp`
+
+### 문제
+```cpp
+// ❌ 단일 메서드가 4가지 책임을 순차 처리
+domain::Expected<void> MainViewModel::Initialize() {
+    mIsInitializing = true;
+    SetStatusText(L"Initializing...");      // 1. UI 상태 변경
+
+    auto sysResult = RunAnalyzeSystem();    // 2. 시스템 분석 (외부 I/O)
+    auto cfgResult = RunLoadConfiguration(); // 3. 설정 로드 (파일 I/O)
+
+    mIsInitializing = false;
+    SetStatusText(L"Ready");               // 4. UI 상태 복원
+    NotifyPropertyChanged(L"InstallationTypes");
+    return {};
+}
+```
+
+SRP 위반 — UI 상태 관리, 시스템 분석, 설정 로드, 완료 처리가 단일 메서드에 집중됨.  
+단계 중 하나가 실패했을 때 복구 로직이 복잡해지고, 각 단계를 독립적으로 테스트 불가.
+
+### 개선안
+
+```cpp
+// ✅ 각 단계를 독립 메서드로 분리하고 IMainViewModel에 단계별 진입점 추가
+
+// abstractions/ui/IMainViewModel.h 에 추가
+virtual domain::Expected<void> Initialize()       = 0;  // 전체 오케스트레이션
+virtual domain::Expected<void> AnalyzeSystem()    = 0;  // 시스템 분석만
+virtual domain::Expected<void> LoadConfiguration() = 0; // 설정 로드만
+```
+
+```cpp
+// MainViewModel.cpp — 단계 분리 후
+domain::Expected<void> MainViewModel::Initialize() {
+    SetInitializingState(true);
+
+    if (auto r = AnalyzeSystem();    !r.HasValue()) { SetInitializingState(false); return r; }
+    if (auto r = LoadConfiguration(); !r.HasValue()) { SetInitializingState(false); return r; }
+
+    SetInitializingState(false);
+    return {};
+}
+
+domain::Expected<void> MainViewModel::AnalyzeSystem() {
+    SetStatusText(L"Reading system information...");
+    auto result = mAnalyzeSystemUseCase->Execute();
+    if (!result.HasValue()) return result.GetError();
+    mSystemInfo = result.Value();
+    return {};
+}
+
+domain::Expected<void> MainViewModel::LoadConfiguration() {
+    SetStatusText(L"Loading configuration...");
+    auto result = mLoadConfigUseCase->Execute(L"config.ini");
+    if (!result.HasValue()) return result.GetError();
+    mConfig = result.Value();
+    ApplyConfigToState();   // 타이머 시간 등 상태 반영
+    NotifyPropertyChanged(L"InstallationTypes");
+    return {};
+}
+
+// private — UI 상태만 담당하는 단일 책임 메서드
+void MainViewModel::SetInitializingState(bool initializing) {
+    mIsInitializing = initializing;
+    SetStatusText(initializing ? L"Initializing..." : L"Ready");
+}
+
+void MainViewModel::ApplyConfigToState() {
+    if (!mConfig) return;
+    const std::wstring model = mSystemInfo ? mSystemInfo->GetMotherboardModel() : L"";
+    const uint32_t secs      = mConfig->GetEstimatedTime(model);
+    mTotalSeconds     = secs > 0u ? secs : kDefaultTotalSeconds;
+    mRemainingSeconds = mTotalSeconds;
+    mElapsedSeconds   = 0u;
+    mProgress         = 0;
+}
+```
+
+---
+
+## 개선 후 최종 점수 예상
+
+| 과제 | 향상 | 누적 점수 |
+|---|:---:|:---:|
+| 현재 (10개 항목 적용 후) | — | **87점** |
+| `IWidget` Win32 타입 추상화 | +7점 | 94점 |
+| `ServiceLocator` 제거 | +4점 | 98점 |
+| `MainViewModel::Initialize()` 분리 | +2점 | **≈ 100점** |

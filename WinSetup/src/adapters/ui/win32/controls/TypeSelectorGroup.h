@@ -33,30 +33,30 @@ namespace winsetup::adapters::ui {
         void OnCommand(WPARAM wParam, LPARAM lParam);
         void OnPaint(HDC hdc) const;
 
-        [[nodiscard]] const std::wstring& GetSelectedKey() const noexcept { return m_selectedKey; }
-        [[nodiscard]] const RECT& GetRect()        const noexcept { return m_rect; }
-        [[nodiscard]] bool IsReady() const noexcept { return !m_types.empty(); }
+        [[nodiscard]] const std::wstring& GetSelectedKey() const noexcept { return mSelectedKey; }
+        [[nodiscard]] const RECT& GetRect()        const noexcept { return mRect; }
+        [[nodiscard]] bool                IsReady()        const noexcept { return !mTypes.empty(); }
 
     private:
         void RecalcButtonRects();
         void DrawGroupBox(HDC hdc) const;
 
-        HWND      m_hParent = nullptr;
-        HINSTANCE m_hInstance = nullptr;
+        HWND      mHParent = nullptr;
+        HINSTANCE mHInstance = nullptr;
 
-        std::wstring m_label;
-        std::vector<domain::InstallationType>        m_types;
-        std::vector<std::unique_ptr<ToggleButton>>   m_buttons;
-        std::wstring m_selectedKey;
-        SelectionChangedCallback m_onSelectionChanged;
+        std::wstring                               mLabel;
+        std::vector<domain::InstallationType>      mTypes;
+        std::vector<std::unique_ptr<ToggleButton>> mButtons;
+        std::wstring                               mSelectedKey;
+        SelectionChangedCallback                   mOnSelectionChanged;
 
-        int  m_groupId = -1;
-        RECT m_rect = {};
+        int  mGroupId = -1;
+        RECT mRect = {};
 
-        mutable HFONT m_labelFont = nullptr;
-        mutable bool  m_labelFontDirty = true;
+        mutable HFONT mLabelFont = nullptr;
+        mutable bool  mLabelFontDirty = true;
 
-        int m_nextButtonId = BTNIDBASE;
+        int mNextButtonId = BTNIDBASE;
 
         static constexpr int COLS = 2;
         static constexpr int BTNHEIGHT = 32;
