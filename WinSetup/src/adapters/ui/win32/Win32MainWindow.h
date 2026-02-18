@@ -20,29 +20,28 @@ namespace winsetup::adapters::ui {
     public:
         Win32MainWindow(
             std::shared_ptr<abstractions::ILogger>        logger,
-            std::shared_ptr<abstractions::IMainViewModel> viewModel);
-
+            std::shared_ptr<abstractions::IMainViewModel> viewModel
+        );
         ~Win32MainWindow() override;
-
         Win32MainWindow(const Win32MainWindow&) = delete;
         Win32MainWindow& operator=(const Win32MainWindow&) = delete;
 
         bool Create(HINSTANCE hInstance, int nCmdShow);
 
-        void Show()    override;
-        void Hide()    override;
-        bool IsValid() const noexcept override;
-        bool RunMessageLoop() override;
+        void Show() override;
+        void Hide() override;
+        [[nodiscard]] bool IsValid() const noexcept override;
+        [[nodiscard]] bool RunMessageLoop() override;
 
         [[nodiscard]] HWND GetHWND() const noexcept;
 
     private:
         void InitializeWidgets();
         void RebuildTypeSelector();
-
         void OnViewModelPropertyChanged(const std::wstring& propertyName);
         void UpdateWindowTitle();
-
+        void StartTimer();
+        void StopTimer();
         void OnCreate();
         void OnDestroy();
         void OnPaint();
@@ -50,28 +49,26 @@ namespace winsetup::adapters::ui {
         void OnTimer(WPARAM timerId);
 
         LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
-        static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg,
-            WPARAM wParam, LPARAM lParam);
+        static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-        HWND      m_hWnd;
-        HINSTANCE m_hInstance;
+        HWND                                          mhWnd;
+        HINSTANCE                                     mhInstance;
+        std::shared_ptr<abstractions::ILogger>        mlogger;
+        std::shared_ptr<abstractions::IMainViewModel> mviewModel;
 
-        std::shared_ptr<abstractions::ILogger>        m_logger;
-        std::shared_ptr<abstractions::IMainViewModel> m_viewModel;
+        TypeSelectorGroup mtypeSelectorGroup;
+        RECT              mselectorRect;
+        StatusPanel       mstatusPanel;
+        OptionPanel       moptionPanel;
+        ActionPanel       mactionPanel;
 
-        TypeSelectorGroup m_typeSelectorGroup;
-        RECT              m_selectorRect;
+        std::vector<abstractions::IWidget*> mwidgets;
 
-        StatusPanel m_statusPanel;
-        OptionPanel m_optionPanel;
-        ActionPanel m_actionPanel;
-
-        std::vector<abstractions::IWidget*> m_widgets;
-
-        static constexpr int  WINDOW_WIDTH = 640;
-        static constexpr int  WINDOW_HEIGHT = 480;
-        static constexpr int  TYPE_SELECTOR_GROUP_ID = 100;
-        static constexpr auto CLASS_NAME = L"WinSetupMainWindow";
+        static constexpr int       WINDOWWIDTH = 640;
+        static constexpr int       WINDOWHEIGHT = 480;
+        static constexpr int       TYPESELECTORGROUPID = 100;
+        static constexpr UINT_PTR  MAIN_TIMER_ID = 2001;
+        static constexpr auto      CLASSNAME = L"WinSetupMainWindow";
     };
 
 }

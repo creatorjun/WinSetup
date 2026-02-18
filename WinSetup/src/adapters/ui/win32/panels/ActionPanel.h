@@ -14,43 +14,34 @@ namespace winsetup::adapters::ui {
     class ActionPanel : public abstractions::IWidget {
     public:
         ActionPanel();
-        ~ActionPanel() override;
-
+        ~ActionPanel() override = default;
         ActionPanel(const ActionPanel&) = delete;
         ActionPanel& operator=(const ActionPanel&) = delete;
 
-        void Create(HWND hParent, HINSTANCE hInstance,
-            int x, int y, int width, int height) override;
-
+        void Create(HWND hParent, HINSTANCE hInstance, int x, int y, int width, int height) override;
         void SetViewModel(std::shared_ptr<abstractions::IMainViewModel> viewModel);
 
         void OnPaint(HDC hdc) override {}
         bool OnCommand(WPARAM wParam, LPARAM lParam) override;
-        void OnTimer(UINT_PTR timerId) override;
+        void OnTimer(UINT_PTR timerId) override {}
         void SetEnabled(bool enabled) override;
         void OnPropertyChanged(const std::wstring& propertyName) override;
 
-        [[nodiscard]] bool IsValid() const noexcept override {
-            return mBtnStartStop.Handle() != nullptr;
-        }
+        [[nodiscard]] bool IsValid() const noexcept override { return mHParent != nullptr; }
 
     private:
-        void StartTimer();
-        void StopTimer();
         void UpdateProgress();
 
         std::shared_ptr<abstractions::IMainViewModel> mViewModel;
-
-        HWND             mHParent = nullptr;
+        HWND             mHParent;
         SimpleButton     mBtnStartStop;
         Win32ProgressBar mProgressBar;
 
-        static constexpr int      BTN_HEIGHT = 44;
-        static constexpr int      PROGRESS_H = 36;
-        static constexpr int      GAP = 8;
-        static constexpr int      ID_BTN_START_STOP = 4002;
-        static constexpr int      ID_PROGRESS_BAR = 4003;
-        static constexpr UINT_PTR TIMER_ID = 1001;
+        static constexpr int ID_BTN_STARTSTOP = 4002;
+        static constexpr int ID_PROGRESSBAR = 4003;
+        static constexpr int BTNHEIGHT = 44;
+        static constexpr int PROGRESSH = 36;
+        static constexpr int GAP = 8;
     };
 
 }
