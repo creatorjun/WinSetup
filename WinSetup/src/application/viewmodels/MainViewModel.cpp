@@ -1,65 +1,74 @@
 ﻿// src/application/viewmodels/MainViewModel.cpp
-
-#include <application/viewmodels/MainViewModel.h>
+#include "MainViewModel.h"
+#include <cstdint>
 
 namespace winsetup::application {
 
+    static constexpr uint32_t kDefaultTotalSeconds = 180u;
+
     MainViewModel::MainViewModel(
         std::shared_ptr<LoadConfigurationUseCase> loadConfigUseCase,
-        std::shared_ptr<abstractions::ILogger>    logger)
-        : m_loadConfigUseCase(std::move(loadConfigUseCase))
-        , m_logger(std::move(logger))
-        , m_config(nullptr)
-        , m_statusText(L"Ready")
-        , m_windowTitle(L"WinSetup - PC Reinstallation Tool")
-        , m_typeDescription(L"")
-        , m_isInitializing(false)
-        , m_isProcessing(false)
-        , m_isCompleted(false)
-        , m_dataPreservation(false)
-        , m_bitlockerEnabled(false)
-        , m_totalSeconds(0)
-        , m_elapsedSeconds(0)
-        , m_remainingSeconds(0)
-        , m_progress(0)
+        std::shared_ptr<AnalyzeSystemUseCase>     analyzeSystemUseCase,
+        std::shared_ptr<abstractions::ILogger>    logger
+    )
+        : mLoadConfigUseCase(std::move(loadConfigUseCase))
+        , mAnalyzeSystemUseCase(std::move(analyzeSystemUseCase))
+        , mLogger(std::move(logger))
+        , mConfig(nullptr)
+        , mSystemInfo(nullptr)
+        , mStatusText(L"Ready")
+        , mWindowTitle(L"WinSetup - PC Reinstallation Tool")
+        , mTypeDescription(L"")
+        , mIsInitializing(false)
+        , mIsProcessing(false)
+        , mIsCompleted(false)
+        , mDataPreservation(false)
+        , mBitlockerEnabled(false)
+        , mTotalSeconds(kDefaultTotalSeconds)
+        , mElapsedSeconds(0u)
+        , mRemainingSeconds(kDefaultTotalSeconds)
+        , mProgress(0)
     {
     }
 
-    std::wstring MainViewModel::GetStatusText() const { return m_statusText; }
+    std::wstring MainViewModel::GetStatusText() const {
+        return mStatusText;
+    }
 
     void MainViewModel::SetStatusText(const std::wstring& text) {
-        if (m_statusText != text) {
-            m_statusText = text;
+        if (mStatusText != text) {
+            mStatusText = text;
             NotifyPropertyChanged(L"StatusText");
         }
     }
 
-    std::wstring MainViewModel::GetWindowTitle() const { return m_windowTitle; }
+    std::wstring MainViewModel::GetWindowTitle() const {
+        return mWindowTitle;
+    }
 
     void MainViewModel::SetWindowTitle(const std::wstring& title) {
-        if (m_windowTitle != title) {
-            m_windowTitle = title;
+        if (mWindowTitle != title) {
+            mWindowTitle = title;
             NotifyPropertyChanged(L"WindowTitle");
         }
     }
 
     std::vector<domain::InstallationType> MainViewModel::GetInstallationTypes() const {
-        if (!m_config) return {};
-        return m_config->GetInstallationTypes();
+        if (!mConfig) return {};
+        return mConfig->GetInstallationTypes();
     }
 
     std::wstring MainViewModel::GetTypeDescription() const {
-        return m_typeDescription;
+        return mTypeDescription;
     }
 
     void MainViewModel::SetTypeDescription(const std::wstring& key) {
-        if (!m_config) return;
-
-        const auto& types = m_config->GetInstallationTypes();
+        if (!mConfig) return;
+        const auto& types = mConfig->GetInstallationTypes();
         for (const auto& t : types) {
             if (t.name == key) {
-                if (m_typeDescription != t.description) {
-                    m_typeDescription = t.description;
+                if (mTypeDescription != t.description) {
+                    mTypeDescription = t.description;
                     NotifyPropertyChanged(L"TypeDescription");
                 }
                 return;
@@ -67,123 +76,172 @@ namespace winsetup::application {
         }
     }
 
-    bool MainViewModel::GetDataPreservation() const { return m_dataPreservation; }
+    bool MainViewModel::GetDataPreservation() const {
+        return mDataPreservation;
+    }
 
     void MainViewModel::SetDataPreservation(bool enabled) {
-        if (m_dataPreservation != enabled) {
-            m_dataPreservation = enabled;
+        if (mDataPreservation != enabled) {
+            mDataPreservation = enabled;
             NotifyPropertyChanged(L"DataPreservation");
         }
     }
 
-    bool MainViewModel::GetBitlockerEnabled() const { return m_bitlockerEnabled; }
+    bool MainViewModel::GetBitlockerEnabled() const {
+        return mBitlockerEnabled;
+    }
 
     void MainViewModel::SetBitlockerEnabled(bool enabled) {
-        if (m_bitlockerEnabled != enabled) {
-            m_bitlockerEnabled = enabled;
+        if (mBitlockerEnabled != enabled) {
+            mBitlockerEnabled = enabled;
             NotifyPropertyChanged(L"BitlockerEnabled");
         }
     }
 
     void MainViewModel::SetProcessing(bool processing) {
-        if (m_isProcessing != processing) {
-            m_isProcessing = processing;
-            if (processing)
-                ResetProgress();
+        if (mIsProcessing != processing) {
+            mIsProcessing = processing;
+            if (processing) {
+                mElapsedSeconds = 0u;
+                mRemainingSeconds = mTotalSeconds;
+                mProgress = 0;
+            }
             else {
-                m_progress = 0;
-                m_remainingSeconds = 0;
-                m_elapsedSeconds = 0;
+                mElapsedSeconds = 0u;
+                mRemainingSeconds = 0u;
+                mProgress = 0;
             }
             NotifyPropertyChanged(L"IsProcessing");
             NotifyPropertyChanged(L"Progress");
         }
     }
 
-    void MainViewModel::TickTimer() {
-        if (!m_isProcessing || m_totalSeconds <= 0) return;
+    int MainViewModel::GetProgress() const {
+        return mProgress;
+    }
 
-        ++m_elapsedSeconds;
-        if (m_elapsedSeconds >= m_totalSeconds) {
-            m_elapsedSeconds = m_totalSeconds;
-            m_remainingSeconds = 0;
-            m_progress = 100;
+    int MainViewModel::GetRemainingSeconds() const {
+        return static_cast<int>(mRemainingSeconds);
+    }
+
+    void MainViewModel::TickTimer() {
+        if (!mIsProcessing || mTotalSeconds == 0u) return;
+        ++mElapsedSeconds;
+        if (mElapsedSeconds >= mTotalSeconds) {
+            mElapsedSeconds = mTotalSeconds;
+            mRemainingSeconds = 0u;
+            mProgress = 100;
         }
         else {
-            m_remainingSeconds = m_totalSeconds - m_elapsedSeconds;
-            m_progress = static_cast<int>(
-                (static_cast<double>(m_elapsedSeconds) / m_totalSeconds) * 100.0);
+            mRemainingSeconds = mTotalSeconds - mElapsedSeconds;
+            mProgress = static_cast<int>(
+                static_cast<double>(mElapsedSeconds) / static_cast<double>(mTotalSeconds) * 100.0
+                );
         }
-
         NotifyPropertyChanged(L"Progress");
     }
 
-    void MainViewModel::ResetProgress() {
-        m_elapsedSeconds = 0;
-
-        constexpr int DEFAULT_TOTAL_SECONDS = 180;
-
-        if (m_config && !m_motherboardModel.empty() &&
-            m_config->HasEstimatedTime(m_motherboardModel))
-        {
-            m_totalSeconds = static_cast<int>(
-                m_config->GetEstimatedTime(m_motherboardModel));
-        }
-        else {
-            m_totalSeconds = DEFAULT_TOTAL_SECONDS;
-        }
-
-        m_remainingSeconds = m_totalSeconds;
-        m_progress = 0;
-    }
-
     domain::Expected<void> MainViewModel::Initialize() {
-        m_isInitializing = true;
+        mIsInitializing = true;
         SetStatusText(L"Initializing...");
 
-        if (m_logger) m_logger->Info(L"MainViewModel initialization started");
-
-        auto configResult = LoadConfiguration();
-        if (!configResult.HasValue()) {
-            m_isInitializing = false;
-            SetStatusText(L"Failed to load configuration");
-            return configResult;
+        if (mLogger) {
+            mLogger->Info(L"[MainViewModel] Initialization started.");
         }
 
-        m_isInitializing = false;
-        SetStatusText(L"Ready");
+        auto sysResult = RunAnalyzeSystem();
+        if (!sysResult.HasValue()) {
+            if (mLogger) {
+                mLogger->Warning(L"[MainViewModel] System analysis failed: "
+                    + sysResult.GetError().GetMessage());
+            }
+        }
 
+        auto cfgResult = RunLoadConfiguration();
+        if (!cfgResult.HasValue()) {
+            mIsInitializing = false;
+            SetStatusText(L"Failed to load configuration");
+            return cfgResult;
+        }
+
+        mIsInitializing = false;
+        SetStatusText(L"Ready");
         NotifyPropertyChanged(L"InstallationTypes");
 
-        if (m_logger) m_logger->Info(L"MainViewModel initialization completed");
+        if (mLogger) {
+            mLogger->Info(L"[MainViewModel] Initialization completed.");
+        }
+
         return domain::Expected<void>();
     }
 
-    domain::Expected<void> MainViewModel::LoadConfiguration() {
-        auto result = m_loadConfigUseCase->Execute(L"config.ini");
+    domain::Expected<void> MainViewModel::RunAnalyzeSystem() {
+        if (!mAnalyzeSystemUseCase) {
+            return domain::Error(
+                L"AnalyzeSystemUseCase not registered",
+                static_cast<uint32_t>(0),
+                domain::ErrorCategory::System
+            );
+        }
+
+        SetStatusText(L"Reading system information...");
+
+        auto result = mAnalyzeSystemUseCase->Execute();
         if (!result.HasValue()) {
-            if (m_logger)
-                m_logger->Error(L"Failed to load configuration: " +
-                    result.GetError().GetMessage());
             return result.GetError();
         }
-        m_config = result.Value();
+
+        mSystemInfo = result.Value();
+
+        if (mLogger && mSystemInfo) {
+            mLogger->Info(L"[MainViewModel] Motherboard: "
+                + mSystemInfo->GetMotherboardModel());
+        }
+
         return domain::Expected<void>();
     }
 
-    void MainViewModel::AddPropertyChangedHandler(
-        abstractions::PropertyChangedCallback callback)
-    {
-        m_propertyChangedHandlers.push_back(std::move(callback));
+    domain::Expected<void> MainViewModel::RunLoadConfiguration() {
+        if (!mLoadConfigUseCase) {
+            return domain::Error(
+                L"LoadConfigurationUseCase not registered",
+                static_cast<uint32_t>(0),
+                domain::ErrorCategory::System
+            );
+        }
+
+        SetStatusText(L"Loading configuration...");
+
+        auto result = mLoadConfigUseCase->Execute(L"config.ini");
+        if (!result.HasValue()) {
+            if (mLogger) {
+                mLogger->Error(L"[MainViewModel] Failed to load configuration: "
+                    + result.GetError().GetMessage());
+            }
+            return result.GetError();
+        }
+
+        mConfig = result.Value();
+        mElapsedSeconds = 0u;
+        mTotalSeconds = kDefaultTotalSeconds;
+        mRemainingSeconds = kDefaultTotalSeconds;
+        mProgress = 0;
+
+        return domain::Expected<void>();
+    }
+
+    void MainViewModel::AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) {
+        mPropertyChangedHandlers.push_back(std::move(callback));
     }
 
     void MainViewModel::RemoveAllPropertyChangedHandlers() {
-        m_propertyChangedHandlers.clear();
+        mPropertyChangedHandlers.clear();
     }
 
     void MainViewModel::NotifyPropertyChanged(const std::wstring& propertyName) {
-        for (const auto& handler : m_propertyChangedHandlers)
+        for (const auto& handler : mPropertyChangedHandlers) {
             handler(propertyName);
+        }
     }
 
 }

@@ -19,13 +19,12 @@ namespace winsetup {
         static void RegisterInfrastructureServices(application::DIContainer& container);
         static void RegisterDomainServices(application::DIContainer& container);
         static void RegisterRepositoryServices(application::DIContainer& container);
+        static void RegisterPlatformServices(application::DIContainer& container);
         static void RegisterUseCaseServices(application::DIContainer& container);
         static void RegisterApplicationServices(application::DIContainer& container);
-        static void RegisterPlatformServices(application::DIContainer& container);
         static void RegisterUIServices(
             application::DIContainer& container,
-            HINSTANCE hInstance,
-            int nCmdShow
+            HINSTANCE hInstance
         );
     };
 
