@@ -146,7 +146,7 @@ container.Register<abstractions::IAnalyzeSystemUseCase,
 
 ---
 
-### 5. `StatusPanel`이 ViewModel 상태를 로컬 멤버로 이중 저장
+### 5. `StatusPanel`이 ViewModel 상태를 로컬 멤버로 이중 저장 (해결됨)
 
 **위치**: `src/adapters/ui/win32/panels/StatusPanel.h/.cpp`
 
@@ -191,7 +191,7 @@ void StatusPanel::OnPropertyChanged(const std::wstring& propertyName) {
 
 ---
 
-### 6. `ActionPanel`이 타이머 생명주기를 소유 — View가 프레젠테이션 로직 제어
+### 6. `ActionPanel`이 타이머 생명주기를 소유 — View가 프레젠테이션 로직 제어 (해결됨)
 
 **위치**: `src/adapters/ui/win32/panels/ActionPanel.cpp`
 
@@ -232,7 +232,7 @@ void Win32MainWindow::OnTimer(WPARAM timerId) {
 
 ---
 
-### 7. `OptionPanel::Create`의 순서 의존적 초기화
+### 7. `OptionPanel::Create`의 순서 의존적 초기화 (이미 양방향 제어중  - 개선 사항 적용 어려움)
 
 **위치**: `src/adapters/ui/win32/panels/OptionPanel.cpp`
 
