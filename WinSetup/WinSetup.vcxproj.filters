@@ -608,6 +608,12 @@
     <ClInclude Include="src\adapters\platform\win32\storage\Win32FileCopyService.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="src\abstractions\usecases\ILoadConfigurationUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\usecases\IAnalyzeSystemUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\API_REFERENCE.md" />

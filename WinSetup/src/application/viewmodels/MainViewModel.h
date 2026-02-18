@@ -1,12 +1,11 @@
 ﻿// src/application/viewmodels/MainViewModel.h
 #pragma once
-
 #include <abstractions/ui/IMainViewModel.h>
+#include <abstractions/usecases/ILoadConfigurationUseCase.h>
+#include <abstractions/usecases/IAnalyzeSystemUseCase.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
 #include <domain/entities/SetupConfig.h>
 #include <domain/entities/SystemInfo.h>
-#include <application/usecases/system/LoadConfigurationUseCase.h>
-#include <application/usecases/system/AnalyzeSystemUseCase.h>
 #include <memory>
 #include <vector>
 #include <string>
@@ -16,38 +15,32 @@ namespace winsetup::application {
     class MainViewModel : public abstractions::IMainViewModel {
     public:
         explicit MainViewModel(
-            std::shared_ptr<LoadConfigurationUseCase> loadConfigUseCase,
-            std::shared_ptr<AnalyzeSystemUseCase>     analyzeSystemUseCase,
-            std::shared_ptr<abstractions::ILogger>    logger
-        );
+            std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfigUseCase,
+            std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     analyzeSystemUseCase,
+            std::shared_ptr<abstractions::ILogger>                   logger);
         ~MainViewModel() override = default;
 
         [[nodiscard]] std::wstring GetStatusText()  const override;
         void SetStatusText(const std::wstring& text) override;
-
         [[nodiscard]] std::wstring GetWindowTitle() const override;
         void SetWindowTitle(const std::wstring& title) override;
 
         [[nodiscard]] std::vector<domain::InstallationType> GetInstallationTypes() const override;
-
         [[nodiscard]] std::wstring GetTypeDescription() const override;
         void SetTypeDescription(const std::wstring& key) override;
 
         [[nodiscard]] bool GetDataPreservation() const override;
-        void SetDataPreservation(bool enabled) override;
-
-        [[nodiscard]] bool GetBitlockerEnabled() const override;
-        void SetBitlockerEnabled(bool enabled) override;
+        void SetDataPreservation(bool enabled)    override;
+        [[nodiscard]] bool GetBitlockerEnabled()  const override;
+        void SetBitlockerEnabled(bool enabled)    override;
 
         [[nodiscard]] bool IsInitializing() const override { return mIsInitializing; }
         [[nodiscard]] bool IsProcessing()   const override { return mIsProcessing; }
         [[nodiscard]] bool IsCompleted()    const override { return mIsCompleted; }
-
         void SetProcessing(bool processing) override;
 
         [[nodiscard]] int GetProgress()         const override;
         [[nodiscard]] int GetRemainingSeconds() const override;
-
         void TickTimer() override;
 
         domain::Expected<void> Initialize() override;
@@ -65,9 +58,10 @@ namespace winsetup::application {
         domain::Expected<void> RunAnalyzeSystem();
         domain::Expected<void> RunLoadConfiguration();
 
-        std::shared_ptr<LoadConfigurationUseCase> mLoadConfigUseCase;
-        std::shared_ptr<AnalyzeSystemUseCase>     mAnalyzeSystemUseCase;
-        std::shared_ptr<abstractions::ILogger>    mLogger;
+        // ✅ 구체 클래스 → 인터페이스
+        std::shared_ptr<abstractions::ILoadConfigurationUseCase> mLoadConfigUseCase;
+        std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     mAnalyzeSystemUseCase;
+        std::shared_ptr<abstractions::ILogger>                   mLogger;
 
         std::shared_ptr<domain::SetupConfig> mConfig;
         std::shared_ptr<domain::SystemInfo>  mSystemInfo;
@@ -81,7 +75,6 @@ namespace winsetup::application {
         bool     mIsCompleted;
         bool     mDataPreservation;
         bool     mBitlockerEnabled;
-
         uint32_t mTotalSeconds;
         uint32_t mElapsedSeconds;
         uint32_t mRemainingSeconds;
@@ -90,4 +83,4 @@ namespace winsetup::application {
         std::vector<abstractions::PropertyChangedCallback> mPropertyChangedHandlers;
     };
 
-}
+} // namespace winsetup::application

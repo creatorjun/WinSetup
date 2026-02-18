@@ -121,6 +121,8 @@
     <ClInclude Include="src\abstractions\ui\IPropertyChanged.h" />
     <ClInclude Include="src\abstractions\ui\IWidget.h" />
     <ClInclude Include="src\abstractions\ui\IWindow.h" />
+    <ClInclude Include="src\abstractions\usecases\IAnalyzeSystemUseCase.h" />
+    <ClInclude Include="src\abstractions\usecases\ILoadConfigurationUseCase.h" />
     <ClInclude Include="src\adapters\imaging\DismAdapter.h" />
     <ClInclude Include="src\adapters\imaging\WimlibAdapter.h" />
     <ClInclude Include="src\adapters\imaging\WimlibOptimizer.h" />
