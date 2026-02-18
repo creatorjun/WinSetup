@@ -216,6 +216,7 @@
     <ClInclude Include="src\domain\valueobjects\DiskType.h" />
     <ClInclude Include="src\domain\valueobjects\DriveLetter.h" />
     <ClInclude Include="src\domain\valueobjects\FileSystemType.h" />
+    <ClInclude Include="src\domain\valueobjects\InstallationType.h" />
     <ClInclude Include="src\domain\valueobjects\PartitionType.h" />
     <ClInclude Include="src\lib\wimlib.h" />
     <ClInclude Include="src\main\ServiceRegistration.h" />

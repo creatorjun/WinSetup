@@ -3,7 +3,7 @@
 
 #include <abstractions/ui/IPropertyChanged.h>
 #include <domain/primitives/Expected.h>
-#include <domain/entities/SetupConfig.h>
+#include <domain/valueobjects/InstallationType.h>
 #include <string>
 #include <vector>
 #include <memory>

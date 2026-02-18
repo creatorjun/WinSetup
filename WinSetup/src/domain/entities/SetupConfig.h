@@ -1,6 +1,7 @@
 ﻿// src/domain/entities/SetupConfig.h
 #pragma once
 
+#include <domain/valueobjects/InstallationType.h>
 #include <string>
 #include <vector>
 #include <map>
@@ -14,16 +15,6 @@ namespace winsetup::domain {
         BackupTarget() = default;
         BackupTarget(const std::wstring& n, const std::wstring& p)
             : name(n), path(p) {
-        }
-    };
-
-    struct InstallationType {
-        std::wstring name;
-        std::wstring description;
-
-        InstallationType() = default;
-        InstallationType(const std::wstring& n, const std::wstring& d)
-            : name(n), description(d) {
         }
     };
 
@@ -51,7 +42,6 @@ namespace winsetup::domain {
         void SetEstimatedTime(const std::wstring& motherboardModel, uint32_t seconds);
 
         [[nodiscard]] std::wstring ResolveBackupPath(const std::wstring& path) const;
-
         [[nodiscard]] bool IsValid() const noexcept;
 
     private:
