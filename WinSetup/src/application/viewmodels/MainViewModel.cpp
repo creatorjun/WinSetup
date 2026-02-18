@@ -17,7 +17,7 @@ namespace winsetup::application {
         , mConfig(nullptr)
         , mSystemInfo(nullptr)
         , mStatusText(L"Ready")
-        , mWindowTitle(L"WinSetup - PC Reinstallation Tool")
+        , mWindowTitle(L"WinSetup  V 1.0")
         , mTypeDescription(L"")
         , mIsInitializing(false)
         , mIsProcessing(false)

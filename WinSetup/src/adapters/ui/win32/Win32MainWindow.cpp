@@ -70,7 +70,7 @@ namespace winsetup::adapters::ui {
 
         const std::wstring title = mviewModel
             ? mviewModel->GetWindowTitle()
-            : L"WinSetup - PC Reinstallation Tool";
+            : L"WinSetup  v 1.0";
 
         mhWnd = CreateWindowExW(
             0, CLASSNAME, title.c_str(), dwStyle,
