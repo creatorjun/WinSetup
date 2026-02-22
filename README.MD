@@ -26,6 +26,7 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
   - OVERLAPPED (진정한 비동기 I/O)
   - wimlib (이미지 처리)
   - DismApi (드라이버 주입)
+  - FveAPI (BitLocker 프로그래밍 방식 활성화)
 - **테스트**: Google Test + Google Mock
 
 ### 예상 성능 지표
@@ -59,6 +60,7 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 │  ✓ Domain 타입 사용                      │
 │  ✓ IEvent = domain::DomainEvent (alias) │
 │  ✓ SystemAnalysisResult 정의            │
+│  ✓ IBitLockerService 정의               │
 │  ✗ 구현 코드 금지                        │
 └─────────────────────────────────────────┘
             ↑
@@ -69,6 +71,7 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 │  ✓ ViewModels (MVVM)                    │
 │  ✓ Task<T> 코루틴                       │
 │  ✓ DIContainer                          │
+│  ✓ ConfigureBitLockerUseCase            │
 │  ✗ 플랫폼 코드 금지                      │
 └─────────────────────────────────────────┘
             ↑
@@ -83,6 +86,7 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 │  ✓ Win32 RAII 래퍼 (UniqueHandle 등)    │
 │  ✓ INI 파일 파서                         │
 │  ✓ Win32 View (MVVM)                    │
+│  ✓ FveApiBitLockerService               │
 └─────────────────────────────────────────┘
             ↑
             │ (모든 것 연결)
@@ -104,6 +108,11 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 | Composition Root 실패 처리 | `ResolveOrThrow` 헬퍼로 즉시 `std::runtime_error` throw |
 | GDI 리소스 캐싱 | `OnPaint`마다 `CreateFont` 금지, `Create()` 시점에 멤버 `UniqueHandle`로 캐싱 |
 | 멤버 변수 네이밍 | 전체 `mXxx` camelCase 통일 (예외 없음) |
+| BitLocker 활성화 조건 | `config.ini` `[BITLOCKER]` 섹션 `ENABLED=Yes` 시에만 실행 |
+| BitLocker PIN | `config.ini` `[BITLOCKER]` 섹션 `PINNUMBER` 값 사용 |
+| BitLocker Data 자동 해제 | Windows AutoUnlock 기능 사용 (`manage-bde -autounlock -enable D:` 동작) |
+| 복구 정보 저장 | `<exe폴더>/bitlocker/bitlocker.txt` — `UID : 복구비밀번호` 형식 |
+| 복구 키 파일 | Boot 파티션 루트에 `<UID>.key` 빈 파일 생성 |
 
 ### 3. MVVM 패턴 적용
 
@@ -137,6 +146,134 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 - ViewModel은 View를 전혀 모름 (IPropertyChanged 콜백만 사용)
 - View는 HWND, HDC 등 Win32 타입만 다룸
 - ViewModel은 std::wstring, bool, int 등 표준 타입만 다룸
+
+---
+
+## 🔐 BitLocker 설계
+
+### 개요
+
+설치 완료 후 `config.ini`의 `[BITLOCKER]` 섹션 `ENABLED=Yes` 설정이 활성화된 경우에만 실행됩니다.
+FveAPI(`fveapi.dll`)를 동적 로딩하여 아래 `manage-bde` 명령어와 동일한 동작을 수행합니다.
+
+```
+manage-bde -on C: -skiphardwaretest
+manage-bde -protectors -add C: -TPMAndPIN <PINNUMBER>
+manage-bde -on D: -RecoveryPassword
+manage-bde -autounlock -enable D:
+```
+
+### config.ini 설정
+
+```ini
+[BITLOCKER]
+ENABLED=Yes
+PINNUMBER=900000
+```
+
+| 키 | 설명 | 기본값 |
+|---|---|---|
+| `ENABLED` | `Yes` 일 때만 BitLocker 활성화 실행 | `No` |
+| `PINNUMBER` | TPM+PIN 프로텍터에 사용할 숫자 PIN | 없음 |
+
+### 활성화 흐름
+
+```
+InstallWindowsUseCase 완료
+        ↓
+ConfigureBitLockerUseCase::Execute()
+        ↓  config.ini ENABLED=Yes 확인
+        ↓  config.ini PINNUMBER 읽기
+        │
+        ├──  System 파티션 (C:) 암호화[1]
+        │     ├── FVE_KEY_PROTECTOR_TYPE = FVE_KEY_PROTECTOR_TPMANDPIN
+        │     ├── PINNUMBER으로 TPM+PIN 프로텍터 추가
+        │     ├── 48자리 복구 비밀번호 프로텍터 추가
+        │     └── 암호화 시작 (SkipHardwareTest)
+        │
+        ├──  Data 파티션 (D:) 암호화[2]
+        │     ├── 복구 비밀번호 프로텍터 추가
+        │     ├── 암호화 시작
+        │     └── Windows AutoUnlock 활성화
+        │           → System 파티션(C:) 잠금 해제 시
+        │              Data 파티션(D:) 자동 잠금 해제
+        │
+        └──  복구 정보 저장
+              ├── <exe폴더>/bitlocker/bitlocker.txt 기록
+              └── Boot 파티션 루트에 <UID>.key 빈 파일 생성
+```
+
+### Windows AutoUnlock 동작 원리
+
+`manage-bde -autounlock -enable D:`는 Windows가 System 파티션(C:)의 잠금이 해제될 때 Data 파티션(D:)을 자동으로 잠금 해제하도록 등록합니다. AutoUnlock 외부 키는 System 파티션의 메타데이터 영역에 저장되며, Windows 부팅 시 TPM+PIN으로 C:가 해제되면 D:는 별도 PIN 입력 없이 자동 마운트됩니다.
+
+FveAPI 구현 대응:
+
+| manage-bde 명령 | FveAPI 함수 |
+|---|---|
+| `-on C: -skiphardwaretest` | `FveVolEncrypt` + `FVE_ENCRYPT_FLAG_SKIP_HARDWARE_TEST` |
+| `-protectors -add C: -TPMAndPIN` | `FveKeyProtectorAddTpmAndPin` |
+| `-protectors -add -RecoveryPassword` | `FveKeyProtectorAddNumericalPassword` |
+| `-autounlock -enable D:` | `FveVolumeEnableAutoUnlock` |
+
+### 복구 정보 저장 구조
+
+```
+<실행파일 폴더>/
+└── bitlocker/
+    └── bitlocker.txt
+```
+
+`bitlocker.txt` 형식:
+```
+[System]
+UID : XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX : XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX
+
+[Data]
+UID : XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX : XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX-XXXXXX
+```
+
+Boot 파티션 루트에는 각 볼륨 UID 기반 빈 키 파일을 생성합니다:
+```
+<Boot 파티션 루트>/
+├── XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX.key   ← System 파티션
+└── XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX.key   ← Data 파티션
+```
+
+### 계층별 책임
+
+| 계층 | 파일 | 책임 |
+|---|---|---|
+| Abstractions | `IBitLockerService.h` | 인터페이스 정의 |
+| Abstractions | `IConfigureBitLockerUseCase.h` | UseCase 인터페이스 |
+| Application | `ConfigureBitLockerUseCase.h/.cpp` | 비즈니스 로직, PIN 읽기, 복구 파일 저장 |
+| Adapters | `FveApiBitLockerService.h/.cpp` | FveAPI 동적 로딩, Win32 구현 |
+
+### IBitLockerService 인터페이스
+
+```cpp
+// abstractions/services/security/IBitLockerService.h
+struct BitLockerVolumeInfo {
+    std::wstring volumePath;
+    std::wstring uid;
+    std::wstring recoveryPassword;
+};
+
+class IBitLockerService {
+public:
+    virtual ~IBitLockerService() = default;
+    virtual domain::Expected<BitLockerVolumeInfo> EncryptWithTpmAndPin(
+        const std::wstring& volumePath,
+        const std::wstring& pin) = 0;
+    virtual domain::Expected<BitLockerVolumeInfo> EncryptWithRecoveryPassword(
+        const std::wstring& volumePath) = 0;
+    virtual domain::Expected<void> EnableAutoUnlock(
+        const std::wstring& dataVolumePath) = 0;
+    virtual domain::Expected<void> WriteKeyFile(
+        const std::wstring& bootPartitionPath,
+        const std::wstring& uid) = 0;
+};
+```
 
 ---
 
@@ -180,6 +317,8 @@ WinSetup/
 │   │   │   │   ├── platform/
 │   │   │   │   │   ├── ISystemInfoService.h
 │   │   │   │   │   └── ITextEncoder.h
+│   │   │   │   ├── security/
+│   │   │   │   │   └── IBitLockerService.h   # BitLocker 인터페이스
 │   │   │   │   └── storage/
 │   │   │   │       ├── IDiskService.h
 │   │   │   │       ├── IDriverService.h
@@ -195,7 +334,8 @@ WinSetup/
 │   │   │   │   ├── IWidget.h
 │   │   │   │   └── IWindow.h
 │   │   │   └── usecases/
-│   │   │       ├── IAnalyzeSystemUseCase.h   # SystemAnalysisResult 정의 포함
+│   │   │       ├── IAnalyzeSystemUseCase.h
+│   │   │       ├── IConfigureBitLockerUseCase.h
 │   │   │       └── ILoadConfigurationUseCase.h
 │   │   │
 │   │   ├── application/
@@ -210,7 +350,7 @@ WinSetup/
 │   │   │   ├── dto/
 │   │   │   │   ├── DiskAnalysisResult.h
 │   │   │   │   ├── InstallationProgress.h
-│   │   │   │   └── SystemAnalysisResult.h    # using SystemAnalysisResult = abstractions::SystemAnalysisResult
+│   │   │   │   └── SystemAnalysisResult.h
 │   │   │   ├── eventhandlers/
 │   │   │   │   ├── DiskAnalyzedEventHandler.h / .cpp
 │   │   │   │   └── InstallProgressEventHandler.h / .cpp
@@ -231,6 +371,7 @@ WinSetup/
 │   │   │   │   │   └── RestoreUserDataUseCase.h / .cpp
 │   │   │   │   └── system/
 │   │   │   │       ├── AnalyzeSystemUseCase.h / .cpp
+│   │   │   │       ├── ConfigureBitLockerUseCase.h / .cpp  # PIN은 SetupConfig에서 수신
 │   │   │   │       └── LoadConfigurationUseCase.h / .cpp
 │   │   │   └── viewmodels/
 │   │   │       ├── MainViewModel.h
@@ -238,18 +379,18 @@ WinSetup/
 │   │   │
 │   │   ├── domain/
 │   │   │   ├── entities/
-│   │   │   │   ├── DiskInfo.h / .cpp          # Aggregate Root (PartitionInfo 직접 소유)
+│   │   │   │   ├── DiskInfo.h / .cpp
 │   │   │   │   ├── PartitionInfo.h / .cpp
-│   │   │   │   ├── SetupConfig.h / .cpp
-│   │   │   │   ├── SystemInfo.h               # 메타정보만 (DiskInfo/VolumeInfo 미포함)
+│   │   │   │   ├── SetupConfig.h / .cpp      # bitLockerEnabled, bitLockerPin 필드 추가
+│   │   │   │   ├── SystemInfo.h
 │   │   │   │   └── VolumeInfo.h / .cpp
 │   │   │   ├── events/
-│   │   │   │   ├── DomainEvent.h / .cpp       # DomainEventBase<T> CRTP 템플릿 포함
-│   │   │   │   ├── DiskAnalyzedEvent.h        # DomainEventBase<T> 상속
-│   │   │   │   ├── ErrorOccurredEvent.h       # DomainEventBase<T> 상속
-│   │   │   │   ├── InstallCompletedEvent.h    # DomainEventBase<T> 상속
-│   │   │   │   ├── InstallProgressEvent.h     # DomainEventBase<T> 상속
-│   │   │   │   └── InstallStartedEvent.h      # DomainEventBase<T> 상속
+│   │   │   │   ├── DomainEvent.h / .cpp
+│   │   │   │   ├── DiskAnalyzedEvent.h
+│   │   │   │   ├── ErrorOccurredEvent.h
+│   │   │   │   ├── InstallCompletedEvent.h
+│   │   │   │   ├── InstallProgressEvent.h
+│   │   │   │   └── InstallStartedEvent.h
 │   │   │   ├── functional/
 │   │   │   │   ├── Compose.h
 │   │   │   │   ├── Monads.h
@@ -285,7 +426,7 @@ WinSetup/
 │   │   │   │   └── WimlibOptimizer.h / .cpp
 │   │   │   ├── persistence/
 │   │   │   │   ├── config/
-│   │   │   │   │   ├── IniConfigRepository.h / .cpp
+│   │   │   │   │   ├── IniConfigRepository.h / .cpp  # [BITLOCKER] 섹션 파싱 추가
 │   │   │   │   │   └── IniParser.h / .cpp
 │   │   │   │   └── filesystem/
 │   │   │   │       └── Win32FileSystem.h / .cpp
@@ -302,6 +443,8 @@ WinSetup/
 │   │   │   │   │   ├── UniqueFindHandle.h
 │   │   │   │   │   ├── UniqueHandle.h / .cpp
 │   │   │   │   │   └── UniqueLibrary.h
+│   │   │   │   ├── security/
+│   │   │   │   │   └── FveApiBitLockerService.h / .cpp  # FveAPI 구현체
 │   │   │   │   ├── storage/
 │   │   │   │   │   ├── AsyncIOCTL.h / .cpp
 │   │   │   │   │   ├── DiskLayoutBuilder.h / .cpp
@@ -324,18 +467,18 @@ WinSetup/
 │   │   │       │   ├── SimpleButton.h / .cpp
 │   │   │       │   ├── TextWidget.h / .cpp
 │   │   │       │   ├── ToggleButton.h / .cpp
-│   │   │       │   └── TypeSelectorGroup.h / .cpp  # mLabelFont UniqueHandle 캐싱
+│   │   │       │   └── TypeSelectorGroup.h / .cpp
 │   │   │       ├── panels/
 │   │   │       │   ├── ActionPanel.h / .cpp
-│   │   │       │   ├── OptionPanel.h / .cpp        # mViewModel mXxx 컨벤션
-│   │   │       │   └── StatusPanel.h / .cpp        # mFontStatus/mFontDesc UniqueHandle 캐싱
+│   │   │       │   ├── OptionPanel.h / .cpp
+│   │   │       │   └── StatusPanel.h / .cpp
 │   │   │       ├── Win32MainWindow.h / .cpp
-│   │   │       └── Win32ProgressBar.h / .cpp       # mFontProgress/mFontTime UniqueHandle 캐싱
+│   │   │       └── Win32ProgressBar.h / .cpp
 │   │   │
 │   │   └── main/
 │   │       ├── Main.cpp
 │   │       ├── ServiceRegistration.h
-│   │       └── ServiceRegistration.cpp             # ResolveOrThrow, 실패 시 즉시 throw
+│   │       └── ServiceRegistration.cpp
 │   │
 │   ├── lib/
 │   │   └── wimlib.h
@@ -355,6 +498,7 @@ WinSetup/
     │   │   └── EventBusTests.cpp
     │   └── usecases/
     │       ├── AnalyzeSystemUseCaseTests.cpp
+    │       ├── ConfigureBitLockerUseCaseTests.cpp
     │       └── InstallWindowsUseCaseTests.cpp
     ├── domain/
     │   ├── entities/
@@ -370,6 +514,7 @@ WinSetup/
     │   ├── EndToEndTests.cpp
     │   └── PerformanceTests.cpp
     ├── mocks/
+    │   ├── MockBitLockerService.h
     │   ├── MockDiskService.h
     │   ├── MockEventBus.h
     │   └── MockLogger.h
@@ -435,16 +580,28 @@ std::shared_ptr<TInterface> ResolveOrThrow(DIContainer& container, const char* n
   OnPaint() → EnsureFonts() (guard) → SelectObject만 수행
 
 적용 파일:
-  StatusPanel      → mFontStatus, mFontDesc
-  Win32ProgressBar → mFontProgress, mFontTime
+  StatusPanel       → mFontStatus, mFontDesc
+  Win32ProgressBar  → mFontProgress, mFontTime
   TypeSelectorGroup → mLabelFont
-  ToggleButton     → mhFont
-  SimpleButton     → UniqueHandle
+  ToggleButton      → mhFont
+  SimpleButton      → UniqueHandle
 ```
 
 ### 5. 멤버 변수 네이밍 규칙
 
 프로젝트 전체 `mXxx` camelCase 단일 표준. `m_xxx`, `mxxx` 형태 금지.
+
+### 6. BitLocker 구현 규칙
+
+- PIN 번호는 `config.ini` `[BITLOCKER]` 섹션 `PINNUMBER` 값을 `SetupConfig`를 통해 수신
+- `IniConfigRepository`가 `[BITLOCKER]` 섹션을 파싱하여 `SetupConfig::bitLockerEnabled`, `SetupConfig::bitLockerPin` 필드에 저장
+- `FveApiBitLockerService`는 `fveapi.dll`을 `UniqueLibrary`로 동적 로딩
+- `fveapi.dll` 로드 실패 시 `Expected<void>` 에러 반환, 프로세스 종료 없음
+- System 파티션은 TPM+PIN 프로텍터 + 복구 비밀번호 프로텍터 추가 후 암호화
+- Data 파티션은 복구 비밀번호 프로텍터 추가 후 암호화, Windows AutoUnlock 활성화
+- AutoUnlock은 Windows가 System 파티션 해제 시 Data 파티션을 자동 해제하는 OS 내장 기능
+- 복구 비밀번호 파일 저장은 `ConfigureBitLockerUseCase`가 담당 (플랫폼 코드 금지)
+- Boot 파티션 경로는 `SystemAnalysisResult`에서 결정 — `IBitLockerService`는 경로를 수신할 뿐
 
 ---
 
@@ -530,15 +687,25 @@ std::shared_ptr<TInterface> ResolveOrThrow(DIContainer& container, const char* n
 - [ ] RestoreUserDataUseCase
 - [ ] 기타 UseCases
 
+#### Phase 13: BitLocker
+- [ ] domain/entities/SetupConfig — `bitLockerEnabled`, `bitLockerPin` 필드 추가
+- [ ] adapters/persistence/config/IniConfigRepository — `[BITLOCKER]` 섹션 파싱 추가
+- [ ] abstractions/services/security/IBitLockerService.h
+- [ ] abstractions/usecases/IConfigureBitLockerUseCase.h
+- [ ] application/usecases/system/ConfigureBitLockerUseCase.h / .cpp
+- [ ] adapters/platform/win32/security/FveApiBitLockerService.h / .cpp
+- [ ] tests/application/usecases/ConfigureBitLockerUseCaseTests.cpp
+- [ ] tests/mocks/MockBitLockerService.h
+
 ---
 
 ## 📊 진행률
 
 ### 전체 아키텍처
 - Domain 계층: **75%** (primitives, entities, events 완료 / storage 미완)
-- Abstractions 계층: **65%** (주요 인터페이스 완료 / storage 인터페이스 미완)
+- Abstractions 계층: **65%** (주요 인터페이스 완료 / security·storage 미완)
 - Application 계층: **60%** (MVVM + DI + Config + SystemAnalysis 완료)
-- Adapters 계층: **50%** (로깅, Config, UI 전체, SystemInfo, FileCopy, Volume 완료 / IOCTL·Imaging 미완)
+- Adapters 계층: **50%** (로깅, Config, UI 전체, SystemInfo, FileCopy, Volume 완료 / IOCTL·Imaging·Security 미완)
 - Main 계층: **100%**
 
 ### 기능별
@@ -553,6 +720,7 @@ std::shared_ptr<TInterface> ResolveOrThrow(DIContainer& container, const char* n
 - ✅ UI 컨트롤 (GDI 리소스 관리 포함): 100%
 - ⏳ 디스크 서비스 (IOCTL): 0%
 - ⏳ 이미징 (wimlib 실구현): 0%
+- ⏳ BitLocker (FveAPI): 0%
 
 ---
 
