@@ -329,15 +329,24 @@ namespace winsetup::application {
 USERPROFILE=kdic
 
 [PARTITION]
-DATAPARTITIOM=TRUE
+DATAPARTITION=TRUE
 
 [BACKUP]
+DESKTOP={USERPROFILE}/desktop
+DOWNLOADS={USERPROFILE}/Downloads
+DOCUMENTS={USERPROFILE}/Documents
+PICTURES={USERPROFILE}/Pictures
+MUSIC={USERPROFILE}/Music
+VIDEOS={USERPROFILE}/Videos
+
 NPKI={USERPROFILE}/AppData/Local/NPKI
 STICKY={USERPROFILE}/AppData/Local/Packages/Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe/LocalState
 
 [TYPES]
-내부망=26-01-01 / 윈도우 11 24H2 VER. 내부망
-외부망=26-01-01 / 윈도우 11 24H2 VER. 외부망
+내부망=내부망 : 26-01-01 / 윈도우 11 24H1
+외부망=외부망 : 26-01-01 / 윈도우 11 24H2
+출장용=출장용 : 26-01-01 / 윈도우 11 24H3
+자회사=자회사 : 26-01-01 / 윈도우 11 24H4
 
 [TIMES]
 15Z90S=120
