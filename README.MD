@@ -1,4 +1,4 @@
-﻿# WinSetup 클린 아키텍처 최종 구현 계획서 v2.0
+﻿# WinSetup 클린 아키텍처 구현 계획서 v1.0
 
 ## 🎯 개요
 
@@ -102,7 +102,8 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 | `SystemAnalysisResult` 위치 | `abstractions::SystemAnalysisResult`로 정의, `application`은 `using` 별칭 |
 | `DIContainer` 저장 타입 | `shared_ptr<void>` 유지 (소멸자 안전), 등록 시 인터페이스 타입으로 캐스트 강제 |
 | Composition Root 실패 처리 | `ResolveOrThrow` 헬퍼로 즉시 `std::runtime_error` throw |
-| GDI 리소스 캐싱 | `OnPaint`마다 `CreateFont` 금지, 멤버 `UniqueHandle`로 캐싱 |
+| GDI 리소스 캐싱 | `OnPaint`마다 `CreateFont` 금지, `Create()` 시점에 멤버 `UniqueHandle`로 캐싱 |
+| 멤버 변수 네이밍 | 전체 `mXxx` camelCase 통일 (예외 없음) |
 
 ### 3. MVVM 패턴 적용
 
@@ -165,7 +166,7 @@ WinSetup/
 │   │   │   │   │   └── LogLevel.h
 │   │   │   │   ├── messaging/
 │   │   │   │   │   ├── IDispatcher.h
-│   │   │   │   │   ├── IEvent.h              # ✅ using IEvent = domain::DomainEvent
+│   │   │   │   │   ├── IEvent.h              # using IEvent = domain::DomainEvent
 │   │   │   │   │   ├── IEventBus.h
 │   │   │   │   │   └── IMessageQueue.h
 │   │   │   │   └── transaction/
@@ -194,7 +195,7 @@ WinSetup/
 │   │   │   │   ├── IWidget.h
 │   │   │   │   └── IWindow.h
 │   │   │   └── usecases/
-│   │   │       ├── IAnalyzeSystemUseCase.h   # ✅ SystemAnalysisResult 정의 포함
+│   │   │       ├── IAnalyzeSystemUseCase.h   # SystemAnalysisResult 정의 포함
 │   │   │       └── ILoadConfigurationUseCase.h
 │   │   │
 │   │   ├── application/
@@ -209,7 +210,7 @@ WinSetup/
 │   │   │   ├── dto/
 │   │   │   │   ├── DiskAnalysisResult.h
 │   │   │   │   ├── InstallationProgress.h
-│   │   │   │   └── SystemAnalysisResult.h    # ✅ using SystemAnalysisResult = abstractions::SystemAnalysisResult
+│   │   │   │   └── SystemAnalysisResult.h    # using SystemAnalysisResult = abstractions::SystemAnalysisResult
 │   │   │   ├── eventhandlers/
 │   │   │   │   ├── DiskAnalyzedEventHandler.h / .cpp
 │   │   │   │   └── InstallProgressEventHandler.h / .cpp
@@ -232,23 +233,23 @@ WinSetup/
 │   │   │   │       ├── AnalyzeSystemUseCase.h / .cpp
 │   │   │   │       └── LoadConfigurationUseCase.h / .cpp
 │   │   │   └── viewmodels/
-│   │   │       ├── MainViewModel.h            # ✅ mAnalysisResult: abstractions::SystemAnalysisResult
+│   │   │       ├── MainViewModel.h
 │   │   │       └── MainViewModel.cpp
 │   │   │
 │   │   ├── domain/
 │   │   │   ├── entities/
-│   │   │   │   ├── DiskInfo.h / .cpp          # ✅ Aggregate Root (PartitionInfo 직접 소유, 설계 의도)
+│   │   │   │   ├── DiskInfo.h / .cpp          # Aggregate Root (PartitionInfo 직접 소유)
 │   │   │   │   ├── PartitionInfo.h / .cpp
 │   │   │   │   ├── SetupConfig.h / .cpp
-│   │   │   │   ├── SystemInfo.h / .cpp        # ✅ 메타정보만 (DiskInfo/VolumeInfo 제거)
+│   │   │   │   ├── SystemInfo.h               # 메타정보만 (DiskInfo/VolumeInfo 미포함)
 │   │   │   │   └── VolumeInfo.h / .cpp
 │   │   │   ├── events/
-│   │   │   │   ├── DomainEvent.h / .cpp       # ✅ DomainEventBase<T> CRTP 템플릿 포함
-│   │   │   │   ├── DiskAnalyzedEvent.h        # ✅ DomainEventBase<T> 상속
-│   │   │   │   ├── ErrorOccurredEvent.h       # ✅ DomainEventBase<T> 상속
-│   │   │   │   ├── InstallCompletedEvent.h    # ✅ DomainEventBase<T> 상속
-│   │   │   │   ├── InstallProgressEvent.h     # ✅ DomainEventBase<T> 상속
-│   │   │   │   └── InstallStartedEvent.h      # ✅ DomainEventBase<T> 상속
+│   │   │   │   ├── DomainEvent.h / .cpp       # DomainEventBase<T> CRTP 템플릿 포함
+│   │   │   │   ├── DiskAnalyzedEvent.h        # DomainEventBase<T> 상속
+│   │   │   │   ├── ErrorOccurredEvent.h       # DomainEventBase<T> 상속
+│   │   │   │   ├── InstallCompletedEvent.h    # DomainEventBase<T> 상속
+│   │   │   │   ├── InstallProgressEvent.h     # DomainEventBase<T> 상속
+│   │   │   │   └── InstallStartedEvent.h      # DomainEventBase<T> 상속
 │   │   │   ├── functional/
 │   │   │   │   ├── Compose.h
 │   │   │   │   ├── Monads.h
@@ -308,6 +309,7 @@ WinSetup/
 │   │   │   │   │   ├── IOCTLWrapper.h / .cpp
 │   │   │   │   │   ├── MFTScanner.h / .cpp
 │   │   │   │   │   ├── Win32DiskService.h / .cpp
+│   │   │   │   │   ├── Win32FileCopyService.h / .cpp
 │   │   │   │   │   └── Win32VolumeService.h / .cpp
 │   │   │   │   ├── system/
 │   │   │   │   │   ├── FirmwareTableReader.h
@@ -320,18 +322,20 @@ WinSetup/
 │   │   │   └── ui/win32/
 │   │   │       ├── controls/
 │   │   │       │   ├── SimpleButton.h / .cpp
-│   │   │       │   └── ToggleButton.h / .cpp
+│   │   │       │   ├── TextWidget.h / .cpp
+│   │   │       │   ├── ToggleButton.h / .cpp
+│   │   │       │   └── TypeSelectorGroup.h / .cpp  # mLabelFont UniqueHandle 캐싱
 │   │   │       ├── panels/
 │   │   │       │   ├── ActionPanel.h / .cpp
-│   │   │       │   ├── OptionPanel.h / .cpp   # ✅ 멤버명 mXxx 컨벤션 통일
-│   │   │       │   └── StatusPanel.h / .cpp   # ✅ HFONT UniqueHandle 캐싱
+│   │   │       │   ├── OptionPanel.h / .cpp        # mViewModel mXxx 컨벤션
+│   │   │       │   └── StatusPanel.h / .cpp        # mFontStatus/mFontDesc UniqueHandle 캐싱
 │   │   │       ├── Win32MainWindow.h / .cpp
-│   │   │       └── Win32ProgressBar.h / .cpp
+│   │   │       └── Win32ProgressBar.h / .cpp       # mFontProgress/mFontTime UniqueHandle 캐싱
 │   │   │
 │   │   └── main/
 │   │       ├── Main.cpp
 │   │       ├── ServiceRegistration.h
-│   │       └── ServiceRegistration.cpp        # ✅ ResolveOrThrow 헬퍼, 실패 시 즉시 throw
+│   │       └── ServiceRegistration.cpp             # ResolveOrThrow, 실패 시 즉시 throw
 │   │
 │   ├── lib/
 │   │   └── wimlib.h
@@ -378,7 +382,7 @@ WinSetup/
 
 ### 1. 이벤트 시스템 단일화
 
-`DomainEvent`를 Domain 계층에서 정의하고 `abstractions::IEvent`는 `using` 별칭으로 연결합니다. 이로써 도메인 이벤트를 `IEventBus::Publish()`에 직접 전달할 수 있습니다.
+`DomainEvent`를 Domain 계층에서 정의하고 `abstractions::IEvent`는 `using` 별칭으로 연결합니다.
 
 ```
 domain::DomainEvent          ← 실제 정의
@@ -403,14 +407,13 @@ abstractions::SystemAnalysisResult  ← 실제 정의 (IAnalyzeSystemUseCase.h �
 application::SystemAnalysisResult   ← using 별칭 (SystemAnalysisResult.h)
 ```
 
-- `AnalyzeSystemUseCase::Execute()` 에서 1회만 생성
+- `AnalyzeSystemUseCase::Execute()`에서 1회만 생성
 - `MainViewModel`이 `shared_ptr<const abstractions::SystemAnalysisResult>`로 소유
 - 모든 하위 UseCase는 `shared_ptr<const SystemAnalysisResult>`로 읽기 전용 수신
 
 ### 3. Composition Root 실패 처리
 
 ```cpp
-// ServiceRegistration.cpp 내부 익명 namespace
 template <typename TInterface>
 std::shared_ptr<TInterface> ResolveOrThrow(DIContainer& container, const char* name) {
     auto result = container.Resolve<TInterface>();
@@ -424,12 +427,24 @@ std::shared_ptr<TInterface> ResolveOrThrow(DIContainer& container, const char* n
 
 ### 4. GDI 리소스 캐싱 규칙
 
-`OnPaint` 콜백 내에서 `CreateFont` 직접 호출 금지. 패널 생성 시점(`Create()`)에 멤버 `UniqueHandle`로 캐싱합니다.
+`OnPaint` 콜백 내 `CreateFont` 직접 호출 금지. `Create()` 시점에 `EnsureFonts()`를 호출하여 멤버 `UniqueHandle`로 1회 생성합니다.
 
 ```
-StatusPanel::Create() → EnsureFonts() → mFontStatus, mFontDesc 1회 생성
-OnPaint() → EnsureFonts() (가드) → SelectObject만 수행
+모든 UI 컴포넌트의 폰트 관리 패턴 통일:
+  Create() → EnsureFonts() → mFontXxx (UniqueHandle) 1회 생성
+  OnPaint() → EnsureFonts() (guard) → SelectObject만 수행
+
+적용 파일:
+  StatusPanel      → mFontStatus, mFontDesc
+  Win32ProgressBar → mFontProgress, mFontTime
+  TypeSelectorGroup → mLabelFont
+  ToggleButton     → mhFont
+  SimpleButton     → UniqueHandle
 ```
+
+### 5. 멤버 변수 네이밍 규칙
+
+프로젝트 전체 `mXxx` camelCase 단일 표준. `m_xxx`, `mxxx` 형태 금지.
 
 ---
 
@@ -450,7 +465,7 @@ OnPaint() → EnsureFonts() (가드) → SelectObject만 수행
 - ✅ domain/entities/SetupConfig
 
 #### Phase 3: 이벤트 시스템
-- ✅ domain/events/DomainEvent + DomainEventBase<T>
+- ✅ domain/events/DomainEvent + DomainEventBase\<T\>
 - ✅ domain/events/DiskAnalyzedEvent
 - ✅ domain/events/ErrorOccurredEvent
 - ✅ domain/events/InstallCompletedEvent
@@ -473,43 +488,46 @@ OnPaint() → EnsureFonts() (가드) → SelectObject만 수행
 - ✅ abstractions/ui/IPropertyChanged
 - ✅ abstractions/ui/IMainViewModel
 - ✅ application/viewmodels/MainViewModel
-- ✅ adapters/ui/win32/panels/StatusPanel (HFONT UniqueHandle 캐싱)
+- ✅ adapters/ui/win32/panels/StatusPanel
 - ✅ adapters/ui/win32/panels/ActionPanel
-- ✅ adapters/ui/win32/panels/OptionPanel (멤버명 컨벤션 통일)
+- ✅ adapters/ui/win32/panels/OptionPanel
+- ✅ adapters/ui/win32/controls/TypeSelectorGroup
 - ✅ adapters/ui/win32/Win32MainWindow
+- ✅ adapters/ui/win32/Win32ProgressBar
 
 #### Phase 7: DI Container & Composition Root
 - ✅ application/core/DIContainer
 - ✅ main/ServiceRegistration (ResolveOrThrow 적용)
 
-### 🚧 진행 중인 Phase
-
 #### Phase 8: Win32 Core Infrastructure
-- ✅ UniqueHandle, Win32Logger 완료
-- [ ] Win32TypeMapper
-- [ ] Win32ErrorHandler
-- [ ] Win32StringHelper
+- ✅ UniqueHandle / UniqueFindHandle / UniqueLibrary
+- ✅ Win32Logger
+- ✅ Win32HandleFactory
+- ✅ Win32SystemInfoService + SMBIOSParser
+- ✅ Win32FileCopyService
+- ✅ Win32VolumeService
 
 ### 📋 미완료 Phase
 
 #### Phase 9: Storage Adapters
 - [ ] IOCTLWrapper + AsyncIOCTL
 - [ ] Win32DiskService
-- [ ] Win32VolumeService
 - [ ] MFTScanner
 - [ ] DiskTransaction
 
-#### Phase 10: SMBIOS & System Info
-- [ ] SMBIOSParser
-- [ ] Win32SystemInfoService
-
-#### Phase 11: Imaging Services
-- [ ] WimlibAdapter
+#### Phase 10: Imaging Services
+- [ ] WimlibAdapter (ApplyImage / CaptureImage / GetImageInfo 실구현)
 - [ ] DismAdapter
+
+#### Phase 11: Win32 Core 잔여
+- [ ] Win32TypeMapper
+- [ ] Win32ErrorHandler
+- [ ] Win32StringHelper
 
 #### Phase 12: 나머지 Use Cases
 - [ ] InstallWindowsUseCase
 - [ ] BackupUserDataUseCase
+- [ ] RestoreUserDataUseCase
 - [ ] 기타 UseCases
 
 ---
@@ -520,8 +538,8 @@ OnPaint() → EnsureFonts() (가드) → SelectObject만 수행
 - Domain 계층: **75%** (primitives, entities, events 완료 / storage 미완)
 - Abstractions 계층: **65%** (주요 인터페이스 완료 / storage 인터페이스 미완)
 - Application 계층: **60%** (MVVM + DI + Config + SystemAnalysis 완료)
-- Adapters 계층: **35%** (로깅, Config, UI 패널 완료 / storage 미완)
-- Main 계층: **100%** (ServiceRegistration 완료)
+- Adapters 계층: **50%** (로깅, Config, UI 전체, SystemInfo, FileCopy, Volume 완료 / IOCTL·Imaging 미완)
+- Main 계층: **100%**
 
 ### 기능별
 - ✅ 로깅: 100%
@@ -529,10 +547,12 @@ OnPaint() → EnsureFonts() (가드) → SelectObject만 수행
 - ✅ 이벤트 시스템: 100%
 - ✅ MVVM: 100%
 - ✅ DI Container: 100%
-- ✅ 시스템 분석 (인터페이스): 100%
-- ⏳ 디스크 서비스: 0%
-- ⏳ 이미징: 0%
-- ⏳ UI 컨트롤: 40%
+- ✅ 시스템 분석: 100%
+- ✅ 파일 복사: 100%
+- ✅ 볼륨 열거: 100%
+- ✅ UI 컨트롤 (GDI 리소스 관리 포함): 100%
+- ⏳ 디스크 서비스 (IOCTL): 0%
+- ⏳ 이미징 (wimlib 실구현): 0%
 
 ---
 
@@ -573,32 +593,6 @@ OnPaint() → EnsureFonts() (가드) → SelectObject만 수행
 
 ---
 
-## 🔄 변경 이력
-
-### v2.0 (2026-02-23)
-- ✅ **[위반 1 수정]** `IAnalyzeSystemUseCase.h`의 역방향 의존성 제거: `SystemAnalysisResult`를 `abstractions` 레이어로 이전, `application/dto`는 `using` 별칭으로 변경
-- ✅ **[위반 2 수정]** `SystemInfo`에서 `DiskInfo`/`VolumeInfo` 직접 소유 제거: `SystemAnalysisResult` DTO로 분리
-- ✅ **[위반 3 검토]** `DIContainer`의 `shared_ptr<void>` — 소멸자 안전, 등록 시 인터페이스 타입 캐스트 강제로 실질적 위험 없음. 위반 아님
-- ✅ **[위반 4 수정]** `ServiceRegistration` 조용한 실패 제거: `ResolveOrThrow` 헬퍼 도입, 실패 시 즉시 `std::runtime_error` throw
-- ✅ **[위반 5 수정]** `StatusPanel` `OnPaint`마다 `CreateFont` 호출 제거: 멤버 `UniqueHandle`로 캐싱
-- ✅ **[위반 6 수정]** `OptionPanel` 멤버명 `m_xxx` → `mXxx` 컨벤션 통일
-- ✅ **[위반 7 수정]** `DomainEvent`와 `IEvent` 계층 단절 해결: `DomainEventBase<T>` CRTP 도입, `abstractions::IEvent` = `using` 별칭, 모든 도메인 이벤트 `DomainEventBase<T>` 상속으로 변경
-
-### v1.1 (2026-02-18)
-- ✅ MVVM 패턴 추가
-- ✅ Config.ini 파싱 시스템 추가
-- ✅ Win32Logger 경로 변경 (WinSetup.log → log/log.txt)
-- ✅ ErrorCategory에 Validation, NotImplemented 추가
-- ✅ IPropertyChanged 인터페이스 추가
-- ✅ MainViewModel 구현 추가
-- ✅ LoadConfigurationUseCase 추가
-
-### v1.0 (2026-02-15)
-- 초기 계획서 작성
-
----
-
-**계획서 업데이트일**: 2026년 2월 23일
-**버전**: 2.0
-**작성자**: 시니어 소프트웨어 엔지니어
-**상태**: 진행 중 (Phase 8)
+**계획서 작성일**: 2026년 2월 23일
+**버전**: 1.0
+**상태**: 진행 중 (Phase 9)

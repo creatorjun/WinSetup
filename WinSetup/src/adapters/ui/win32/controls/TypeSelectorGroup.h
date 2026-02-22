@@ -2,6 +2,7 @@
 #pragma once
 
 #include <adapters/ui/win32/controls/ToggleButton.h>
+#include <adapters/platform/win32/memory/UniqueHandle.h>
 #include <domain/entities/SetupConfig.h>
 #include <Windows.h>
 #include <string>
@@ -35,11 +36,12 @@ namespace winsetup::adapters::ui {
 
         [[nodiscard]] const std::wstring& GetSelectedKey() const noexcept { return mSelectedKey; }
         [[nodiscard]] const RECT& GetRect()        const noexcept { return mRect; }
-        [[nodiscard]] bool                IsReady()        const noexcept { return !mTypes.empty(); }
+        [[nodiscard]] bool        IsReady()         const noexcept { return !mTypes.empty(); }
 
     private:
         void RecalcButtonRects();
         void DrawGroupBox(HDC hdc) const;
+        void EnsureLabelFont() const;
 
         HWND      mHParent = nullptr;
         HINSTANCE mHInstance = nullptr;
@@ -52,11 +54,9 @@ namespace winsetup::adapters::ui {
 
         int  mGroupId = -1;
         RECT mRect = {};
+        int  mNextButtonId = BTNIDBASE;
 
-        mutable HFONT mLabelFont = nullptr;
-        mutable bool  mLabelFontDirty = true;
-
-        int mNextButtonId = BTNIDBASE;
+        mutable platform::UniqueHandle mLabelFont;
 
         static constexpr int COLS = 2;
         static constexpr int BTNHEIGHT = 32;

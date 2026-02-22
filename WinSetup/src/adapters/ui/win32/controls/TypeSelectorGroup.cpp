@@ -1,5 +1,6 @@
 ﻿// src/adapters/ui/win32/controls/TypeSelectorGroup.cpp
 #include <adapters/ui/win32/controls/TypeSelectorGroup.h>
+#include <adapters/platform/win32/core/Win32HandleFactory.h>
 
 #undef min
 #undef max
@@ -11,18 +12,12 @@ namespace winsetup::adapters::ui {
         , mHInstance(nullptr)
         , mGroupId(-1)
         , mRect{}
-        , mLabelFont(nullptr)
-        , mLabelFontDirty(true)
         , mNextButtonId(BTNIDBASE)
     {
     }
 
     TypeSelectorGroup::~TypeSelectorGroup() {
         mButtons.clear();
-        if (mLabelFont) {
-            DeleteObject(mLabelFont);
-            mLabelFont = nullptr;
-        }
     }
 
     void TypeSelectorGroup::Create(
@@ -33,6 +28,17 @@ namespace winsetup::adapters::ui {
         mHInstance = hInstance;
         mLabel = label;
         mGroupId = groupId;
+        EnsureLabelFont();
+    }
+
+    void TypeSelectorGroup::EnsureLabelFont() const {
+        if (mLabelFont) return;
+        mLabelFont = platform::Win32HandleFactory::MakeGdiObject(
+            CreateFontW(
+                LABELFONTSZ, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI")
+        );
     }
 
     void TypeSelectorGroup::Rebuild(
@@ -126,17 +132,12 @@ namespace winsetup::adapters::ui {
     }
 
     void TypeSelectorGroup::DrawGroupBox(HDC hdc) const {
-        if (mLabelFontDirty || !mLabelFont) {
-            if (mLabelFont) DeleteObject(mLabelFont);
-            mLabelFont = CreateFontW(
-                LABELFONTSZ, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-            mLabelFontDirty = false;
-        }
+        EnsureLabelFont();
 
         HGDIOBJ hOldFont = SelectObject(
-            hdc, mLabelFont ? mLabelFont : GetStockObject(DEFAULT_GUI_FONT));
+            hdc, mLabelFont
+            ? platform::Win32HandleFactory::ToWin32Font(mLabelFont)
+            : GetStockObject(DEFAULT_GUI_FONT));
 
         SIZE labelSize = {};
         GetTextExtentPoint32W(hdc, mLabel.c_str(),

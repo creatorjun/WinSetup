@@ -1,6 +1,6 @@
 ﻿// src/adapters/ui/win32/Win32ProgressBar.cpp
-
 #include <adapters/ui/win32/Win32ProgressBar.h>
+#include <adapters/platform/win32/core/Win32HandleFactory.h>
 #include <Windows.h>
 #include <commctrl.h>
 #include <vector>
@@ -10,11 +10,11 @@
 namespace winsetup::adapters::ui {
 
     Win32ProgressBar::Win32ProgressBar()
-        : m_hProgressWnd(nullptr)
-        , m_hTimeWnd(nullptr)
-        , m_percent(0)
-        , m_remainingSeconds(0)
-        , m_cache{}
+        : mhProgressWnd(nullptr)
+        , mhTimeWnd(nullptr)
+        , mPercent(0)
+        , mRemainingSeconds(0)
+        , mCache{}
     {
     }
 
@@ -29,136 +29,159 @@ namespace winsetup::adapters::ui {
         const int timeW = (width * 30) / 100;
         const int barW = width - timeW - 8;
 
-        m_hProgressWnd = CreateWindowExW(
+        mhProgressWnd = CreateWindowExW(
             0, L"STATIC", nullptr,
             WS_CHILD | WS_VISIBLE | SS_OWNERDRAW,
             x, y, barW, height, hParent,
             reinterpret_cast<HMENU>(static_cast<UINT_PTR>(id)),
             hInstance, nullptr);
 
-        if (m_hProgressWnd)
-            SetWindowSubclass(m_hProgressWnd, ProgressSubclassProc, 0,
+        if (mhProgressWnd)
+            SetWindowSubclass(mhProgressWnd, ProgressSubclassProc, 0,
                 reinterpret_cast<DWORD_PTR>(this));
 
-        m_hTimeWnd = CreateWindowExW(
+        mhTimeWnd = CreateWindowExW(
             0, L"STATIC", L"예상 시간 : --분 --초",
             WS_CHILD | WS_VISIBLE | SS_OWNERDRAW,
             x + barW + 8, y, timeW, height, hParent,
             reinterpret_cast<HMENU>(static_cast<UINT_PTR>(id + 1)),
             hInstance, nullptr);
 
-        if (m_hTimeWnd)
-            SetWindowSubclass(m_hTimeWnd, TimeSubclassProc, 0,
+        if (mhTimeWnd)
+            SetWindowSubclass(mhTimeWnd, TimeSubclassProc, 0,
                 reinterpret_cast<DWORD_PTR>(this));
+
+        EnsureFonts();
+    }
+
+    void Win32ProgressBar::EnsureFonts() {
+        if (!mFontProgress) {
+            mFontProgress = platform::Win32HandleFactory::MakeGdiObject(
+                CreateFontW(11, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                    DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                    CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI")
+            );
+        }
+        if (!mFontTime) {
+            mFontTime = platform::Win32HandleFactory::MakeGdiObject(
+                CreateFontW(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                    DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                    CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI")
+            );
+        }
     }
 
     void Win32ProgressBar::SetProgress(int percent) {
         if (percent < 0)   percent = 0;
         if (percent > 100) percent = 100;
-        if (m_percent != percent) {
-            m_percent = percent;
+        if (mPercent != percent) {
+            mPercent = percent;
             InvalidateCache();
         }
     }
 
     void Win32ProgressBar::SetRemainingSeconds(int seconds) {
         if (seconds < 0) seconds = 0;
-        if (m_remainingSeconds != seconds) {
-            m_remainingSeconds = seconds;
+        if (mRemainingSeconds != seconds) {
+            mRemainingSeconds = seconds;
             UpdateTimeText();
         }
     }
 
     void Win32ProgressBar::Reset() {
-        m_percent = 0;
-        m_remainingSeconds = 0;
+        mPercent = 0;
+        mRemainingSeconds = 0;
         InvalidateCache();
         UpdateTimeText();
     }
 
     void Win32ProgressBar::InvalidateCache() {
-        m_cache.isDirty = true;
-        if (m_hProgressWnd)
-            InvalidateRect(m_hProgressWnd, nullptr, FALSE);
+        mCache.isDirty = true;
+        if (mhProgressWnd)
+            InvalidateRect(mhProgressWnd, nullptr, FALSE);
     }
 
     void Win32ProgressBar::CleanupCache() {
-        if (m_cache.hBitmap) {
-            DeleteObject(m_cache.hBitmap);
-            m_cache.hBitmap = nullptr;
+        if (mCache.hBitmap) {
+            DeleteObject(mCache.hBitmap);
+            mCache.hBitmap = nullptr;
         }
-        if (m_cache.hMemDC) {
-            DeleteDC(m_cache.hMemDC);
-            m_cache.hMemDC = nullptr;
+        if (mCache.hMemDC) {
+            DeleteDC(mCache.hMemDC);
+            mCache.hMemDC = nullptr;
         }
-        m_cache.width = 0;
-        m_cache.height = 0;
-        m_cache.isDirty = true;
+        mCache.width = 0;
+        mCache.height = 0;
+        mCache.isDirty = true;
     }
 
     void Win32ProgressBar::UpdateTimeText() {
-        if (!m_hTimeWnd) return;
+        if (!mhTimeWnd) return;
 
         wchar_t buf[64];
-        if (m_remainingSeconds <= 0)
+        if (mRemainingSeconds <= 0)
             swprintf_s(buf, L"예상 시간 : --분 --초");
         else
             swprintf_s(buf, L"예상 시간 : %02d분 %02d초",
-                m_remainingSeconds / 60,
-                m_remainingSeconds % 60);
+                mRemainingSeconds / 60,
+                mRemainingSeconds % 60);
 
-        SetWindowTextW(m_hTimeWnd, buf);
-        InvalidateRect(m_hTimeWnd, nullptr, TRUE);
+        SetWindowTextW(mhTimeWnd, buf);
+        InvalidateRect(mhTimeWnd, nullptr, TRUE);
     }
 
     void Win32ProgressBar::DrawProgress(HDC hdc) const {
-        if (!m_hProgressWnd) return;
+        if (!mhProgressWnd) return;
 
         RECT rc;
-        GetClientRect(m_hProgressWnd, &rc);
+        GetClientRect(mhProgressWnd, &rc);
 
-        if (m_cache.width != rc.right || m_cache.height != rc.bottom)
+        if (mCache.width != rc.right || mCache.height != rc.bottom)
             const_cast<Win32ProgressBar*>(this)->CleanupCache();
 
-        if (!m_cache.hMemDC) {
+        if (!mCache.hMemDC) {
             HDC     hMemDC = CreateCompatibleDC(hdc);
             HBITMAP hBitmap = CreateCompatibleBitmap(hdc, rc.right, rc.bottom);
             SelectObject(hMemDC, hBitmap);
-            const_cast<Win32ProgressBar*>(this)->m_cache.hMemDC = hMemDC;
-            const_cast<Win32ProgressBar*>(this)->m_cache.hBitmap = hBitmap;
-            const_cast<Win32ProgressBar*>(this)->m_cache.width = rc.right;
-            const_cast<Win32ProgressBar*>(this)->m_cache.height = rc.bottom;
-            const_cast<Win32ProgressBar*>(this)->m_cache.isDirty = true;
+            auto* self = const_cast<Win32ProgressBar*>(this);
+            self->mCache.hMemDC = hMemDC;
+            self->mCache.hBitmap = hBitmap;
+            self->mCache.width = rc.right;
+            self->mCache.height = rc.bottom;
+            self->mCache.isDirty = true;
         }
 
-        if (!m_cache.isDirty) {
-            BitBlt(hdc, 0, 0, rc.right, rc.bottom, m_cache.hMemDC, 0, 0, SRCCOPY);
+        if (!mCache.isDirty) {
+            BitBlt(hdc, 0, 0, rc.right, rc.bottom, mCache.hMemDC, 0, 0, SRCCOPY);
             return;
         }
 
-        HDC memDC = m_cache.hMemDC;
+        HDC memDC = mCache.hMemDC;
 
         HBRUSH hBgBrush = CreateSolidBrush(COLOR_TRACK);
         FillRect(memDC, &rc, hBgBrush);
         DeleteObject(hBgBrush);
 
         const int barY = (rc.bottom - BAR_HEIGHT_MIN) / 2;
-        const int barH = BAR_HEIGHT_MIN;
-        RECT trackRect = { rc.left, barY, rc.right, barY + barH };
+        RECT trackRect = { rc.left, barY, rc.right, barY + BAR_HEIGHT_MIN };
 
         HPEN hPen = CreatePen(PS_SOLID, 1, COLOR_BORDER);
         HPEN hOldPen = static_cast<HPEN>(SelectObject(memDC, hPen));
         SelectObject(memDC, GetStockObject(NULL_BRUSH));
-        RoundRect(memDC, trackRect.left, trackRect.top, trackRect.right, trackRect.bottom, 4, 4);
+        RoundRect(memDC, trackRect.left, trackRect.top,
+            trackRect.right, trackRect.bottom, 4, 4);
         SelectObject(memDC, hOldPen);
         DeleteObject(hPen);
 
-        if (m_percent > 0) {
+        if (mPercent > 0) {
             const int fillW = static_cast<int>(
-                static_cast<double>(trackRect.right - trackRect.left) * m_percent / 100.0);
-
+                static_cast<double>(trackRect.right - trackRect.left)
+                * mPercent / 100.0);
             if (fillW > 0) {
-                RECT fillRect = { trackRect.left, trackRect.top, trackRect.left + fillW, trackRect.bottom };
+                RECT fillRect = {
+                    trackRect.left, trackRect.top,
+                    trackRect.left + fillW, trackRect.bottom
+                };
                 HBRUSH hFill = CreateSolidBrush(COLOR_FILL);
                 FillRect(memDC, &fillRect, hFill);
                 DeleteObject(hFill);
@@ -166,44 +189,39 @@ namespace winsetup::adapters::ui {
         }
 
         wchar_t pctBuf[8];
-        swprintf_s(pctBuf, L"%d%%", m_percent);
-        HFONT hFont = CreateFontW(11, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-            DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-        HGDIOBJ hOldFont = SelectObject(memDC, hFont);
+        swprintf_s(pctBuf, L"%d%%", mPercent);
+
+        HGDIOBJ hOldFont = SelectObject(
+            memDC, platform::Win32HandleFactory::ToWin32Font(mFontProgress));
         SetBkMode(memDC, TRANSPARENT);
         SetTextColor(memDC, COLOR_TEXT_FG);
-        DrawTextW(memDC, pctBuf, -1, const_cast<RECT*>(&rc), DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+        DrawTextW(memDC, pctBuf, -1, const_cast<RECT*>(&rc),
+            DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         SelectObject(memDC, hOldFont);
-        DeleteObject(hFont);
 
-        const_cast<Win32ProgressBar*>(this)->m_cache.isDirty = false;
-        BitBlt(hdc, 0, 0, rc.right, rc.bottom, m_cache.hMemDC, 0, 0, SRCCOPY);
+        const_cast<Win32ProgressBar*>(this)->mCache.isDirty = false;
+        BitBlt(hdc, 0, 0, rc.right, rc.bottom, mCache.hMemDC, 0, 0, SRCCOPY);
     }
 
     void Win32ProgressBar::DrawTime(HDC hdc) const {
-        if (!m_hTimeWnd) return;
+        if (!mhTimeWnd) return;
+
         RECT rc;
-        GetClientRect(m_hTimeWnd, &rc);
+        GetClientRect(mhTimeWnd, &rc);
 
         HBRUSH hBg = CreateSolidBrush(COLOR_TEXT_BG);
         FillRect(hdc, &rc, hBg);
         DeleteObject(hBg);
 
         wchar_t buf[64];
-        GetWindowTextW(m_hTimeWnd, buf, 64);
+        GetWindowTextW(mhTimeWnd, buf, 64);
 
-        HFONT hFont = CreateFontW(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-            DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-        HFONT hOldFont = static_cast<HFONT>(SelectObject(hdc, hFont));
-
+        HGDIOBJ hOldFont = SelectObject(
+            hdc, platform::Win32HandleFactory::ToWin32Font(mFontTime));
         SetBkMode(hdc, TRANSPARENT);
         SetTextColor(hdc, COLOR_TEXT_FG);
         DrawTextW(hdc, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
         SelectObject(hdc, hOldFont);
-        DeleteObject(hFont);
     }
 
     LRESULT CALLBACK Win32ProgressBar::ProgressSubclassProc(
@@ -223,7 +241,9 @@ namespace winsetup::adapters::ui {
         }
         case WM_ERASEBKGND: return 1;
         case WM_SIZE:       pBar->CleanupCache(); return 0;
-        case WM_NCDESTROY:  RemoveWindowSubclass(hWnd, ProgressSubclassProc, uIdSubclass); break;
+        case WM_NCDESTROY:
+            RemoveWindowSubclass(hWnd, ProgressSubclassProc, uIdSubclass);
+            break;
         }
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
     }
@@ -244,9 +264,11 @@ namespace winsetup::adapters::ui {
             return 0;
         }
         case WM_ERASEBKGND: return 1;
-        case WM_NCDESTROY:  RemoveWindowSubclass(hWnd, TimeSubclassProc, uIdSubclass); break;
+        case WM_NCDESTROY:
+            RemoveWindowSubclass(hWnd, TimeSubclassProc, uIdSubclass);
+            break;
         }
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
     }
 
-} // namespace winsetup::adapters::ui
+}
