@@ -1,27 +1,49 @@
 ﻿// src/application/usecases/system/AnalyzeSystemUseCase.h
 #pragma once
+
 #include <abstractions/usecases/IAnalyzeSystemUseCase.h>
 #include <abstractions/services/platform/ISystemInfoService.h>
+#include <abstractions/services/storage/IDiskService.h>
+#include <abstractions/services/storage/IVolumeService.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
 #include <domain/primitives/Expected.h>
-#include <domain/entities/SystemInfo.h>
 #include <memory>
 
 namespace winsetup::application {
 
-    class AnalyzeSystemUseCase : public abstractions::IAnalyzeSystemUseCase {
+    class AnalyzeSystemUseCase final : public abstractions::IAnalyzeSystemUseCase {
     public:
         explicit AnalyzeSystemUseCase(
             std::shared_ptr<abstractions::ISystemInfoService> systemInfoService,
-            std::shared_ptr<abstractions::ILogger>            logger);
+            std::shared_ptr<abstractions::ILogger>            logger
+        );
+
+        explicit AnalyzeSystemUseCase(
+            std::shared_ptr<abstractions::ISystemInfoService> systemInfoService,
+            std::shared_ptr<abstractions::IDiskService>       diskService,
+            std::shared_ptr<abstractions::IVolumeService>     volumeService,
+            std::shared_ptr<abstractions::ILogger>            logger
+        );
+
         ~AnalyzeSystemUseCase() override = default;
 
-        [[nodiscard]] domain::Expected<std::shared_ptr<domain::SystemInfo>>
+        [[nodiscard]] domain::Expected<std::shared_ptr<SystemAnalysisResult>>
             Execute() override;
 
     private:
+        [[nodiscard]] domain::Expected<std::shared_ptr<domain::SystemInfo>>
+            CollectSystemInfo() const;
+
+        [[nodiscard]] domain::Expected<std::shared_ptr<std::vector<domain::DiskInfo>>>
+            CollectDisks() const;
+
+        [[nodiscard]] domain::Expected<std::shared_ptr<std::vector<domain::VolumeInfo>>>
+            CollectVolumes() const;
+
         std::shared_ptr<abstractions::ISystemInfoService> mSystemInfoService;
+        std::shared_ptr<abstractions::IDiskService>       mDiskService;
+        std::shared_ptr<abstractions::IVolumeService>     mVolumeService;
         std::shared_ptr<abstractions::ILogger>            mLogger;
     };
 
-} // namespace winsetup::application
+}
