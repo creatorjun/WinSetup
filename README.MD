@@ -108,7 +108,7 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 | Composition Root 실패 처리 | `ResolveOrThrow` 헬퍼로 즉시 `std::runtime_error` throw |
 | GDI 리소스 캐싱 | `OnPaint`마다 `CreateFont` 금지, `Create()` 시점에 멤버 `UniqueHandle`로 캐싱 |
 | 멤버 변수 네이밍 | 전체 `mXxx` camelCase 통일 (예외 없음) |
-| BitLocker 활성화 조건 | `config.ini` `[BITLOCKER]` 섹션 `ENABLED=Yes` 시에만 실행 |
+| BitLocker 활성화 조건 | UI의 BitLocker 설정 옵션이 활성화 된 경우에만 실행 |
 | BitLocker PIN | `config.ini` `[BITLOCKER]` 섹션 `PINNUMBER` 값 사용 |
 | BitLocker Data 자동 해제 | Windows AutoUnlock 기능 사용 (`manage-bde -autounlock -enable D:` 동작) |
 | 복구 정보 저장 | `<exe폴더>/bitlocker/bitlocker.txt` — `UID : 복구비밀번호` 형식 |
@@ -153,7 +153,7 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 
 ### 개요
 
-설치 완료 후 `config.ini`의 `[BITLOCKER]` 섹션 `ENABLED=Yes` 설정이 활성화된 경우에만 실행됩니다.
+설치 완료 후 UI의 Bitlocker 설정 버튼이 활성화된 경우에만 실행됩니다.
 FveAPI(`fveapi.dll`)를 동적 로딩하여 아래 `manage-bde` 명령어와 동일한 동작을 수행합니다.
 
 ```
@@ -166,9 +166,34 @@ manage-bde -autounlock -enable D:
 ### config.ini 설정
 
 ```ini
+[USERPROFILE]
+USERPROFILE=kdic
+
+[PARTITION]
+DATAPARTITION=TRUE
+
+[BACKUP]
+DESKTOP={USERPROFILE}/desktop
+DOWNLOADS={USERPROFILE}/Downloads
+DOCUMENTS={USERPROFILE}/Documents
+PICTURES={USERPROFILE}/Pictures
+MUSIC={USERPROFILE}/Music
+VIDEOS={USERPROFILE}/Videos
+
+NPKI={USERPROFILE}/AppData/Local/NPKI
+STICKY={USERPROFILE}/AppData/Local/Packages/Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe/LocalState
+
+[TYPES]
+내부망=내부망 : 26-01-01 / 윈도우 11 24H1
+외부망=외부망 : 26-01-01 / 윈도우 11 24H2
+출장용=출장용 : 26-01-01 / 윈도우 11 24H3
+자회사=자회사 : 26-01-01 / 윈도우 11 24H4
+
 [BITLOCKER]
-ENABLED=Yes
 PINNUMBER=900000
+
+[TIMES]
+15Z90S=120
 ```
 
 | 키 | 설명 | 기본값 |
