@@ -225,6 +225,9 @@
     <ClCompile Include="src\adapters\platform\win32\storage\Win32FileCopyService.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="src\adapters\persistence\analysis\AnalysisRepository.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\main\ServiceRegistration.h">
@@ -612,6 +615,12 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\domain\valueobjects\InstallationType.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\adapters\persistence\analysis\AnalysisRepository.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\repositories\IAnalysisRepository.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

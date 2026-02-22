@@ -2,6 +2,7 @@
 #include <main/ServiceRegistration.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
 #include <abstractions/repositories/IConfigRepository.h>
+#include <abstractions/repositories/IAnalysisRepository.h>
 #include <abstractions/services/platform/ISystemInfoService.h>
 #include <abstractions/services/storage/IFileCopyService.h>
 #include <abstractions/usecases/ILoadConfigurationUseCase.h>
@@ -9,6 +10,7 @@
 #include <abstractions/ui/IMainViewModel.h>
 #include <abstractions/ui/IWindow.h>
 #include <adapters/persistence/config/IniConfigRepository.h>
+#include <adapters/persistence/analysis/AnalysisRepository.h>
 #include <adapters/platform/win32/logging/Win32Logger.h>
 #include <adapters/platform/win32/storage/Win32FileCopyService.h>
 #include <adapters/platform/win32/system/Win32SystemInfoService.h>
@@ -34,7 +36,10 @@ namespace winsetup {
         }
     }
 
-    void ServiceRegistration::RegisterAllServices(application::DIContainer& container, HINSTANCE hInstance) {
+    void ServiceRegistration::RegisterAllServices(
+        application::DIContainer& container,
+        HINSTANCE hInstance)
+    {
         RegisterInfrastructureServices(container);
         RegisterDomainServices(container);
         RegisterRepositoryServices(container);
@@ -45,25 +50,39 @@ namespace winsetup {
         RegisterUIServices(container, hInstance);
     }
 
-    void ServiceRegistration::RegisterInfrastructureServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterInfrastructureServices(
+        application::DIContainer& container)
+    {
         auto logger = std::make_shared<adapters::platform::Win32Logger>(L"log/log.txt");
         container.RegisterInstance<abstractions::ILogger>(
             std::static_pointer_cast<abstractions::ILogger>(logger)
         );
     }
 
-    void ServiceRegistration::RegisterDomainServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterDomainServices(
+        application::DIContainer& container)
+    {
     }
 
-    void ServiceRegistration::RegisterRepositoryServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterRepositoryServices(
+        application::DIContainer& container)
+    {
         container.RegisterInstance<abstractions::IConfigRepository>(
             std::static_pointer_cast<abstractions::IConfigRepository>(
                 std::make_shared<adapters::persistence::IniConfigRepository>()
             )
         );
+
+        container.RegisterInstance<abstractions::IAnalysisRepository>(
+            std::static_pointer_cast<abstractions::IAnalysisRepository>(
+                std::make_shared<adapters::persistence::AnalysisRepository>()
+            )
+        );
     }
 
-    void ServiceRegistration::RegisterPlatformServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterPlatformServices(
+        application::DIContainer& container)
+    {
         auto logger = ResolveOrThrow<abstractions::ILogger>(container, "ILogger");
 
         container.RegisterInstance<abstractions::ISystemInfoService>(
@@ -73,7 +92,9 @@ namespace winsetup {
         );
     }
 
-    void ServiceRegistration::RegisterStorageServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterStorageServices(
+        application::DIContainer& container)
+    {
         auto logger = ResolveOrThrow<abstractions::ILogger>(container, "ILogger");
 
         container.RegisterInstance<abstractions::IFileCopyService>(
@@ -83,9 +104,12 @@ namespace winsetup {
         );
     }
 
-    void ServiceRegistration::RegisterUseCaseServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterUseCaseServices(
+        application::DIContainer& container)
+    {
         auto logger = ResolveOrThrow<abstractions::ILogger>(container, "ILogger");
         auto repo = ResolveOrThrow<abstractions::IConfigRepository>(container, "IConfigRepository");
+        auto analysis = ResolveOrThrow<abstractions::IAnalysisRepository>(container, "IAnalysisRepository");
         auto sysInfo = ResolveOrThrow<abstractions::ISystemInfoService>(container, "ISystemInfoService");
 
         container.RegisterInstance<abstractions::ILoadConfigurationUseCase>(
@@ -96,24 +120,37 @@ namespace winsetup {
 
         container.RegisterInstance<abstractions::IAnalyzeSystemUseCase>(
             std::static_pointer_cast<abstractions::IAnalyzeSystemUseCase>(
-                std::make_shared<application::AnalyzeSystemUseCase>(sysInfo, logger)
+                std::make_shared<application::AnalyzeSystemUseCase>(sysInfo, analysis, logger)
             )
         );
     }
 
-    void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterApplicationServices(
+        application::DIContainer& container)
+    {
         auto logger = ResolveOrThrow<abstractions::ILogger>(container, "ILogger");
         auto loadConfig = ResolveOrThrow<abstractions::ILoadConfigurationUseCase>(container, "ILoadConfigurationUseCase");
         auto analyze = ResolveOrThrow<abstractions::IAnalyzeSystemUseCase>(container, "IAnalyzeSystemUseCase");
+        auto configRepo = ResolveOrThrow<abstractions::IConfigRepository>(container, "IConfigRepository");
+        auto analysis = ResolveOrThrow<abstractions::IAnalysisRepository>(container, "IAnalysisRepository");
 
         container.RegisterInstance<abstractions::IMainViewModel>(
             std::static_pointer_cast<abstractions::IMainViewModel>(
-                std::make_shared<application::MainViewModel>(loadConfig, analyze, logger)
+                std::make_shared<application::MainViewModel>(
+                    loadConfig,
+                    analyze,
+                    configRepo,
+                    analysis,
+                    logger
+                )
             )
         );
     }
 
-    void ServiceRegistration::RegisterUIServices(application::DIContainer& container, HINSTANCE hInstance) {
+    void ServiceRegistration::RegisterUIServices(
+        application::DIContainer& container,
+        HINSTANCE hInstance)
+    {
         auto logger = ResolveOrThrow<abstractions::ILogger>(container, "ILogger");
         auto viewModel = ResolveOrThrow<abstractions::IMainViewModel>(container, "IMainViewModel");
 

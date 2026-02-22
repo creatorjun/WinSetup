@@ -1,5 +1,6 @@
 ﻿// src/application/usecases/system/LoadConfigurationUseCase.h
 #pragma once
+
 #include <abstractions/usecases/ILoadConfigurationUseCase.h>
 #include <abstractions/repositories/IConfigRepository.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
@@ -25,4 +26,4 @@ namespace winsetup::application {
         std::shared_ptr<abstractions::ILogger>           mLogger;
     };
 
-} // namespace winsetup::application
+}

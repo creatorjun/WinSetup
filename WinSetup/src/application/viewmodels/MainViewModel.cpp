@@ -6,10 +6,14 @@ namespace winsetup::application {
     MainViewModel::MainViewModel(
         std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfigUseCase,
         std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     analyzeSystemUseCase,
+        std::shared_ptr<abstractions::IConfigRepository>         configRepository,
+        std::shared_ptr<abstractions::IAnalysisRepository>       analysisRepository,
         std::shared_ptr<abstractions::ILogger>                   logger
     )
         : mLoadConfigUseCase(std::move(loadConfigUseCase))
         , mAnalyzeSystemUseCase(std::move(analyzeSystemUseCase))
+        , mConfigRepository(std::move(configRepository))
+        , mAnalysisRepository(std::move(analysisRepository))
         , mLogger(std::move(logger))
         , mStatusText(L"Ready")
         , mWindowTitle(L"WinSetup v1.0")
@@ -32,8 +36,10 @@ namespace winsetup::application {
     }
 
     std::vector<domain::InstallationType> MainViewModel::GetInstallationTypes() const {
-        if (!mConfig) return {};
-        return mConfig->GetInstallationTypes();
+        if (!mConfigRepository || !mConfigRepository->IsLoaded()) return {};
+        auto result = mConfigRepository->GetConfig();
+        if (!result.HasValue()) return {};
+        return result.Value()->GetInstallationTypes();
     }
 
     std::wstring MainViewModel::GetTypeDescription() const {
@@ -41,8 +47,10 @@ namespace winsetup::application {
     }
 
     void MainViewModel::SetTypeDescription(const std::wstring& key) {
-        if (!mConfig) return;
-        for (const auto& type : mConfig->GetInstallationTypes()) {
+        if (!mConfigRepository || !mConfigRepository->IsLoaded()) return;
+        auto result = mConfigRepository->GetConfig();
+        if (!result.HasValue()) return;
+        for (const auto& type : result.Value()->GetInstallationTypes()) {
             if (type.name == key) {
                 if (mTypeDescription == type.description) return;
                 mTypeDescription = type.description;
@@ -84,7 +92,8 @@ namespace winsetup::application {
         mElapsedSeconds++;
         if (mTotalSeconds > 0u) {
             mProgress = static_cast<int>(
-                static_cast<double>(mElapsedSeconds) / static_cast<double>(mTotalSeconds) * 100.0
+                static_cast<double>(mElapsedSeconds) /
+                static_cast<double>(mTotalSeconds) * 100.0
                 );
             if (mProgress > 100) mProgress = 100;
         }
@@ -109,11 +118,19 @@ namespace winsetup::application {
         if (mLogger) mLogger->Info(L"MainViewModel: Initialization started.");
 
         auto sysResult = RunAnalyzeSystem();
-        auto cfgResult = RunLoadConfiguration();
+        if (!sysResult.HasValue()) {
+            if (mLogger)
+                mLogger->Warning(L"System analysis failed: " +
+                    sysResult.GetError().GetMessage());
+        }
 
+        auto cfgResult = RunLoadConfiguration();
         if (!cfgResult.HasValue()) {
             mIsInitializing = false;
             SetStatusText(L"Failed to load configuration");
+            if (mLogger)
+                mLogger->Error(L"Configuration load failed: " +
+                    cfgResult.GetError().GetMessage());
             return cfgResult;
         }
 
@@ -127,41 +144,52 @@ namespace winsetup::application {
     }
 
     domain::Expected<void> MainViewModel::RunAnalyzeSystem() {
-        if (!mAnalyzeSystemUseCase) {
-            return domain::Error(L"AnalyzeSystemUseCase not registered", 0, domain::ErrorCategory::System);
-        }
+        if (!mAnalyzeSystemUseCase)
+            return domain::Error(L"AnalyzeSystemUseCase not registered", 0,
+                domain::ErrorCategory::System);
+
         SetStatusText(L"Reading system information...");
 
         auto result = mAnalyzeSystemUseCase->Execute();
         if (!result.HasValue()) return result.GetError();
 
-        mAnalysisResult = result.Value();
         return domain::Expected<void>{};
     }
 
     domain::Expected<void> MainViewModel::RunLoadConfiguration() {
-        if (!mLoadConfigUseCase) {
-            return domain::Error(L"LoadConfigurationUseCase not registered", 0, domain::ErrorCategory::System);
-        }
+        if (!mLoadConfigUseCase)
+            return domain::Error(L"LoadConfigurationUseCase not registered", 0,
+                domain::ErrorCategory::System);
+        if (!mConfigRepository)
+            return domain::Error(L"IConfigRepository not registered", 0,
+                domain::ErrorCategory::System);
+
         SetStatusText(L"Loading configuration...");
 
         auto result = mLoadConfigUseCase->Execute(L"config.ini");
         if (!result.HasValue()) return result.GetError();
-
-        mConfig = result.Value();
 
         mElapsedSeconds = 0u;
         mTotalSeconds = kDefaultTotalSeconds;
         mRemainingSeconds = kDefaultTotalSeconds;
         mProgress = 0;
 
-        if (mAnalysisResult && mAnalysisResult->systemInfo && mConfig) {
-            const std::wstring& model = mAnalysisResult->systemInfo->GetMotherboardModel();
-            if (mConfig->HasEstimatedTime(model)) {
-                const uint32_t secs = mConfig->GetEstimatedTime(model);
-                if (secs > 0u) {
-                    mTotalSeconds = secs;
-                    mRemainingSeconds = secs;
+        auto cfgResult = mConfigRepository->GetConfig();
+        if (!cfgResult.HasValue()) return cfgResult.GetError();
+
+        const auto& config = cfgResult.Value();
+
+        if (mAnalysisRepository && mAnalysisRepository->IsLoaded()) {
+            auto sysInfoResult = mAnalysisRepository->GetSystemInfo();
+            if (sysInfoResult.HasValue() && sysInfoResult.Value() && config) {
+                const std::wstring& model =
+                    sysInfoResult.Value()->GetMotherboardModel();
+                if (config->HasEstimatedTime(model)) {
+                    const uint32_t secs = config->GetEstimatedTime(model);
+                    if (secs > 0u) {
+                        mTotalSeconds = secs;
+                        mRemainingSeconds = secs;
+                    }
                 }
             }
         }
@@ -169,7 +197,8 @@ namespace winsetup::application {
         return domain::Expected<void>{};
     }
 
-    void MainViewModel::AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) {
+    void MainViewModel::AddPropertyChangedHandler(
+        abstractions::PropertyChangedCallback callback) {
         mPropertyChangedHandlers.push_back(std::move(callback));
     }
 
@@ -178,9 +207,8 @@ namespace winsetup::application {
     }
 
     void MainViewModel::NotifyPropertyChanged(const std::wstring& propertyName) {
-        for (const auto& handler : mPropertyChangedHandlers) {
+        for (const auto& handler : mPropertyChangedHandlers)
             handler(propertyName);
-        }
     }
 
 }

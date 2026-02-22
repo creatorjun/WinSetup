@@ -22,6 +22,7 @@
     <ClCompile Include="src\adapters\imaging\DismAdapter.cpp" />
     <ClCompile Include="src\adapters\imaging\WimlibAdapter.cpp" />
     <ClCompile Include="src\adapters\imaging\WimlibOptimizer.cpp" />
+    <ClCompile Include="src\adapters\persistence\analysis\AnalysisRepository.cpp" />
     <ClCompile Include="src\adapters\persistence\config\IniConfigRepository.cpp" />
     <ClCompile Include="src\adapters\persistence\config\IniParser.cpp" />
     <ClCompile Include="src\adapters\persistence\filesystem\Win32FileSystem.cpp" />
@@ -102,6 +103,7 @@
     <ClInclude Include="src\abstractions\infrastructure\messaging\IMessageQueue.h" />
     <ClInclude Include="src\abstractions\infrastructure\transaction\ITransaction.h" />
     <ClInclude Include="src\abstractions\infrastructure\transaction\ITransactionManager.h" />
+    <ClInclude Include="src\abstractions\repositories\IAnalysisRepository.h" />
     <ClInclude Include="src\abstractions\repositories\IConfigRepository.h" />
     <ClInclude Include="src\abstractions\repositories\IDiskRepository.h" />
     <ClInclude Include="src\abstractions\repositories\IVolumeRepository.h" />
@@ -125,6 +127,7 @@
     <ClInclude Include="src\adapters\imaging\DismAdapter.h" />
     <ClInclude Include="src\adapters\imaging\WimlibAdapter.h" />
     <ClInclude Include="src\adapters\imaging\WimlibOptimizer.h" />
+    <ClInclude Include="src\adapters\persistence\analysis\AnalysisRepository.h" />
     <ClInclude Include="src\adapters\persistence\config\IniConfigRepository.h" />
     <ClInclude Include="src\adapters\persistence\config\IniParser.h" />
     <ClInclude Include="src\adapters\persistence\filesystem\Win32FileSystem.h" />

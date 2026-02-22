@@ -1,5 +1,4 @@
 ﻿// src/adapters/persistence/config/IniConfigRepository.h
-
 #pragma once
 
 #include <abstractions/repositories/IConfigRepository.h>
@@ -23,6 +22,11 @@ namespace winsetup::adapters::persistence {
             SaveConfig(const std::wstring& filePath,
                 const domain::SetupConfig& config) override;
 
+        [[nodiscard]] domain::Expected<std::shared_ptr<domain::SetupConfig>>
+            GetConfig() const override;
+
+        [[nodiscard]] bool IsLoaded() const noexcept override;
+
     private:
         [[nodiscard]] domain::Expected<void>
             ParseUserProfile(const IniParser::Section& section, domain::SetupConfig* config);
@@ -43,7 +47,8 @@ namespace winsetup::adapters::persistence {
             ParseBitLocker(const IniParser::Section& section, domain::SetupConfig* config);
 
         [[nodiscard]] bool ParseBool(const std::wstring& value) const;
+
+        std::shared_ptr<domain::SetupConfig> mConfig;
     };
 
 }
-

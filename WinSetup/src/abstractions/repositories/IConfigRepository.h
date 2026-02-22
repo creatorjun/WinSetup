@@ -17,6 +17,11 @@ namespace winsetup::abstractions {
 
         [[nodiscard]] virtual domain::Expected<void>
             SaveConfig(const std::wstring& filePath, const domain::SetupConfig& config) = 0;
+
+        [[nodiscard]] virtual domain::Expected<std::shared_ptr<domain::SetupConfig>>
+            GetConfig() const = 0;
+
+        [[nodiscard]] virtual bool IsLoaded() const noexcept = 0;
     };
 
 }

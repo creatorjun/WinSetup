@@ -4,8 +4,9 @@
 #include <abstractions/ui/IMainViewModel.h>
 #include <abstractions/usecases/ILoadConfigurationUseCase.h>
 #include <abstractions/usecases/IAnalyzeSystemUseCase.h>
+#include <abstractions/repositories/IConfigRepository.h>
+#include <abstractions/repositories/IAnalysisRepository.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
-#include <domain/entities/SetupConfig.h>
 #include <memory>
 #include <vector>
 #include <string>
@@ -17,6 +18,8 @@ namespace winsetup::application {
         explicit MainViewModel(
             std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfigUseCase,
             std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     analyzeSystemUseCase,
+            std::shared_ptr<abstractions::IConfigRepository>         configRepository,
+            std::shared_ptr<abstractions::IAnalysisRepository>       analysisRepository,
             std::shared_ptr<abstractions::ILogger>                   logger
         );
         ~MainViewModel() override = default;
@@ -28,8 +31,8 @@ namespace winsetup::application {
 
         [[nodiscard]] std::vector<domain::InstallationType> GetInstallationTypes() const override;
 
-        [[nodiscard]] std::wstring GetTypeDescription()          const override;
-        void SetTypeDescription(const std::wstring& key)               override;
+        [[nodiscard]] std::wstring GetTypeDescription()   const override;
+        void SetTypeDescription(const std::wstring& key)        override;
 
         [[nodiscard]] bool GetDataPreservation() const override;
         void SetDataPreservation(bool enabled)         override;
@@ -51,13 +54,6 @@ namespace winsetup::application {
         void AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) override;
         void RemoveAllPropertyChangedHandlers() override;
 
-        [[nodiscard]] std::shared_ptr<const abstractions::SystemAnalysisResult> GetAnalysisResult() const noexcept {
-            return mAnalysisResult;
-        }
-        [[nodiscard]] std::shared_ptr<const domain::SetupConfig> GetConfig() const noexcept {
-            return mConfig;
-        }
-
     protected:
         void NotifyPropertyChanged(const std::wstring& propertyName) override;
 
@@ -67,10 +63,9 @@ namespace winsetup::application {
 
         std::shared_ptr<abstractions::ILoadConfigurationUseCase> mLoadConfigUseCase;
         std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     mAnalyzeSystemUseCase;
+        std::shared_ptr<abstractions::IConfigRepository>         mConfigRepository;
+        std::shared_ptr<abstractions::IAnalysisRepository>       mAnalysisRepository;
         std::shared_ptr<abstractions::ILogger>                   mLogger;
-
-        std::shared_ptr<const abstractions::SystemAnalysisResult> mAnalysisResult;
-        std::shared_ptr<const domain::SetupConfig>                mConfig;
 
         std::wstring mStatusText;
         std::wstring mWindowTitle;

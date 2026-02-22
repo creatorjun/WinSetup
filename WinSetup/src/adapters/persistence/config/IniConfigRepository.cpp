@@ -1,5 +1,4 @@
 ﻿// src/adapters/persistence/config/IniConfigRepository.cpp
-
 #include <adapters/persistence/config/IniConfigRepository.h>
 #include <adapters/persistence/config/IniParser.h>
 #include <algorithm>
@@ -14,7 +13,7 @@ namespace winsetup::adapters::persistence {
             return parseResult.GetError();
 
         const auto& data = parseResult.Value();
-        auto        config = std::make_shared<domain::SetupConfig>();
+        auto config = std::make_shared<domain::SetupConfig>();
 
         if (const auto* sec = IniParser::FindSection(data, L"USERPROFILE")) {
             auto result = ParseUserProfile(*sec, config.get());
@@ -45,7 +44,8 @@ namespace winsetup::adapters::persistence {
             return domain::Error(L"Invalid configuration", 0,
                 domain::ErrorCategory::Validation);
 
-        return config;
+        mConfig = config;
+        return mConfig;
     }
 
     domain::Expected<void>
@@ -53,6 +53,18 @@ namespace winsetup::adapters::persistence {
             const domain::SetupConfig& config) {
         return domain::Error(L"SaveConfig not implemented", 0,
             domain::ErrorCategory::NotImplemented);
+    }
+
+    domain::Expected<std::shared_ptr<domain::SetupConfig>>
+        IniConfigRepository::GetConfig() const {
+        if (!mConfig)
+            return domain::Error(L"Configuration not loaded yet. Call LoadConfig() first.",
+                0, domain::ErrorCategory::System);
+        return mConfig;
+    }
+
+    bool IniConfigRepository::IsLoaded() const noexcept {
+        return mConfig != nullptr;
     }
 
     domain::Expected<void>
@@ -123,4 +135,3 @@ namespace winsetup::adapters::persistence {
     }
 
 }
-
