@@ -46,9 +46,12 @@ namespace winsetup::adapters::ui {
     {
         if (!mHParent || !mHInstance) return;
 
-        for (auto& btn : mButtons)
-            if (btn && btn->Handle())
-                DestroyWindow(btn->Handle());
+        for (auto& btn : mButtons) {
+            if (!btn) continue;
+            HWND hBtn = btn->Handle();
+            btn.reset();                          // 1. ~ToggleButton() → SubclassProc 해제
+            if (hBtn) DestroyWindow(hBtn);        // 2. HWND 파괴
+        }
         mButtons.clear();
 
         mTypes = types;

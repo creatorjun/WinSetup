@@ -6,9 +6,9 @@
 #include <typeindex>
 #include <typeinfo>
 #include <functional>
-#include <any>
 #include <shared_mutex>
 #include <string>
+#include <stdexcept>
 #include <domain/primitives/Expected.h>
 #include <domain/primitives/Error.h>
 
@@ -38,16 +38,17 @@ namespace winsetup::application {
             auto factory = [this]() -> std::shared_ptr<void> {
                 auto resolveDep = [this]<typename T>() -> std::shared_ptr<T> {
                     auto result = Resolve<T>();
-                    if (!result.HasValue()) return nullptr;
+                    if (!result.HasValue())
+                        throw std::runtime_error(
+                            "Critical: Failed to resolve dependency in RegisterWithDependencies: "
+                            + std::string(typeid(T).name()));
                     return result.Value();
                 };
                 auto deps = std::make_tuple(resolveDep.template operator() < TDeps > ()...);
-                bool allResolved = std::apply(
-                    [](auto&&... args) { return ((args != nullptr) && ...); }, deps);
-                if (!allResolved) return nullptr;
                 return std::apply(
                     [](auto&&... args) {
-                        return std::make_shared<TImplementation>(std::forward<decltype(args)>(args)...);
+                        return std::make_shared<TImplementation>(
+                            std::forward<decltype(args)>(args)...);
                     }, deps);
                 };
             mRegistrations[std::type_index(typeid(TInterface))] = { factory, lifetime };

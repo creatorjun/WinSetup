@@ -69,10 +69,7 @@ Mock 헤더 구조(`MockLogger.h`, `MockDiskService.h`, `MockEventBus.h`)와 테
 
 ## 🎯 점수 향상 우선순위
 
-1. **`RegisterWithDependencies` 실패 경로 `throw` 처리** — `nullptr` 반환 대신 즉시 예외 (DI Container 완성도)
-2. **`TypeSelectorGroup::Rebuild()` 이중 소멸 위험 검토** — `ToggleButton` 소멸자 확인 후 `DestroyWindow` 루프 제거 여부 결정
 3. **Mock 구현 및 핵심 테스트 케이스 작성** — `DIContainerTests`, `AnalyzeSystemUseCaseTests` 우선
-4. **`DIContainer.h`의 미사용 `<any>` 헤더 제거** — 1줄 수정
 
 ***
 
