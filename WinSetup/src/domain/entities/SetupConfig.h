@@ -39,7 +39,11 @@ namespace winsetup::domain {
 
         [[nodiscard]] bool HasEstimatedTime(const std::wstring& motherboardModel) const;
         [[nodiscard]] uint32_t GetEstimatedTime(const std::wstring& motherboardModel) const;
+        [[nodiscard]] const std::map<std::wstring, uint32_t>& GetEstimatedTimes() const noexcept { return mEstimatedTimes; }
         void SetEstimatedTime(const std::wstring& motherboardModel, uint32_t seconds);
+
+        [[nodiscard]] const std::wstring& GetBitLockerPin() const noexcept { return mBitLockerPin; }
+        void SetBitLockerPin(const std::wstring& pin) { mBitLockerPin = pin; }
 
         [[nodiscard]] std::wstring ResolveBackupPath(const std::wstring& path) const;
         [[nodiscard]] bool IsValid() const noexcept;
@@ -50,6 +54,8 @@ namespace winsetup::domain {
         std::vector<BackupTarget> mBackupTargets;
         std::vector<InstallationType> mInstallationTypes;
         std::map<std::wstring, uint32_t> mEstimatedTimes;
+        std::wstring mBitLockerPin;
     };
 
 }
+

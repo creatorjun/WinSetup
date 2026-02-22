@@ -37,6 +37,11 @@ namespace winsetup::application {
             mLogger->Info(L"  Data Partition    : " + std::wstring(config->HasDataPartition() ? L"Yes" : L"No"));
             mLogger->Info(L"  Backup Targets    : " + std::to_wstring(config->GetBackupTargets().size()));
             mLogger->Info(L"  Installation Types: " + std::to_wstring(config->GetInstallationTypes().size()));
+            mLogger->Info(L"  BitLocker PIN     : " + std::wstring(config->GetBitLockerPin().empty() ? L"Not set" : L"Set"));
+            const auto& times = config->GetEstimatedTimes();
+            mLogger->Info(L"  Estimated Times   : " + std::to_wstring(times.size()) + L" model(s)");
+            for (const auto& [model, seconds] : times)
+                mLogger->Info(L"    " + model + L" = " + std::to_wstring(seconds) + L"s");
         }
 
         return config;

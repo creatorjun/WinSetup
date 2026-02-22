@@ -14,7 +14,7 @@ namespace winsetup::adapters::persistence {
     class IniConfigRepository : public abstractions::IConfigRepository {
     public:
         IniConfigRepository() = default;
-        ~IniConfigRepository()override = default;
+        ~IniConfigRepository() override = default;
 
         [[nodiscard]] domain::Expected<std::shared_ptr<domain::SetupConfig>>
             LoadConfig(const std::wstring& filePath) override;
@@ -39,7 +39,11 @@ namespace winsetup::adapters::persistence {
         [[nodiscard]] domain::Expected<void>
             ParseTimes(const IniParser::Section& section, domain::SetupConfig* config);
 
+        [[nodiscard]] domain::Expected<void>
+            ParseBitLocker(const IniParser::Section& section, domain::SetupConfig* config);
+
         [[nodiscard]] bool ParseBool(const std::wstring& value) const;
     };
 
 }
+

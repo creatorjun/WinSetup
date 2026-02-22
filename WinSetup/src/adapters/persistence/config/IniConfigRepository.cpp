@@ -36,6 +36,10 @@ namespace winsetup::adapters::persistence {
             auto result = ParseTimes(*sec, config.get());
             if (!result.HasValue()) return result.GetError();
         }
+        if (const auto* sec = IniParser::FindSection(data, L"BITLOCKER")) {
+            auto result = ParseBitLocker(*sec, config.get());
+            if (!result.HasValue()) return result.GetError();
+        }
 
         if (!config->IsValid())
             return domain::Error(L"Invalid configuration", 0,
@@ -105,9 +109,18 @@ namespace winsetup::adapters::persistence {
         return domain::Expected<void>();
     }
 
+    domain::Expected<void>
+        IniConfigRepository::ParseBitLocker(const IniParser::Section& section,
+            domain::SetupConfig* config) {
+        if (const auto* v = IniParser::FindValue(section, L"PINNUMBER"))
+            if (!v->empty()) config->SetBitLockerPin(*v);
+        return domain::Expected<void>();
+    }
+
     bool IniConfigRepository::ParseBool(const std::wstring& value) const {
         const std::wstring upper = IniParser::ToUpper(value);
         return upper == L"TRUE" || upper == L"TURE" || upper == L"1" || upper == L"YES";
     }
 
 }
+

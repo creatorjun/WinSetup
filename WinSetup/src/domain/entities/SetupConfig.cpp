@@ -7,6 +7,7 @@ namespace winsetup::domain {
     SetupConfig::SetupConfig()
         : mUserProfile(L"User")
         , mHasDataPartition(false)
+        , mBitLockerPin(L"")
     {
     }
 
@@ -57,3 +58,4 @@ namespace winsetup::domain {
     }
 
 }
+
