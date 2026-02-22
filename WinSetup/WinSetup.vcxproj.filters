@@ -153,9 +153,6 @@
     <ClCompile Include="src\domain\entities\SetupConfig.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\domain\entities\SystemInfo.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="src\domain\entities\VolumeInfo.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>

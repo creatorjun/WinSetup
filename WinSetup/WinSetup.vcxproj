@@ -75,7 +75,6 @@
     <ClCompile Include="src\domain\entities\DiskInfo.cpp" />
     <ClCompile Include="src\domain\entities\PartitionInfo.cpp" />
     <ClCompile Include="src\domain\entities\SetupConfig.cpp" />
-    <ClCompile Include="src\domain\entities\SystemInfo.cpp" />
     <ClCompile Include="src\domain\entities\VolumeInfo.cpp" />
     <ClCompile Include="src\domain\events\DomainEvent.cpp" />
     <ClCompile Include="src\domain\memory\PoolAllocator.cpp" />

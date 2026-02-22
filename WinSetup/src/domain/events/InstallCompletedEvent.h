@@ -1,34 +1,37 @@
 ﻿// src/domain/events/InstallCompletedEvent.h
-
 #pragma once
 
 #include <domain/events/DomainEvent.h>
 #include <string>
-#include <chrono>
 
 namespace winsetup::domain {
 
-    class InstallCompletedEvent : public DomainEvent {
+    class InstallCompletedEvent : public DomainEventBase<InstallCompletedEvent> {
     public:
         InstallCompletedEvent(bool success, std::wstring message, int elapsedSeconds)
-            : m_success(success)
-            , m_message(std::move(message))
-            , m_elapsedSeconds(elapsedSeconds)
+            : mSuccess(success)
+            , mMessage(std::move(message))
+            , mElapsedSeconds(elapsedSeconds)
         {
         }
 
-        [[nodiscard]] std::wstring GetEventType() const noexcept override {
+        [[nodiscard]] static std::wstring StaticEventType() noexcept {
             return L"InstallCompleted";
         }
 
-        [[nodiscard]] bool IsSuccess() const noexcept { return m_success; }
-        [[nodiscard]] const std::wstring& GetMessage() const noexcept { return m_message; }
-        [[nodiscard]] int GetElapsedSeconds() const noexcept { return m_elapsedSeconds; }
+        [[nodiscard]] std::wstring ToString() const override {
+            return L"InstallCompleted: " + mMessage
+                + (mSuccess ? L" [Success]" : L" [Failed]");
+        }
+
+        [[nodiscard]] bool              IsSuccess()        const noexcept { return mSuccess; }
+        [[nodiscard]] const std::wstring& GetMessage()     const noexcept { return mMessage; }
+        [[nodiscard]] int               GetElapsedSeconds() const noexcept { return mElapsedSeconds; }
 
     private:
-        bool m_success;
-        std::wstring m_message;
-        int m_elapsedSeconds;
+        bool         mSuccess;
+        std::wstring mMessage;
+        int          mElapsedSeconds;
     };
 
 }

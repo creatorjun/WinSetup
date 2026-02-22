@@ -1,5 +1,4 @@
-﻿// README.md
-# WinSetup 클린 아키텍처 최종 구현 계획서 v1.0
+﻿# WinSetup 클린 아키텍처 최종 구현 계획서 v2.0
 
 ## 🎯 개요
 
@@ -49,6 +48,7 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 │  ✓ 표준 C++만 사용                       │
 │  ✓ Windows.h 절대 금지                  │
 │  ✓ Expected, Error 등 기본 제공          │
+│  ✓ IEvent / DomainEventBase 정의        │
 │  ✗ HANDLE, HWND 등 플랫폼 타입 금지      │
 └─────────────────────────────────────────┘
             ↑
@@ -57,6 +57,8 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 │  Abstractions (Layer 0)                 │
 │  ✓ 순수 인터페이스                       │
 │  ✓ Domain 타입 사용                      │
+│  ✓ IEvent = domain::DomainEvent (alias) │
+│  ✓ SystemAnalysisResult 정의            │
 │  ✗ 구현 코드 금지                        │
 └─────────────────────────────────────────┘
             ↑
@@ -88,10 +90,21 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 │  Main (Layer 4)                         │
 │  ✓ Composition Root                     │
 │  ✓ Service Registration                 │
+│  ✓ Resolve 실패 시 즉시 throw           │
 └─────────────────────────────────────────┘
 ```
 
-### 2. MVVM 패턴 적용
+### 2. 레이어 간 의존성 핵심 결정 사항
+
+| 결정 사항 | 내용 |
+|---|---|
+| `IEvent` 위치 | `domain::DomainEvent`로 정의, `abstractions`는 `using` 별칭 |
+| `SystemAnalysisResult` 위치 | `abstractions::SystemAnalysisResult`로 정의, `application`은 `using` 별칭 |
+| `DIContainer` 저장 타입 | `shared_ptr<void>` 유지 (소멸자 안전), 등록 시 인터페이스 타입으로 캐스트 강제 |
+| Composition Root 실패 처리 | `ResolveOrThrow` 헬퍼로 즉시 `std::runtime_error` throw |
+| GDI 리소스 캐싱 | `OnPaint`마다 `CreateFont` 금지, 멤버 `UniqueHandle`로 캐싱 |
+
+### 3. MVVM 패턴 적용
 
 ```
 ┌─────────────────────────────────────────┐
@@ -107,7 +120,7 @@ Windows PE 환경에서 실행되는 완벽한 PC 초기화 프로그램을 **�
 │  - 프레젠테이션 로직                     │
 │  - 상태 관리 (StatusText, Progress)     │
 │  - UseCase 호출                         │
-│  - 이벤트 구독                           │
+│  - SystemAnalysisResult 단일 소유       │
 └─────────────────────────────────────────┘
             ↓ Domain/Application
 ┌─────────────────────────────────────────┐
@@ -133,7 +146,6 @@ WinSetup/
 │
 ├── WinSetup.sln
 ├── README.md
-├── ARCHITECTURE.md
 │
 ├── WinSetup/
 │   ├── WinSetup.vcxproj
@@ -142,505 +154,435 @@ WinSetup/
 │   ├── src/
 │   │   │
 │   │   ├── abstractions/
-│   │   │   │
+│   │   │   ├── infrastructure/
+│   │   │   │   ├── async/
+│   │   │   │   │   ├── IAsyncContext.h
+│   │   │   │   │   ├── IExecutor.h
+│   │   │   │   │   ├── IScheduler.h
+│   │   │   │   │   └── IThreadPool.h
+│   │   │   │   ├── logging/
+│   │   │   │   │   ├── ILogger.h
+│   │   │   │   │   └── LogLevel.h
+│   │   │   │   ├── messaging/
+│   │   │   │   │   ├── IDispatcher.h
+│   │   │   │   │   ├── IEvent.h              # ✅ using IEvent = domain::DomainEvent
+│   │   │   │   │   ├── IEventBus.h
+│   │   │   │   │   └── IMessageQueue.h
+│   │   │   │   └── transaction/
+│   │   │   │       ├── ITransaction.h
+│   │   │   │       └── ITransactionManager.h
+│   │   │   ├── repositories/
+│   │   │   │   ├── IConfigRepository.h
+│   │   │   │   ├── IDiskRepository.h
+│   │   │   │   └── IVolumeRepository.h
+│   │   │   ├── services/
+│   │   │   │   ├── platform/
+│   │   │   │   │   ├── ISystemInfoService.h
+│   │   │   │   │   └── ITextEncoder.h
+│   │   │   │   └── storage/
+│   │   │   │       ├── IDiskService.h
+│   │   │   │       ├── IDriverService.h
+│   │   │   │       ├── IFileCopyService.h
+│   │   │   │       ├── IImagingService.h
+│   │   │   │       ├── IPartitionService.h
+│   │   │   │       ├── IStorageScanner.h
+│   │   │   │       └── IVolumeService.h
 │   │   │   ├── ui/
-│   │   │   │   ├── IWindow.h
-│   │   │   │   ├── IWidget.h
+│   │   │   │   ├── IMainViewModel.h
 │   │   │   │   ├── IProgressBar.h
-│   │   │   │   ├── IMainViewModel.h          # ✅ NEW: MVVM ViewModel 인터페이스
-│   │   │   │   └── IPropertyChanged.h        # ✅ NEW: PropertyChanged 인터페이스
-│   │   │   │
-│   │   │   └── repositories/
-│   │   │       └── IConfigRepository.h        # ✅ Config 저장소 인터페이스
+│   │   │   │   ├── IPropertyChanged.h
+│   │   │   │   ├── IWidget.h
+│   │   │   │   └── IWindow.h
+│   │   │   └── usecases/
+│   │   │       ├── IAnalyzeSystemUseCase.h   # ✅ SystemAnalysisResult 정의 포함
+│   │   │       └── ILoadConfigurationUseCase.h
 │   │   │
 │   │   ├── application/
-│   │   │   │
-│   │   │   ├── viewmodels/                    # ✅ NEW: MVVM ViewModels
-│   │   │   │   ├── MainViewModel.h
-│   │   │   │   └── MainViewModel.cpp
-│   │   │   │
-│   │   │   └── usecases/
-│   │   │       └── system/
-│   │   │           ├── LoadConfigurationUseCase.h  # ✅ NEW: Config 로드 UseCase
-│   │   │           └── LoadConfigurationUseCase.cpp
+│   │   │   ├── async/
+│   │   │   │   ├── Awaitable.h
+│   │   │   │   ├── CancellationToken.h / .cpp
+│   │   │   │   ├── Promise.h
+│   │   │   │   └── Task.h / .cpp
+│   │   │   ├── core/
+│   │   │   │   ├── DIContainer.h / .cpp
+│   │   │   │   └── ServiceLocator.h / .cpp
+│   │   │   ├── dto/
+│   │   │   │   ├── DiskAnalysisResult.h
+│   │   │   │   ├── InstallationProgress.h
+│   │   │   │   └── SystemAnalysisResult.h    # ✅ using SystemAnalysisResult = abstractions::SystemAnalysisResult
+│   │   │   ├── eventhandlers/
+│   │   │   │   ├── DiskAnalyzedEventHandler.h / .cpp
+│   │   │   │   └── InstallProgressEventHandler.h / .cpp
+│   │   │   ├── services/
+│   │   │   │   ├── Dispatcher.h / .cpp
+│   │   │   │   ├── EventBus.h / .cpp
+│   │   │   │   └── TaskScheduler.h / .cpp
+│   │   │   ├── usecases/
+│   │   │   │   ├── disk/
+│   │   │   │   │   ├── AnalyzeDisksUseCase.h / .cpp
+│   │   │   │   │   ├── EnumerateDisksUseCase.h / .cpp
+│   │   │   │   │   └── SelectTargetDisksUseCase.h / .cpp
+│   │   │   │   ├── install/
+│   │   │   │   │   ├── ApplyImageUseCase.h / .cpp
+│   │   │   │   │   ├── BackupUserDataUseCase.h / .cpp
+│   │   │   │   │   ├── InjectDriversUseCase.h / .cpp
+│   │   │   │   │   ├── InstallWindowsUseCase.h / .cpp
+│   │   │   │   │   └── RestoreUserDataUseCase.h / .cpp
+│   │   │   │   └── system/
+│   │   │   │       ├── AnalyzeSystemUseCase.h / .cpp
+│   │   │   │       └── LoadConfigurationUseCase.h / .cpp
+│   │   │   └── viewmodels/
+│   │   │       ├── MainViewModel.h            # ✅ mAnalysisResult: abstractions::SystemAnalysisResult
+│   │   │       └── MainViewModel.cpp
 │   │   │
 │   │   ├── domain/
-│   │   │   │
-│   │   │   └── entities/
-│   │   │       ├── SetupConfig.h              # ✅ Config 엔티티
-│   │   │       └── SetupConfig.cpp
+│   │   │   ├── entities/
+│   │   │   │   ├── DiskInfo.h / .cpp          # ✅ Aggregate Root (PartitionInfo 직접 소유, 설계 의도)
+│   │   │   │   ├── PartitionInfo.h / .cpp
+│   │   │   │   ├── SetupConfig.h / .cpp
+│   │   │   │   ├── SystemInfo.h / .cpp        # ✅ 메타정보만 (DiskInfo/VolumeInfo 제거)
+│   │   │   │   └── VolumeInfo.h / .cpp
+│   │   │   ├── events/
+│   │   │   │   ├── DomainEvent.h / .cpp       # ✅ DomainEventBase<T> CRTP 템플릿 포함
+│   │   │   │   ├── DiskAnalyzedEvent.h        # ✅ DomainEventBase<T> 상속
+│   │   │   │   ├── ErrorOccurredEvent.h       # ✅ DomainEventBase<T> 상속
+│   │   │   │   ├── InstallCompletedEvent.h    # ✅ DomainEventBase<T> 상속
+│   │   │   │   ├── InstallProgressEvent.h     # ✅ DomainEventBase<T> 상속
+│   │   │   │   └── InstallStartedEvent.h      # ✅ DomainEventBase<T> 상속
+│   │   │   ├── functional/
+│   │   │   │   ├── Compose.h
+│   │   │   │   ├── Monads.h
+│   │   │   │   ├── Optional.h
+│   │   │   │   └── Pipeline.h
+│   │   │   ├── memory/
+│   │   │   │   └── PoolAllocator.h / .cpp
+│   │   │   ├── primitives/
+│   │   │   │   ├── Error.h / .cpp
+│   │   │   │   ├── Expected.h / .cpp
+│   │   │   │   └── Result.h
+│   │   │   ├── services/
+│   │   │   │   ├── DiskSortingService.h / .cpp
+│   │   │   │   ├── PartitionAnalyzer.h / .cpp
+│   │   │   │   └── PathNormalizer.h / .cpp
+│   │   │   ├── specifications/
+│   │   │   │   ├── DiskSpecifications.h / .cpp
+│   │   │   │   ├── ISpecification.h
+│   │   │   │   └── VolumeSpecifications.h / .cpp
+│   │   │   └── valueobjects/
+│   │   │       ├── BusType.h
+│   │   │       ├── DiskSize.h / .cpp
+│   │   │       ├── DiskType.h
+│   │   │       ├── DriveLetter.h / .cpp
+│   │   │       ├── FileSystemType.h
+│   │   │       ├── InstallationType.h
+│   │   │       └── PartitionType.h
 │   │   │
 │   │   ├── adapters/
-│   │   │   │
-│   │   │   ├── persistence/                   # ✅ NEW: 영구 저장 계층
-│   │   │   │   │
+│   │   │   ├── imaging/
+│   │   │   │   ├── DismAdapter.h / .cpp
+│   │   │   │   ├── WimlibAdapter.h / .cpp
+│   │   │   │   └── WimlibOptimizer.h / .cpp
+│   │   │   ├── persistence/
 │   │   │   │   ├── config/
-│   │   │   │   │   ├── IniParser.h           # ✅ INI 파일 파서
-│   │   │   │   │   ├── IniParser.cpp
-│   │   │   │   │   ├── IniConfigRepository.h # ✅ Config Repository 구현
-│   │   │   │   │   └── IniConfigRepository.cpp
-│   │   │   │   │
+│   │   │   │   │   ├── IniConfigRepository.h / .cpp
+│   │   │   │   │   └── IniParser.h / .cpp
 │   │   │   │   └── filesystem/
-│   │   │   │       ├── Win32FileSystem.h
-│   │   │   │       └── Win32FileSystem.cpp
-│   │   │   │
+│   │   │   │       └── Win32FileSystem.h / .cpp
 │   │   │   ├── platform/win32/
-│   │   │   │   └── logging/
-│   │   │   │       ├── Win32Logger.h         # ✅ log/log.txt 로깅
-│   │   │   │       └── Win32Logger.cpp
-│   │   │   │
-│   │   │   └── ui/win32/                     # ✅ NEW: MVVM View 구현
-│   │   │       ├── Win32MainWindow.h
-│   │   │       ├── Win32MainWindow.cpp
-│   │   │       ├── Win32ProgressBar.h
-│   │   │       └── Win32ProgressBar.cpp
+│   │   │   │   ├── core/
+│   │   │   │   │   ├── Win32Constants.h
+│   │   │   │   │   ├── Win32ErrorHandler.h / .cpp
+│   │   │   │   │   ├── Win32HandleFactory.h / .cpp
+│   │   │   │   │   ├── Win32StringHelper.h / .cpp
+│   │   │   │   │   └── Win32TypeMapper.h / .cpp
+│   │   │   │   ├── logging/
+│   │   │   │   │   └── Win32Logger.h / .cpp
+│   │   │   │   ├── memory/
+│   │   │   │   │   ├── UniqueFindHandle.h
+│   │   │   │   │   ├── UniqueHandle.h / .cpp
+│   │   │   │   │   └── UniqueLibrary.h
+│   │   │   │   ├── storage/
+│   │   │   │   │   ├── AsyncIOCTL.h / .cpp
+│   │   │   │   │   ├── DiskLayoutBuilder.h / .cpp
+│   │   │   │   │   ├── DiskTransaction.h / .cpp
+│   │   │   │   │   ├── IOCTLWrapper.h / .cpp
+│   │   │   │   │   ├── MFTScanner.h / .cpp
+│   │   │   │   │   ├── Win32DiskService.h / .cpp
+│   │   │   │   │   └── Win32VolumeService.h / .cpp
+│   │   │   │   ├── system/
+│   │   │   │   │   ├── FirmwareTableReader.h
+│   │   │   │   │   ├── SMBIOSParser.h / .cpp
+│   │   │   │   │   ├── SMBIOSStructures.h
+│   │   │   │   │   └── Win32SystemInfoService.h / .cpp
+│   │   │   │   └── threading/
+│   │   │   │       ├── Win32Thread.h / .cpp
+│   │   │   │       └── Win32ThreadPool.h / .cpp
+│   │   │   └── ui/win32/
+│   │   │       ├── controls/
+│   │   │       │   ├── SimpleButton.h / .cpp
+│   │   │       │   └── ToggleButton.h / .cpp
+│   │   │       ├── panels/
+│   │   │       │   ├── ActionPanel.h / .cpp
+│   │   │       │   ├── OptionPanel.h / .cpp   # ✅ 멤버명 mXxx 컨벤션 통일
+│   │   │       │   └── StatusPanel.h / .cpp   # ✅ HFONT UniqueHandle 캐싱
+│   │   │       ├── Win32MainWindow.h / .cpp
+│   │   │       └── Win32ProgressBar.h / .cpp
 │   │   │
 │   │   └── main/
 │   │       ├── Main.cpp
-│   │       ├── ServiceRegistration.h          # ✅ DI 등록
-│   │       └── ServiceRegistration.cpp
+│   │       ├── ServiceRegistration.h
+│   │       └── ServiceRegistration.cpp        # ✅ ResolveOrThrow 헬퍼, 실패 시 즉시 throw
 │   │
-│   └── config.ini                             # ✅ NEW: 설정 파일
+│   ├── lib/
+│   │   └── wimlib.h
+│   │
+│   └── config.ini
+│
+└── tests/
+    ├── adapters/
+    │   ├── DiskTransactionTests.cpp
+    │   ├── MFTScannerTests.cpp
+    │   ├── SMBIOSParserTests.cpp
+    │   └── Win32DiskServiceTests.cpp
+    ├── application/
+    │   ├── core/
+    │   │   └── DIContainerTests.cpp
+    │   ├── services/
+    │   │   └── EventBusTests.cpp
+    │   └── usecases/
+    │       ├── AnalyzeSystemUseCaseTests.cpp
+    │       └── InstallWindowsUseCaseTests.cpp
+    ├── domain/
+    │   ├── entities/
+    │   │   ├── DiskInfoTests.cpp
+    │   │   └── SetupConfigTests.cpp
+    │   ├── primitives/
+    │   │   └── ExpectedTests.cpp
+    │   └── services/
+    │       ├── DiskSortingServiceTests.cpp
+    │       ├── PartitionAnalyzerTests.cpp
+    │       └── DiskSpecificationsTests.cpp
+    ├── integration/
+    │   ├── EndToEndTests.cpp
+    │   └── PerformanceTests.cpp
+    ├── mocks/
+    │   ├── MockDiskService.h
+    │   ├── MockEventBus.h
+    │   └── MockLogger.h
+    └── TestMain.cpp
 ```
 
 ---
 
-## 🆕 추가된 구성 요소 상세 설명
+## 🔧 핵심 설계 결정 상세
 
-### 1. MVVM 패턴 구현
+### 1. 이벤트 시스템 단일화
 
-#### abstractions/ui/IPropertyChanged.h
+`DomainEvent`를 Domain 계층에서 정의하고 `abstractions::IEvent`는 `using` 별칭으로 연결합니다. 이로써 도메인 이벤트를 `IEventBus::Publish()`에 직접 전달할 수 있습니다.
+
+```
+domain::DomainEvent          ← 실제 정의
+domain::DomainEventBase<T>   ← CRTP 헬퍼 (GetTypeIndex, GetEventType, Clone 자동 구현)
+abstractions::IEvent         ← using IEvent = domain::DomainEvent
+abstractions::EventBase<T>   ← using EventBase = domain::DomainEventBase<T>
+```
+
+도메인 이벤트 작성 규칙:
 ```cpp
-#pragma once
+class DiskAnalyzedEvent : public domain::DomainEventBase<DiskAnalyzedEvent> {
+public:
+    static std::wstring StaticEventType() noexcept { return L"DiskAnalyzed"; }
+    std::wstring ToString() const override { ... }
+};
+```
 
-#include <functional>
-#include <string>
+### 2. SystemAnalysisResult 단일 진실 공급원
 
-namespace winsetup::abstractions {
+```
+abstractions::SystemAnalysisResult  ← 실제 정의 (IAnalyzeSystemUseCase.h 내)
+application::SystemAnalysisResult   ← using 별칭 (SystemAnalysisResult.h)
+```
 
-    using PropertyChangedCallback = std::function<void(const std::wstring& propertyName)>;
+- `AnalyzeSystemUseCase::Execute()` 에서 1회만 생성
+- `MainViewModel`이 `shared_ptr<const abstractions::SystemAnalysisResult>`로 소유
+- 모든 하위 UseCase는 `shared_ptr<const SystemAnalysisResult>`로 읽기 전용 수신
 
-    class IPropertyChanged {
-    public:
-        virtual ~IPropertyChanged() = default;
-        
-        virtual void AddPropertyChangedHandler(PropertyChangedCallback callback) = 0;
-        virtual void RemoveAllPropertyChangedHandlers() = 0;
+### 3. Composition Root 실패 처리
 
-    protected:
-        virtual void NotifyPropertyChanged(const std::wstring& propertyName) = 0;
-    };
-
+```cpp
+// ServiceRegistration.cpp 내부 익명 namespace
+template <typename TInterface>
+std::shared_ptr<TInterface> ResolveOrThrow(DIContainer& container, const char* name) {
+    auto result = container.Resolve<TInterface>();
+    if (!result.HasValue())
+        throw std::runtime_error(std::string("Critical: Failed to resolve ") + name);
+    return result.Value();
 }
 ```
 
-#### abstractions/ui/IMainViewModel.h
-```cpp
-#pragma once
+`std::runtime_error`는 `Main.cpp`의 catch 블록에서 처리합니다.
 
-#include <string>
-#include "IPropertyChanged.h"
-#include <domain/primitives/Expected.h>
+### 4. GDI 리소스 캐싱 규칙
 
-namespace winsetup::abstractions {
+`OnPaint` 콜백 내에서 `CreateFont` 직접 호출 금지. 패널 생성 시점(`Create()`)에 멤버 `UniqueHandle`로 캐싱합니다.
 
-    class IMainViewModel : public IPropertyChanged {
-    public:
-        virtual ~IMainViewModel() = default;
-
-        [[nodiscard]] virtual std::wstring GetStatusText() const = 0;
-        virtual void SetStatusText(const std::wstring& text) = 0;
-
-        [[nodiscard]] virtual std::wstring GetWindowTitle() const = 0;
-        virtual void SetWindowTitle(const std::wstring& title) = 0;
-
-        [[nodiscard]] virtual bool IsInitializing() const = 0;
-        [[nodiscard]] virtual bool IsProcessing() const = 0;
-        [[nodiscard]] virtual bool IsCompleted() const = 0;
-
-        virtual domain::Expected<void> Initialize() = 0;
-    };
-
-}
 ```
-
-#### application/viewmodels/MainViewModel.h
-```cpp
-#pragma once
-
-#include <abstractions/ui/IMainViewModel.h>
-#include <abstractions/infrastructure/logging/ILogger.h>
-#include <domain/entities/SetupConfig.h>
-#include <memory>
-#include <vector>
-#include <string>
-
-namespace winsetup::application {
-
-    class MainViewModel : public abstractions::IMainViewModel {
-    public:
-        explicit MainViewModel(std::shared_ptr<abstractions::ILogger> logger);
-        ~MainViewModel() override = default;
-
-        [[nodiscard]] std::wstring GetStatusText() const override;
-        void SetStatusText(const std::wstring& text) override;
-
-        [[nodiscard]] std::wstring GetWindowTitle() const override;
-        void SetWindowTitle(const std::wstring& title) override;
-
-        [[nodiscard]] bool IsInitializing() const override { return mIsInitializing; }
-        [[nodiscard]] bool IsProcessing() const override { return mIsProcessing; }
-        [[nodiscard]] bool IsCompleted() const override { return mIsCompleted; }
-
-        domain::Expected<void> Initialize() override;
-
-        void AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) override;
-        void RemoveAllPropertyChangedHandlers() override;
-
-        [[nodiscard]] std::shared_ptr<domain::SetupConfig> GetConfig() const { return mConfig; }
-
-    protected:
-        void NotifyPropertyChanged(const std::wstring& propertyName) override;
-
-    private:
-        domain::Expected<void> LoadConfiguration();
-
-        std::shared_ptr<abstractions::ILogger> mLogger;
-        std::shared_ptr<domain::SetupConfig> mConfig;
-        
-        std::wstring mStatusText;
-        std::wstring mWindowTitle;
-        
-        bool mIsInitializing;
-        bool mIsProcessing;
-        bool mIsCompleted;
-
-        std::vector<abstractions::PropertyChangedCallback> mPropertyChangedHandlers;
-    };
-
-}
-```
-
-### 2. Config.ini 파싱 시스템
-
-#### Config.ini 구조
-```ini
-[USERPROFILE]
-USERPROFILE=kdic
-
-[PARTITION]
-DATAPARTITION=TRUE
-
-[BACKUP]
-DESKTOP={USERPROFILE}/desktop
-DOWNLOADS={USERPROFILE}/Downloads
-DOCUMENTS={USERPROFILE}/Documents
-PICTURES={USERPROFILE}/Pictures
-MUSIC={USERPROFILE}/Music
-VIDEOS={USERPROFILE}/Videos
-
-NPKI={USERPROFILE}/AppData/Local/NPKI
-STICKY={USERPROFILE}/AppData/Local/Packages/Microsoft.MicrosoftStickyNotes_8wekyb3d8bbwe/LocalState
-
-[TYPES]
-내부망=내부망 : 26-01-01 / 윈도우 11 24H1
-외부망=외부망 : 26-01-01 / 윈도우 11 24H2
-출장용=출장용 : 26-01-01 / 윈도우 11 24H3
-자회사=자회사 : 26-01-01 / 윈도우 11 24H4
-
-[TIMES]
-15Z90S=120
-```
-
-#### domain/entities/SetupConfig.h
-```cpp
-#pragma once
-
-#include <string>
-#include <vector>
-#include <map>
-
-namespace winsetup::domain {
-
-    struct BackupTarget {
-        std::wstring name;
-        std::wstring path;
-
-        BackupTarget() = default;
-        BackupTarget(const std::wstring& n, const std::wstring& p)
-            : name(n), path(p) {}
-    };
-
-    struct InstallationType {
-        std::wstring name;
-        std::wstring description;
-
-        InstallationType() = default;
-        InstallationType(const std::wstring& n, const std::wstring& d)
-            : name(n), description(d) {}
-    };
-
-    class SetupConfig {
-    public:
-        SetupConfig();
-        ~SetupConfig() = default;
-
-        [[nodiscard]] const std::wstring& GetUserProfile() const noexcept;
-        void SetUserProfile(const std::wstring& profile);
-
-        [[nodiscard]] bool HasDataPartition() const noexcept;
-        void SetDataPartition(bool hasPartition) noexcept;
-
-        [[nodiscard]] const std::vector<BackupTarget>& GetBackupTargets() const noexcept;
-        void AddBackupTarget(const std::wstring& name, const std::wstring& path);
-
-        [[nodiscard]] const std::vector<InstallationType>& GetInstallationTypes() const noexcept;
-        void AddInstallationType(const std::wstring& name, const std::wstring& description);
-
-        [[nodiscard]] bool HasEstimatedTime(const std::wstring& motherboardModel) const;
-        [[nodiscard]] uint32_t GetEstimatedTime(const std::wstring& motherboardModel) const;
-        void SetEstimatedTime(const std::wstring& motherboardModel, uint32_t seconds);
-
-        [[nodiscard]] std::wstring ResolveBackupPath(const std::wstring& path) const;
-        [[nodiscard]] bool IsValid() const noexcept;
-
-    private:
-        std::wstring mUserProfile;
-        bool mHasDataPartition;
-        std::vector<BackupTarget> mBackupTargets;
-        std::vector<InstallationType> mInstallationTypes;
-        std::map<std::wstring, uint32_t> mEstimatedTimes;
-    };
-
-}
-```
-
-#### adapters/persistence/config/IniParser.h
-```cpp
-#pragma once
-
-#include <domain/primitives/Expected.h>
-#include <string>
-#include <map>
-#include <vector>
-
-namespace winsetup::adapters::persistence {
-
-    class IniParser {
-    public:
-        using Section = std::map<std::wstring, std::wstring>;
-        using IniData = std::map<std::wstring, Section>;
-
-        IniParser() = default;
-        ~IniParser() = default;
-
-        [[nodiscard]] domain::Expected<IniData> Parse(const std::wstring& filePath);
-        [[nodiscard]] domain::Expected<IniData> ParseContent(const std::wstring& content);
-
-        [[nodiscard]] static std::wstring Trim(const std::wstring& str);
-        [[nodiscard]] static std::wstring ToUpper(const std::wstring& str);
-
-    private:
-        [[nodiscard]] bool IsComment(const std::wstring& line) const;
-        [[nodiscard]] bool IsSection(const std::wstring& line) const;
-        [[nodiscard]] std::wstring ExtractSectionName(const std::wstring& line) const;
-        [[nodiscard]] bool ParseKeyValue(const std::wstring& line, 
-                                        std::wstring& key, 
-                                        std::wstring& value) const;
-    };
-
-}
-```
-
-#### application/usecases/system/LoadConfigurationUseCase.h
-```cpp
-#pragma once
-
-#include <domain/primitives/Expected.h>
-#include <domain/entities/SetupConfig.h>
-#include <abstractions/infrastructure/logging/ILogger.h>
-#include <memory>
-#include <string>
-
-namespace winsetup::application {
-
-    class LoadConfigurationUseCase {
-    public:
-        explicit LoadConfigurationUseCase(
-            std::shared_ptr<abstractions::ILogger> logger
-        );
-        ~LoadConfigurationUseCase() = default;
-
-        [[nodiscard]] domain::Expected<std::shared_ptr<domain::SetupConfig>>
-            Execute(const std::wstring& configPath = L"config.ini");
-
-    private:
-        std::shared_ptr<abstractions::ILogger> mLogger;
-    };
-
-}
-```
-
-### 3. Win32MainWindow MVVM 구현
-
-#### adapters/ui/win32/Win32MainWindow.cpp (핵심 부분)
-```cpp
-namespace winsetup::adapters::ui {
-
-    Win32MainWindow::Win32MainWindow(
-        std::shared_ptr<abstractions::IMainViewModel> viewModel,
-        std::shared_ptr<abstractions::ILogger> logger
-    )
-        : mViewModel(std::move(viewModel))
-        , mLogger(std::move(logger))
-        , mHwnd(nullptr)
-    {
-        // ViewModel의 속성 변경 구독
-        if (mViewModel) {
-            mViewModel->AddPropertyChangedHandler(
-                [this](const std::wstring& propertyName) {
-                    OnViewModelPropertyChanged(propertyName);
-                }
-            );
-        }
-    }
-
-    void Win32MainWindow::OnViewModelPropertyChanged(const std::wstring& propertyName) {
-        if (!mHwnd) return;
-
-        if (propertyName == L"StatusText") {
-            // UI 업데이트
-            InvalidateRect(mHwnd, nullptr, TRUE);
-        }
-        else if (propertyName == L"WindowTitle") {
-            SetWindowTextW(mHwnd, mViewModel->GetWindowTitle().c_str());
-        }
-    }
-
-}
+StatusPanel::Create() → EnsureFonts() → mFontStatus, mFontDesc 1회 생성
+OnPaint() → EnsureFonts() (가드) → SelectObject만 수행
 ```
 
 ---
 
-## 📅 업데이트된 구현 단계
+## 📅 구현 단계
 
 ### ✅ 완료된 Phase
 
-#### Phase 1: 기초 인프라 (완료)
-- ✅ domain/primitives/Error
+#### Phase 1: 기초 인프라
+- ✅ domain/primitives/Error (Validation, NotImplemented 포함)
 - ✅ domain/primitives/Expected
 - ✅ abstractions/infrastructure/logging/ILogger
-- ✅ adapters/platform/win32/logging/Win32Logger (log/log.txt 경로)
+- ✅ adapters/platform/win32/logging/Win32Logger (log/log.txt)
 
-#### Phase 2: Domain Entities (완료)
+#### Phase 2: Domain Entities
 - ✅ domain/valueobjects (BusType, DiskType, FileSystemType 등)
-- ✅ domain/entities/SetupConfig (Config.ini 파싱용)
-- ✅ domain/primitives/Error (Validation, NotImplemented 추가)
+- ✅ domain/entities/SystemInfo (메타정보만, DiskInfo/VolumeInfo 분리)
+- ✅ domain/entities/DiskInfo (Aggregate Root, PartitionInfo 직접 소유)
+- ✅ domain/entities/SetupConfig
 
-#### Phase 3: Configuration System (완료)
+#### Phase 3: 이벤트 시스템
+- ✅ domain/events/DomainEvent + DomainEventBase<T>
+- ✅ domain/events/DiskAnalyzedEvent
+- ✅ domain/events/ErrorOccurredEvent
+- ✅ domain/events/InstallCompletedEvent
+- ✅ domain/events/InstallProgressEvent
+- ✅ domain/events/InstallStartedEvent
+- ✅ abstractions/infrastructure/messaging/IEvent (using 별칭)
+
+#### Phase 4: Configuration System
 - ✅ adapters/persistence/config/IniParser
 - ✅ adapters/persistence/config/IniConfigRepository
+- ✅ abstractions/usecases/ILoadConfigurationUseCase
 - ✅ application/usecases/system/LoadConfigurationUseCase
-- ✅ Config.ini 로드 및 파싱 완료
 
-#### Phase 4: MVVM Pattern (완료)
+#### Phase 5: System Analysis
+- ✅ abstractions/usecases/IAnalyzeSystemUseCase (SystemAnalysisResult 포함)
+- ✅ application/dto/SystemAnalysisResult (using 별칭)
+- ✅ application/usecases/system/AnalyzeSystemUseCase
+
+#### Phase 6: MVVM Pattern
 - ✅ abstractions/ui/IPropertyChanged
 - ✅ abstractions/ui/IMainViewModel
 - ✅ application/viewmodels/MainViewModel
-- ✅ adapters/ui/win32/Win32MainWindow (MVVM 적용)
-- ✅ ViewModel 초기화 시 Config 자동 로드
+- ✅ adapters/ui/win32/panels/StatusPanel (HFONT UniqueHandle 캐싱)
+- ✅ adapters/ui/win32/panels/ActionPanel
+- ✅ adapters/ui/win32/panels/OptionPanel (멤버명 컨벤션 통일)
+- ✅ adapters/ui/win32/Win32MainWindow
 
-#### Phase 5: DI Container (완료)
+#### Phase 7: DI Container & Composition Root
 - ✅ application/core/DIContainer
-- ✅ main/ServiceRegistration
-- ✅ 모든 서비스 자동 등록 및 와이어링
+- ✅ main/ServiceRegistration (ResolveOrThrow 적용)
 
 ### 🚧 진행 중인 Phase
 
-#### Phase 6: Win32 Core Infrastructure (진행 중)
-**현재 상태**: UniqueHandle, Win32Logger 완료
-**남은 작업**:
+#### Phase 8: Win32 Core Infrastructure
+- ✅ UniqueHandle, Win32Logger 완료
 - [ ] Win32TypeMapper
 - [ ] Win32ErrorHandler
 - [ ] Win32StringHelper
 
 ### 📋 미완료 Phase
 
-#### Phase 7: Storage Adapters
+#### Phase 9: Storage Adapters
 - [ ] IOCTLWrapper + AsyncIOCTL
 - [ ] Win32DiskService
 - [ ] Win32VolumeService
 - [ ] MFTScanner
 - [ ] DiskTransaction
 
-#### Phase 8: SMBIOS & System Info
+#### Phase 10: SMBIOS & System Info
 - [ ] SMBIOSParser
 - [ ] Win32SystemInfoService
 
-#### Phase 9: Imaging Services
+#### Phase 11: Imaging Services
 - [ ] WimlibAdapter
 - [ ] DismAdapter
 
-#### Phase 10: Use Cases
+#### Phase 12: 나머지 Use Cases
 - [ ] InstallWindowsUseCase
 - [ ] BackupUserDataUseCase
 - [ ] 기타 UseCases
 
 ---
 
-## 🎯 현재 작동 확인된 기능
-
-### ✅ 정상 작동
-1. **로깅 시스템**
-   ```
-   [INIT] Win32Logger initialized
-   2026-02-18 03:52:43.202 [DEBUG] Window WM_CREATE received
-   2026-02-18 03:52:43.222 [INFO ] Main window created successfully
-   ```
-
-2. **Config.ini 로드**
-   ```
-   2026-02-18 03:52:43.222 [INFO ] Loading configuration from: config.ini
-   2026-02-18 03:52:43.235 [INFO ] Configuration loaded successfully
-   2026-02-18 03:52:43.235 [INFO ]   User Profile: kdic
-   2026-02-18 03:52:43.235 [INFO ]   Data Partition: Yes
-   2026-02-18 03:52:43.235 [INFO ]   Backup Targets: 2
-   2026-02-18 03:52:43.235 [INFO ]   Installation Types: 4
-   ```
-
-3. **MVVM 패턴**
-   - MainViewModel 초기화 성공
-   - PropertyChanged 이벤트 전파
-   - View-ViewModel 바인딩 작동
-
-4. **DI Container**
-   - 서비스 자동 등록
-   - 의존성 자동 주입
-   - Singleton 라이프타임 관리
-
----
-
 ## 📊 진행률
 
 ### 전체 아키텍처
-- Domain 계층: **60%** (기본 타입 완료, 엔티티 일부 완료)
-- Abstractions 계층: **40%** (주요 인터페이스 정의됨)
-- Application 계층: **50%** (MVVM + DI + Config 완료)
-- Adapters 계층: **30%** (로깅, Config 완료, 스토리지 미완)
-- Main 계층: **80%** (ServiceRegistration 완료)
+- Domain 계층: **75%** (primitives, entities, events 완료 / storage 미완)
+- Abstractions 계층: **65%** (주요 인터페이스 완료 / storage 인터페이스 미완)
+- Application 계층: **60%** (MVVM + DI + Config + SystemAnalysis 완료)
+- Adapters 계층: **35%** (로깅, Config, UI 패널 완료 / storage 미완)
+- Main 계층: **100%** (ServiceRegistration 완료)
 
 ### 기능별
 - ✅ 로깅: 100%
 - ✅ Config 로드: 100%
+- ✅ 이벤트 시스템: 100%
 - ✅ MVVM: 100%
-- ✅ DI: 100%
+- ✅ DI Container: 100%
+- ✅ 시스템 분석 (인터페이스): 100%
 - ⏳ 디스크 서비스: 0%
 - ⏳ 이미징: 0%
-- ⏳ UI 컨트롤: 20%
+- ⏳ UI 컨트롤: 40%
+
+---
+
+## 🎯 현재 작동 확인된 기능
+
+1. **로깅 시스템**
+```
+[INIT] Win32Logger initialized
+2026-02-18 03:52:43.202 [DEBUG] Window WM_CREATE received
+2026-02-18 03:52:43.222 [INFO ] Main window created successfully
+```
+
+2. **Config.ini 로드**
+```
+2026-02-18 03:52:43.222 [INFO ] Loading configuration from: config.ini
+2026-02-18 03:52:43.235 [INFO ] Configuration loaded successfully
+2026-02-18 03:52:43.235 [INFO ]   User Profile: kdic
+2026-02-18 03:52:43.235 [INFO ]   Data Partition: Yes
+2026-02-18 03:52:43.235 [INFO ]   Backup Targets: 2
+2026-02-18 03:52:43.235 [INFO ]   Installation Types: 4
+```
+
+3. **시스템 분석**
+```
+2026-02-18 03:52:43.240 [INFO ] AnalyzeSystemUseCase: Analysis started.
+2026-02-18 03:52:43.251 [INFO ] AnalyzeSystemUseCase: Motherboard = 15Z90S
+2026-02-18 03:52:43.252 [INFO ] AnalyzeSystemUseCase: BIOS = T2ZF0200
+2026-02-18 03:52:43.252 [INFO ] AnalyzeSystemUseCase: UEFI = true
+2026-02-18 03:52:43.253 [INFO ] AnalyzeSystemUseCase: Memory = 16384 MB
+2026-02-18 03:52:43.253 [INFO ] AnalyzeSystemUseCase: Analysis complete.
+```
+
+4. **MVVM + DI**
+   - MainViewModel 초기화 성공
+   - PropertyChanged 이벤트 전파
+   - View-ViewModel 바인딩 작동
+   - 서비스 자동 등록 및 의존성 주입
 
 ---
 
 ## 🔄 변경 이력
+
+### v2.0 (2026-02-23)
+- ✅ **[위반 1 수정]** `IAnalyzeSystemUseCase.h`의 역방향 의존성 제거: `SystemAnalysisResult`를 `abstractions` 레이어로 이전, `application/dto`는 `using` 별칭으로 변경
+- ✅ **[위반 2 수정]** `SystemInfo`에서 `DiskInfo`/`VolumeInfo` 직접 소유 제거: `SystemAnalysisResult` DTO로 분리
+- ✅ **[위반 3 검토]** `DIContainer`의 `shared_ptr<void>` — 소멸자 안전, 등록 시 인터페이스 타입 캐스트 강제로 실질적 위험 없음. 위반 아님
+- ✅ **[위반 4 수정]** `ServiceRegistration` 조용한 실패 제거: `ResolveOrThrow` 헬퍼 도입, 실패 시 즉시 `std::runtime_error` throw
+- ✅ **[위반 5 수정]** `StatusPanel` `OnPaint`마다 `CreateFont` 호출 제거: 멤버 `UniqueHandle`로 캐싱
+- ✅ **[위반 6 수정]** `OptionPanel` 멤버명 `m_xxx` → `mXxx` 컨벤션 통일
+- ✅ **[위반 7 수정]** `DomainEvent`와 `IEvent` 계층 단절 해결: `DomainEventBase<T>` CRTP 도입, `abstractions::IEvent` = `using` 별칭, 모든 도메인 이벤트 `DomainEventBase<T>` 상속으로 변경
 
 ### v1.1 (2026-02-18)
 - ✅ MVVM 패턴 추가
@@ -650,14 +592,13 @@ namespace winsetup::adapters::ui {
 - ✅ IPropertyChanged 인터페이스 추가
 - ✅ MainViewModel 구현 추가
 - ✅ LoadConfigurationUseCase 추가
-- ✅ 완료된 Phase 업데이트
 
 ### v1.0 (2026-02-15)
 - 초기 계획서 작성
 
 ---
 
-**계획서 업데이트일**: 2026년 2월 18일  
-**버전**: 1.0
-**작성자**: 시니어 소프트웨어 엔지니어  
-**상태**: 진행 중 (Phase 6)
+**계획서 업데이트일**: 2026년 2월 23일
+**버전**: 2.0
+**작성자**: 시니어 소프트웨어 엔지니어
+**상태**: 진행 중 (Phase 8)

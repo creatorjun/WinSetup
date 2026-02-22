@@ -3,6 +3,7 @@
 
 #include <abstractions/ui/IWidget.h>
 #include <abstractions/ui/IMainViewModel.h>
+#include <adapters/platform/win32/memory/UniqueHandle.h>
 #include <Windows.h>
 #include <memory>
 #include <string>
@@ -30,13 +31,18 @@ namespace winsetup::adapters::ui {
     private:
         void DrawStatusText(HDC hdc) const;
         void DrawTypeDescription(HDC hdc) const;
+        void EnsureFonts();
 
         HWND mhParent;
-        int mx;
-        int my;
-        int mwidth;
-        int mheight;
+        int  mx;
+        int  my;
+        int  mwidth;
+        int  mheight;
+
         std::shared_ptr<abstractions::IMainViewModel> mviewModel;
+
+        platform::UniqueHandle mFontStatus;
+        platform::UniqueHandle mFontDesc;
 
         static constexpr int STATUSH = 60;
         static constexpr int TYPEDESCH = 40;

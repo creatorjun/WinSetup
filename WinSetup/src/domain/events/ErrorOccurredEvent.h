@@ -1,5 +1,4 @@
 ﻿// src/domain/events/ErrorOccurredEvent.h
-
 #pragma once
 
 #include <domain/events/DomainEvent.h>
@@ -7,23 +6,27 @@
 
 namespace winsetup::domain {
 
-    class ErrorOccurredEvent : public DomainEvent {
+    class ErrorOccurredEvent : public DomainEventBase<ErrorOccurredEvent> {
     public:
         explicit ErrorOccurredEvent(Error error)
-            : m_error(std::move(error))
+            : mError(std::move(error))
         {
         }
 
-        [[nodiscard]] std::wstring GetEventType() const noexcept override {
+        [[nodiscard]] static std::wstring StaticEventType() noexcept {
             return L"ErrorOccurred";
         }
 
+        [[nodiscard]] std::wstring ToString() const override {
+            return L"ErrorOccurred: " + mError.GetMessage();
+        }
+
         [[nodiscard]] const Error& GetError() const noexcept {
-            return m_error;
+            return mError;
         }
 
     private:
-        Error m_error;
+        Error mError;
     };
 
 }

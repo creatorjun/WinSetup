@@ -30,14 +30,14 @@ namespace winsetup::adapters::ui {
         void OnPropertyChanged(const std::wstring& propertyName) override;
 
         [[nodiscard]] bool IsValid() const noexcept override {
-            return m_btnDataPreserve.Handle() != nullptr;
+            return mBtnDataPreserve.Handle() != nullptr;
         }
 
     private:
-        std::shared_ptr<abstractions::IMainViewModel> m_viewModel;
+        std::shared_ptr<abstractions::IMainViewModel> mViewModel;
 
-        ToggleButton m_btnDataPreserve;
-        ToggleButton m_btnBitlocker;
+        ToggleButton mBtnDataPreserve;
+        ToggleButton mBtnBitlocker;
 
         static constexpr int BTN_HEIGHT = 36;
         static constexpr int BTN_GAP = 8;

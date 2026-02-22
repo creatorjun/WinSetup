@@ -1,5 +1,6 @@
 ﻿// src/adapters/ui/win32/panels/StatusPanel.cpp
 #include <adapters/ui/win32/panels/StatusPanel.h>
+#include <adapters/platform/win32/core/Win32HandleFactory.h>
 
 namespace winsetup::adapters::ui {
 
@@ -16,6 +17,24 @@ namespace winsetup::adapters::ui {
         my = y;
         mwidth = width;
         mheight = height;
+        EnsureFonts();
+    }
+
+    void StatusPanel::EnsureFonts() {
+        if (!mFontStatus) {
+            mFontStatus = platform::Win32HandleFactory::MakeGdiObject(
+                CreateFontW(18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                    DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                    CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI")
+            );
+        }
+        if (!mFontDesc) {
+            mFontDesc = platform::Win32HandleFactory::MakeGdiObject(
+                CreateFontW(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                    DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                    CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI")
+            );
+        }
     }
 
     void StatusPanel::SetViewModel(std::shared_ptr<abstractions::IMainViewModel> viewModel) {
@@ -31,6 +50,7 @@ namespace winsetup::adapters::ui {
     }
 
     void StatusPanel::OnPaint(HDC hdc) {
+        EnsureFonts();
         DrawStatusText(hdc);
         DrawTypeDescription(hdc);
     }
@@ -39,10 +59,9 @@ namespace winsetup::adapters::ui {
         const std::wstring text = mviewModel ? mviewModel->GetStatusText() : L"Ready";
         const RECT rc = { mx, my, mx + mwidth, my + STATUSH };
 
-        HFONT hFont = CreateFontW(18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-        HFONT hOldFont = static_cast<HFONT>(SelectObject(hdc, hFont));
+        HFONT hOldFont = static_cast<HFONT>(
+            SelectObject(hdc, platform::Win32HandleFactory::ToWin32Font(mFontStatus))
+            );
 
         SetBkMode(hdc, TRANSPARENT);
         SetTextColor(hdc, RGB(0, 0, 0));
@@ -50,12 +69,11 @@ namespace winsetup::adapters::ui {
             DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
 
         SelectObject(hdc, hOldFont);
-        DeleteObject(hFont);
     }
 
     void StatusPanel::DrawTypeDescription(HDC hdc) const {
         const std::wstring text = mviewModel ? mviewModel->GetTypeDescription() : L"";
-        const bool empty = text.empty();
+        const bool         empty = text.empty();
 
         const int descY = my + STATUSH + INNERGAP;
         RECT rc = { mx, descY, mx + mwidth, descY + TYPEDESCH };
@@ -71,10 +89,9 @@ namespace winsetup::adapters::ui {
         SelectObject(hdc, hOldPen);
         DeleteObject(hPen);
 
-        HFONT hFont = CreateFontW(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-            DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-            CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-        HFONT hOldFont = static_cast<HFONT>(SelectObject(hdc, hFont));
+        HFONT hOldFont = static_cast<HFONT>(
+            SelectObject(hdc, platform::Win32HandleFactory::ToWin32Font(mFontDesc))
+            );
 
         const std::wstring displayText = empty ? L"설치 유형을 선택하세요." : text;
         SetBkMode(hdc, TRANSPARENT);
@@ -83,7 +100,6 @@ namespace winsetup::adapters::ui {
             DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
 
         SelectObject(hdc, hOldFont);
-        DeleteObject(hFont);
     }
 
 }

@@ -5,7 +5,6 @@
 #include <abstractions/usecases/ILoadConfigurationUseCase.h>
 #include <abstractions/usecases/IAnalyzeSystemUseCase.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
-#include <application/dto/SystemAnalysisResult.h>
 #include <domain/entities/SetupConfig.h>
 #include <memory>
 #include <vector>
@@ -24,24 +23,24 @@ namespace winsetup::application {
 
         [[nodiscard]] std::wstring GetStatusText()  const override;
         [[nodiscard]] std::wstring GetWindowTitle() const override;
-        void SetStatusText(const std::wstring& text)  override;
+        void SetStatusText(const std::wstring& text)   override;
         void SetWindowTitle(const std::wstring& title) override;
 
         [[nodiscard]] std::vector<domain::InstallationType> GetInstallationTypes() const override;
 
-        [[nodiscard]] std::wstring GetTypeDescription() const override;
-        void SetTypeDescription(const std::wstring& key) override;
+        [[nodiscard]] std::wstring GetTypeDescription()          const override;
+        void SetTypeDescription(const std::wstring& key)               override;
 
-        [[nodiscard]] bool GetDataPreservation()  const override;
-        void SetDataPreservation(bool enabled)    override;
+        [[nodiscard]] bool GetDataPreservation() const override;
+        void SetDataPreservation(bool enabled)         override;
 
         [[nodiscard]] bool GetBitlockerEnabled() const override;
-        void SetBitlockerEnabled(bool enabled)   override;
+        void SetBitlockerEnabled(bool enabled)         override;
 
         [[nodiscard]] bool IsInitializing() const override;
         [[nodiscard]] bool IsProcessing()   const override;
         [[nodiscard]] bool IsCompleted()    const override;
-        void SetProcessing(bool processing) override;
+        void SetProcessing(bool processing)       override;
 
         [[nodiscard]] int GetProgress()         const override;
         [[nodiscard]] int GetRemainingSeconds() const override;
@@ -52,7 +51,7 @@ namespace winsetup::application {
         void AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) override;
         void RemoveAllPropertyChangedHandlers() override;
 
-        [[nodiscard]] std::shared_ptr<const SystemAnalysisResult> GetAnalysisResult() const noexcept {
+        [[nodiscard]] std::shared_ptr<const abstractions::SystemAnalysisResult> GetAnalysisResult() const noexcept {
             return mAnalysisResult;
         }
         [[nodiscard]] std::shared_ptr<const domain::SetupConfig> GetConfig() const noexcept {
@@ -70,8 +69,8 @@ namespace winsetup::application {
         std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     mAnalyzeSystemUseCase;
         std::shared_ptr<abstractions::ILogger>                   mLogger;
 
-        std::shared_ptr<const SystemAnalysisResult> mAnalysisResult;
-        std::shared_ptr<const domain::SetupConfig>  mConfig;
+        std::shared_ptr<const abstractions::SystemAnalysisResult> mAnalysisResult;
+        std::shared_ptr<const domain::SetupConfig>                mConfig;
 
         std::wstring mStatusText;
         std::wstring mWindowTitle;

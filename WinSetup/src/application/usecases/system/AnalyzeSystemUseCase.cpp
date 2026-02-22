@@ -28,7 +28,7 @@ namespace winsetup::application {
     {
     }
 
-    domain::Expected<std::shared_ptr<SystemAnalysisResult>>
+    domain::Expected<std::shared_ptr<abstractions::SystemAnalysisResult>>
         AnalyzeSystemUseCase::Execute() {
         if (!mSystemInfoService) {
             return domain::Error(L"ISystemInfoService not provided", 0, domain::ErrorCategory::System);
@@ -44,7 +44,7 @@ namespace winsetup::application {
         auto volumeResult = CollectVolumes();
         if (!volumeResult.HasValue()) return volumeResult.GetError();
 
-        auto analysisResult = std::make_shared<SystemAnalysisResult>(
+        auto analysisResult = std::make_shared<abstractions::SystemAnalysisResult>(
             sysResult.Value(),
             diskResult.Value(),
             volumeResult.Value()

@@ -1,5 +1,4 @@
 ﻿// src/domain/events/DiskAnalyzedEvent.h
-
 #pragma once
 
 #include <domain/events/DomainEvent.h>
@@ -8,23 +7,27 @@
 
 namespace winsetup::domain {
 
-    class DiskAnalyzedEvent : public DomainEvent {
+    class DiskAnalyzedEvent : public DomainEventBase<DiskAnalyzedEvent> {
     public:
         explicit DiskAnalyzedEvent(std::vector<DiskInfo> disks)
-            : m_disks(std::move(disks))
+            : mDisks(std::move(disks))
         {
         }
 
-        [[nodiscard]] std::wstring GetEventType() const noexcept override {
+        [[nodiscard]] static std::wstring StaticEventType() noexcept {
             return L"DiskAnalyzed";
         }
 
+        [[nodiscard]] std::wstring ToString() const override {
+            return L"DiskAnalyzed: " + std::to_wstring(mDisks.size()) + L" disk(s)";
+        }
+
         [[nodiscard]] const std::vector<DiskInfo>& GetDisks() const noexcept {
-            return m_disks;
+            return mDisks;
         }
 
     private:
-        std::vector<DiskInfo> m_disks;
+        std::vector<DiskInfo> mDisks;
     };
 
 }

@@ -1,5 +1,4 @@
 ﻿// src/domain/events/InstallStartedEvent.h
-
 #pragma once
 
 #include <domain/events/DomainEvent.h>
@@ -7,24 +6,29 @@
 
 namespace winsetup::domain {
 
-    class InstallStartedEvent : public DomainEvent {
+    class InstallStartedEvent : public DomainEventBase<InstallStartedEvent> {
     public:
-        explicit InstallStartedEvent(int diskIndex, std::wstring imagePath)
-            : m_diskIndex(diskIndex)
-            , m_imagePath(std::move(imagePath))
+        InstallStartedEvent(int diskIndex, std::wstring imagePath)
+            : mDiskIndex(diskIndex)
+            , mImagePath(std::move(imagePath))
         {
         }
 
-        [[nodiscard]] std::wstring GetEventType() const noexcept override {
+        [[nodiscard]] static std::wstring StaticEventType() noexcept {
             return L"InstallStarted";
         }
 
-        [[nodiscard]] int GetDiskIndex() const noexcept { return m_diskIndex; }
-        [[nodiscard]] const std::wstring& GetImagePath() const noexcept { return m_imagePath; }
+        [[nodiscard]] std::wstring ToString() const override {
+            return L"InstallStarted: disk=" + std::to_wstring(mDiskIndex)
+                + L" image=" + mImagePath;
+        }
+
+        [[nodiscard]] int                 GetDiskIndex()  const noexcept { return mDiskIndex; }
+        [[nodiscard]] const std::wstring& GetImagePath()  const noexcept { return mImagePath; }
 
     private:
-        int m_diskIndex;
-        std::wstring m_imagePath;
+        int          mDiskIndex;
+        std::wstring mImagePath;
     };
 
 }

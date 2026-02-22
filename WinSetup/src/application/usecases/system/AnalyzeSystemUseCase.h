@@ -27,7 +27,7 @@ namespace winsetup::application {
 
         ~AnalyzeSystemUseCase() override = default;
 
-        [[nodiscard]] domain::Expected<std::shared_ptr<SystemAnalysisResult>>
+        [[nodiscard]] domain::Expected<std::shared_ptr<abstractions::SystemAnalysisResult>>
             Execute() override;
 
     private:
