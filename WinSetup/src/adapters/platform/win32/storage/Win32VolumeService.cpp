@@ -12,15 +12,13 @@ namespace winsetup::adapters::platform {
     Win32VolumeService::Win32VolumeService(std::shared_ptr<abstractions::ILogger> logger)
         : mLogger(std::move(logger))
     {
-        if (mLogger) {
+        if (mLogger)
             mLogger->Info(L"Win32VolumeService initialized");
-        }
     }
 
     domain::Expected<std::vector<domain::VolumeInfo>> Win32VolumeService::EnumerateVolumes() {
-        if (mLogger) {
+        if (mLogger)
             mLogger->Debug(L"Enumerating volumes...");
-        }
 
         std::vector<domain::VolumeInfo> volumes;
         volumes.reserve(26);
@@ -43,31 +41,26 @@ namespace winsetup::adapters::platform {
         do {
             std::wstring volumePath(volumeName);
 
-            if (volumePath.empty()) {
+            if (volumePath.empty())
                 continue;
-            }
 
-            if (volumePath.back() == L'\\') {
+            if (volumePath.back() == L'\\')
                 volumePath.pop_back();
-            }
 
             auto driveLettersResult = GetDriveLetters(volumePath);
             if (!driveLettersResult.HasValue()) {
-                if (mLogger) {
+                if (mLogger)
                     mLogger->Debug(L"Volume has no drive letters: " + volumePath);
-                }
                 continue;
             }
 
             const auto& driveLetters = driveLettersResult.Value();
-            if (driveLetters.empty()) {
+            if (driveLetters.empty())
                 continue;
-            }
 
             std::wstring primaryLetter = driveLetters[0];
-            if (primaryLetter.length() >= 2) {
+            if (primaryLetter.length() >= 2)
                 primaryLetter = primaryLetter.substr(0, 2);
-            }
 
             auto labelResult = GetVolumeLabel(volumePath);
             std::wstring label = labelResult.HasValue() ? labelResult.Value() : L"";
@@ -96,14 +89,12 @@ namespace winsetup::adapters::platform {
 
         DWORD error = GetLastError();
         if (error != ERROR_NO_MORE_FILES) {
-            if (mLogger) {
+            if (mLogger)
                 mLogger->Warning(L"FindNextVolume ended with error: " + std::to_wstring(error));
-            }
         }
 
-        if (mLogger) {
+        if (mLogger)
             mLogger->Info(L"Found " + std::to_wstring(volumes.size()) + L" volumes");
-        }
 
         return volumes;
     }
@@ -111,22 +102,19 @@ namespace winsetup::adapters::platform {
     domain::Expected<domain::VolumeInfo> Win32VolumeService::GetVolumeInfo(const std::wstring& volumePath) {
         std::wstring normalizedPath = volumePath;
 
-        if (normalizedPath.length() == 2 && normalizedPath[1] == L':') {
-            normalizedPath += L"\\";
-        }
+        if (normalizedPath.length() == 2 && normalizedPath[1] == L':')
+            normalizedPath += L'\\';
 
         auto labelResult = GetVolumeLabel(normalizedPath);
         std::wstring label = labelResult.HasValue() ? labelResult.Value() : L"";
 
         auto fsResult = GetFileSystem(normalizedPath);
-        if (!fsResult.HasValue()) {
+        if (!fsResult.HasValue())
             return fsResult.GetError();
-        }
 
         auto sizeResult = GetVolumeSize(normalizedPath);
-        if (!sizeResult.HasValue()) {
+        if (!sizeResult.HasValue())
             return sizeResult.GetError();
-        }
 
         auto volumeTypeResult = GetVolumeType(normalizedPath);
         std::wstring volumeType = volumeTypeResult.HasValue() ?
@@ -135,14 +123,7 @@ namespace winsetup::adapters::platform {
         std::wstring letter = normalizedPath.length() >= 2 ?
             normalizedPath.substr(0, 2) : L"";
 
-        domain::VolumeInfo volume(
-            0,
-            letter,
-            label,
-            fsResult.Value(),
-            sizeResult.Value()
-        );
-
+        domain::VolumeInfo volume(0, letter, label, fsResult.Value(), sizeResult.Value());
         volume.SetVolumeType(volumeType);
         volume.SetVolumePath(normalizedPath);
         volume.SetMounted(IsVolumeMounted(normalizedPath));
@@ -159,9 +140,8 @@ namespace winsetup::adapters::platform {
         mountPoint += L":\\";
 
         std::wstring volumeGuid = volumePath;
-        if (volumeGuid.back() != L'\\') {
+        if (volumeGuid.back() != L'\\')
             volumeGuid += L'\\';
-        }
 
         BOOL result = SetVolumeMountPointW(mountPoint.c_str(), volumeGuid.c_str());
 
@@ -173,9 +153,8 @@ namespace winsetup::adapters::platform {
             };
         }
 
-        if (mLogger) {
+        if (mLogger)
             mLogger->Info(L"Mounted volume " + volumePath + L" to " + mountPoint);
-        }
 
         return domain::Expected<void>{};
     }
@@ -195,9 +174,8 @@ namespace winsetup::adapters::platform {
             };
         }
 
-        if (mLogger) {
+        if (mLogger)
             mLogger->Info(L"Dismounted volume from " + mountPoint);
-        }
 
         return domain::Expected<void>{};
     }
@@ -210,26 +188,24 @@ namespace winsetup::adapters::platform {
         wchar_t fileSystemName[MAX_PATH + 1] = {};
 
         std::wstring path = volumePath;
-        if (path.length() == 2 && path[1] == L':') {
-            path += L"\\";
-        }
+        if (path.length() == 2 && path[1] == L':')
+            path += L'\\';
+        else if (path.back() != L'\\')
+            path += L'\\';
 
         BOOL result = GetVolumeInformationW(
             path.c_str(),
-            volumeLabel,
-            MAX_PATH,
+            volumeLabel, MAX_PATH,
             &serialNumber,
             &maxComponentLen,
             &fileSystemFlags,
-            fileSystemName,
-            MAX_PATH
+            fileSystemName, MAX_PATH
         );
 
         if (!result) {
             DWORD error = GetLastError();
-            if (error == ERROR_NOT_READY || error == ERROR_PATH_NOT_FOUND) {
+            if (error == ERROR_NOT_READY || error == ERROR_PATH_NOT_FOUND)
                 return std::wstring{ L"" };
-            }
             return domain::Error{
                 L"Failed to get volume label for " + volumePath,
                 error,
@@ -248,19 +224,18 @@ namespace winsetup::adapters::platform {
         wchar_t fileSystemName[MAX_PATH + 1] = {};
 
         std::wstring path = volumePath;
-        if (path.length() == 2 && path[1] == L':') {
-            path += L"\\";
-        }
+        if (path.length() == 2 && path[1] == L':')
+            path += L'\\';
+        else if (path.back() != L'\\')
+            path += L'\\';
 
         BOOL result = GetVolumeInformationW(
             path.c_str(),
-            volumeLabel,
-            MAX_PATH,
+            volumeLabel, MAX_PATH,
             &serialNumber,
             &maxComponentLen,
             &fileSystemFlags,
-            fileSystemName,
-            MAX_PATH
+            fileSystemName, MAX_PATH
         );
 
         if (!result) {
@@ -274,31 +249,24 @@ namespace winsetup::adapters::platform {
         std::wstring fsName(fileSystemName);
         std::transform(fsName.begin(), fsName.end(), fsName.begin(), ::towupper);
 
-        if (fsName == L"NTFS") {
-            return domain::FileSystemType::NTFS;
-        }
-        else if (fsName == L"FAT32") {
-            return domain::FileSystemType::FAT32;
-        }
-        else if (fsName == L"EXFAT") {
-            return domain::FileSystemType::exFAT;
-        }
-        else if (fsName == L"REFS") {
-            return domain::FileSystemType::ReFS;
-        }
+        if (fsName == L"NTFS")  return domain::FileSystemType::NTFS;
+        if (fsName == L"FAT32") return domain::FileSystemType::FAT32;
+        if (fsName == L"EXFAT") return domain::FileSystemType::exFAT;
+        if (fsName == L"REFS")  return domain::FileSystemType::ReFS;
 
         return domain::FileSystemType::Unknown;
     }
 
     domain::Expected<domain::DiskSize> Win32VolumeService::GetVolumeSize(const std::wstring& volumePath) {
-        ULARGE_INTEGER freeBytesAvailable;
-        ULARGE_INTEGER totalBytes;
-        ULARGE_INTEGER totalFreeBytes;
+        ULARGE_INTEGER freeBytesAvailable{};
+        ULARGE_INTEGER totalBytes{};
+        ULARGE_INTEGER totalFreeBytes{};
 
         std::wstring path = volumePath;
-        if (path.length() == 2 && path[1] == L':') {
-            path += L"\\";
-        }
+        if (path.length() == 2 && path[1] == L':')
+            path += L'\\';
+        else if (path.back() != L'\\')
+            path += L'\\';
 
         BOOL result = GetDiskFreeSpaceExW(
             path.c_str(),
@@ -309,9 +277,8 @@ namespace winsetup::adapters::platform {
 
         if (!result) {
             DWORD error = GetLastError();
-            if (error == ERROR_NOT_READY || error == ERROR_PATH_NOT_FOUND) {
+            if (error == ERROR_NOT_READY || error == ERROR_PATH_NOT_FOUND)
                 return domain::DiskSize::FromBytes(0);
-            }
             return domain::Error{
                 L"Failed to get volume size for " + volumePath,
                 error,
@@ -324,33 +291,27 @@ namespace winsetup::adapters::platform {
 
     domain::Expected<std::wstring> Win32VolumeService::GetVolumeType(const std::wstring& volumePath) {
         std::wstring path = volumePath;
-        if (path.length() == 2 && path[1] == L':') {
-            path += L"\\";
-        }
+        if (path.length() == 2 && path[1] == L':')
+            path += L'\\';
+        else if (path.back() != L'\\')
+            path += L'\\';
 
         UINT driveType = GetDriveTypeW(path.c_str());
 
         switch (driveType) {
-        case DRIVE_FIXED:
-            return std::wstring{ L"Fixed" };
-        case DRIVE_REMOVABLE:
-            return std::wstring{ L"Removable" };
-        case DRIVE_REMOTE:
-            return std::wstring{ L"Network" };
-        case DRIVE_CDROM:
-            return std::wstring{ L"CD-ROM" };
-        case DRIVE_RAMDISK:
-            return std::wstring{ L"RAM Disk" };
-        default:
-            return std::wstring{ L"Unknown" };
+        case DRIVE_FIXED:     return std::wstring{ L"Fixed" };
+        case DRIVE_REMOVABLE: return std::wstring{ L"Removable" };
+        case DRIVE_REMOTE:    return std::wstring{ L"Network" };
+        case DRIVE_CDROM:     return std::wstring{ L"CD-ROM" };
+        case DRIVE_RAMDISK:   return std::wstring{ L"RAM Disk" };
+        default:              return std::wstring{ L"Unknown" };
         }
     }
 
     domain::Expected<std::vector<std::wstring>> Win32VolumeService::GetDriveLetters(const std::wstring& volumeGuid) {
         std::wstring guid = volumeGuid;
-        if (guid.back() != L'\\') {
+        if (guid.back() != L'\\')
             guid += L'\\';
-        }
 
         DWORD charCount = MAX_PATH + 1;
         std::vector<wchar_t> buffer(charCount);
@@ -388,9 +349,8 @@ namespace winsetup::adapters::platform {
 
         while (*ptr != L'\0') {
             std::wstring path(ptr);
-            if (!path.empty()) {
+            if (!path.empty())
                 driveLetters.push_back(path);
-            }
             ptr += path.length() + 1;
         }
 
@@ -399,12 +359,10 @@ namespace winsetup::adapters::platform {
 
     bool Win32VolumeService::IsVolumeMounted(const std::wstring& volumePath) {
         auto driveLettersResult = GetDriveLetters(volumePath);
-        if (!driveLettersResult.HasValue()) {
+        if (!driveLettersResult.HasValue())
             return false;
-        }
 
-        const auto& driveLetters = driveLettersResult.Value();
-        return !driveLetters.empty();
+        return !driveLettersResult.Value().empty();
     }
 
 }

@@ -1,32 +1,19 @@
 ﻿// src/application/usecases/system/AnalyzeSystemUseCase.cpp
-#include "application/usecases/system/AnalyzeSystemUseCase.h"
+#include <application/usecases/system/AnalyzeSystemUseCase.h>
 #include <domain/services/PathNormalizer.h>
 
 namespace winsetup::application {
 
     AnalyzeSystemUseCase::AnalyzeSystemUseCase(
-        std::shared_ptr<abstractions::ISystemInfoService>  systemInfoService,
-        std::shared_ptr<abstractions::IAnalysisRepository> analysisRepository,
-        std::shared_ptr<abstractions::ILogger>             logger
+        std::shared_ptr<abstractions::ISystemInfoService>       systemInfoService,
+        std::shared_ptr<abstractions::IEnumerateDisksUseCase>   enumerateDisks,
+        std::shared_ptr<abstractions::IEnumerateVolumesUseCase> enumerateVolumes,
+        std::shared_ptr<abstractions::IAnalysisRepository>      analysisRepository,
+        std::shared_ptr<abstractions::ILogger>                  logger
     )
         : mSystemInfoService(std::move(systemInfoService))
-        , mDiskService(nullptr)
-        , mVolumeService(nullptr)
-        , mAnalysisRepository(std::move(analysisRepository))
-        , mLogger(std::move(logger))
-    {
-    }
-
-    AnalyzeSystemUseCase::AnalyzeSystemUseCase(
-        std::shared_ptr<abstractions::ISystemInfoService>  systemInfoService,
-        std::shared_ptr<abstractions::IDiskService>        diskService,
-        std::shared_ptr<abstractions::IVolumeService>      volumeService,
-        std::shared_ptr<abstractions::IAnalysisRepository> analysisRepository,
-        std::shared_ptr<abstractions::ILogger>             logger
-    )
-        : mSystemInfoService(std::move(systemInfoService))
-        , mDiskService(std::move(diskService))
-        , mVolumeService(std::move(volumeService))
+        , mEnumerateDisks(std::move(enumerateDisks))
+        , mEnumerateVolumes(std::move(enumerateVolumes))
         , mAnalysisRepository(std::move(analysisRepository))
         , mLogger(std::move(logger))
     {
@@ -35,29 +22,35 @@ namespace winsetup::application {
     domain::Expected<void> AnalyzeSystemUseCase::Execute()
     {
         if (!mSystemInfoService)
-            return domain::Error(L"ISystemInfoService not provided", 0,
-                domain::ErrorCategory::System);
+            return domain::Error(L"ISystemInfoService not provided", 0, domain::ErrorCategory::System);
         if (!mAnalysisRepository)
-            return domain::Error(L"IAnalysisRepository not provided", 0,
-                domain::ErrorCategory::System);
+            return domain::Error(L"IAnalysisRepository not provided", 0, domain::ErrorCategory::System);
 
-        if (mLogger) mLogger->Info(L"AnalyzeSystemUseCase: Analysis started.");
+        if (mLogger)
+            mLogger->Info(L"AnalyzeSystemUseCase: Analysis started.");
 
         auto sysResult = CollectSystemInfo();
-        if (!sysResult.HasValue()) return sysResult.GetError();
+        if (!sysResult.HasValue())
+            return sysResult.GetError();
 
-        auto diskResult = CollectDisks();
-        if (!diskResult.HasValue()) return diskResult.GetError();
+        auto diskResult = mEnumerateDisks->Execute();
+        if (!diskResult.HasValue())
+            return diskResult.GetError();
 
-        auto volumeResult = CollectVolumes();
-        if (!volumeResult.HasValue()) return volumeResult.GetError();
+        auto volumeResult = mEnumerateVolumes->Execute();
+        if (!volumeResult.HasValue())
+            return volumeResult.GetError();
 
         mAnalysisRepository->StoreSystemInfo(sysResult.Value());
         mAnalysisRepository->StoreDisks(diskResult.Value());
         mAnalysisRepository->StoreVolumes(volumeResult.Value());
 
-        if (mLogger) mLogger->Info(L"AnalyzeSystemUseCase: Analysis complete. Stored to repository.");
-        return domain::Expected<void>{};
+        if (mLogger)
+            mLogger->Info(L"AnalyzeSystemUseCase: Analysis complete. Stored to repository.");
+
+        LogStoredResults(*diskResult.Value(), *volumeResult.Value());
+
+        return domain::Expected<void>();
     }
 
     domain::Expected<std::shared_ptr<domain::SystemInfo>>
@@ -67,105 +60,109 @@ namespace winsetup::application {
 
         auto modelResult = mSystemInfoService->GetMotherboardModel();
         if (modelResult.HasValue()) {
-            const std::wstring sanitized =
-                domain::PathNormalizer::SanitizeFolderName(modelResult.Value());
+            const std::wstring sanitized = domain::PathNormalizer::SanitizeFolderName(modelResult.Value());
             sysInfo->SetMotherboardModel(sanitized);
-            if (mLogger) mLogger->Info(L"AnalyzeSystemUseCase: Motherboard = " + sanitized);
+            if (mLogger)
+                mLogger->Info(L"AnalyzeSystemUseCase: Motherboard: " + sanitized);
         }
         else {
             sysInfo->SetMotherboardModel(L"Unknown");
-            if (mLogger) mLogger->Warning(
-                L"AnalyzeSystemUseCase: Failed to get motherboard model - " +
-                modelResult.GetError().GetMessage());
+            if (mLogger)
+                mLogger->Warning(L"AnalyzeSystemUseCase: Failed to get motherboard model - " + modelResult.GetError().GetMessage());
         }
 
         auto biosResult = mSystemInfoService->GetBIOSVersion();
         if (biosResult.HasValue()) {
             sysInfo->SetBIOSVersion(biosResult.Value());
-            if (mLogger) mLogger->Info(L"AnalyzeSystemUseCase: BIOS = " + biosResult.Value());
+            if (mLogger)
+                mLogger->Info(L"AnalyzeSystemUseCase: BIOS: " + biosResult.Value());
         }
         else {
             sysInfo->SetBIOSVersion(L"Unknown");
-            if (mLogger) mLogger->Warning(
-                L"AnalyzeSystemUseCase: Failed to get BIOS version - " +
-                biosResult.GetError().GetMessage());
+            if (mLogger)
+                mLogger->Warning(L"AnalyzeSystemUseCase: Failed to get BIOS version - " + biosResult.GetError().GetMessage());
         }
 
         auto uefiResult = mSystemInfoService->IsUEFIBoot();
         if (uefiResult.HasValue()) {
             sysInfo->SetUEFIBoot(uefiResult.Value());
-            if (mLogger) mLogger->Info(
-                std::wstring(L"AnalyzeSystemUseCase: UEFI = ") +
-                (uefiResult.Value() ? L"true" : L"false"));
+            if (mLogger)
+                mLogger->Info(std::wstring(L"AnalyzeSystemUseCase: UEFI: ") + (uefiResult.Value() ? L"true" : L"false"));
         }
         else {
             sysInfo->SetUEFIBoot(false);
-            if (mLogger) mLogger->Warning(
-                L"AnalyzeSystemUseCase: Failed to get UEFI status - " +
-                uefiResult.GetError().GetMessage());
+            if (mLogger)
+                mLogger->Warning(L"AnalyzeSystemUseCase: Failed to get UEFI status - " + uefiResult.GetError().GetMessage());
         }
 
         auto memResult = mSystemInfoService->GetTotalMemoryBytes();
         if (memResult.HasValue()) {
             sysInfo->SetTotalMemoryBytes(memResult.Value());
-            if (mLogger) mLogger->Info(
-                L"AnalyzeSystemUseCase: Memory = " +
-                std::to_wstring(memResult.Value() / 1024 / 1024) + L" MB");
+            if (mLogger)
+                mLogger->Info(L"AnalyzeSystemUseCase: Memory: " + std::to_wstring(memResult.Value() / 1024 / 1024) + L" MB");
         }
         else {
             sysInfo->SetTotalMemoryBytes(0u);
-            if (mLogger) mLogger->Warning(
-                L"AnalyzeSystemUseCase: Failed to get memory size - " +
-                memResult.GetError().GetMessage());
+            if (mLogger)
+                mLogger->Warning(L"AnalyzeSystemUseCase: Failed to get memory size - " + memResult.GetError().GetMessage());
         }
 
         return sysInfo;
     }
 
-    domain::Expected<std::shared_ptr<std::vector<domain::DiskInfo>>>
-        AnalyzeSystemUseCase::CollectDisks() const
+    void AnalyzeSystemUseCase::LogStoredResults(
+        const std::vector<domain::DiskInfo>& disks,
+        const std::vector<domain::VolumeInfo>& volumes
+    ) const
     {
-        if (!mDiskService) {
-            if (mLogger) mLogger->Warning(
-                L"AnalyzeSystemUseCase: IDiskService not provided, disk list will be empty.");
-            return std::make_shared<std::vector<domain::DiskInfo>>();
+        if (!mLogger)
+            return;
+
+        mLogger->Info(L"AnalyzeSystemUseCase: ---- Disk Summary (" + std::to_wstring(disks.size()) + L") ----");
+        for (const auto& disk : disks) {
+            const std::wstring sizeStr = std::to_wstring(static_cast<uint64_t>(disk.GetSize().ToGB())) + L" GB";
+            const std::wstring typeStr = disk.GetDiskType() == domain::DiskType::SSD ? L"SSD" : L"HDD";
+            const std::wstring busStr = BusTypeToString(disk.GetBusType());
+            const std::wstring partStr = std::to_wstring(disk.GetPartitions().size()) + L" partition(s)";
+            mLogger->Info(
+                L"  Disk[" + std::to_wstring(disk.GetIndex()) + L"] " +
+                sizeStr + L" / " + typeStr + L" / " + busStr + L" / " + partStr
+            );
         }
 
-        auto result = mDiskService->EnumerateDisks();
-        if (!result.HasValue()) {
-            if (mLogger) mLogger->Warning(
-                L"AnalyzeSystemUseCase: Failed to enumerate disks - " +
-                result.GetError().GetMessage());
-            return std::make_shared<std::vector<domain::DiskInfo>>();
+        mLogger->Info(L"AnalyzeSystemUseCase: ---- Volume Summary (" + std::to_wstring(volumes.size()) + L") ----");
+        for (const auto& vol : volumes) {
+            const std::wstring sizeStr = std::to_wstring(static_cast<uint64_t>(vol.GetSize().ToGB())) + L" GB";
+            const std::wstring fsStr = FileSystemTypeToString(vol.GetFileSystem());
+            const std::wstring mounted = vol.IsMounted() ? L"Mounted" : L"Unmounted";
+            mLogger->Info(
+                L"  Vol[" + vol.GetLetter() + L"] " +
+                L"\"" + vol.GetLabel() + L"\" " +
+                sizeStr + L" / " + fsStr + L" / " + mounted
+            );
         }
-
-        if (mLogger) mLogger->Info(
-            L"AnalyzeSystemUseCase: Disks found = " +
-            std::to_wstring(result.Value().size()));
-        return std::make_shared<std::vector<domain::DiskInfo>>(std::move(result.Value()));
     }
 
-    domain::Expected<std::shared_ptr<std::vector<domain::VolumeInfo>>>
-        AnalyzeSystemUseCase::CollectVolumes() const
+    std::wstring AnalyzeSystemUseCase::BusTypeToString(domain::BusType busType)
     {
-        if (!mVolumeService) {
-            if (mLogger) mLogger->Warning(
-                L"AnalyzeSystemUseCase: IVolumeService not provided, volume list will be empty.");
-            return std::make_shared<std::vector<domain::VolumeInfo>>();
+        switch (busType) {
+        case domain::BusType::SATA:  return L"SATA";
+        case domain::BusType::NVME:  return L"NVMe";
+        case domain::BusType::USB:   return L"USB";
+        case domain::BusType::SCSI:  return L"SCSI";
+        default:                     return L"Unknown";
         }
+    }
 
-        auto result = mVolumeService->EnumerateVolumes();
-        if (!result.HasValue()) {
-            if (mLogger) mLogger->Warning(
-                L"AnalyzeSystemUseCase: Failed to enumerate volumes - " +
-                result.GetError().GetMessage());
-            return std::make_shared<std::vector<domain::VolumeInfo>>();
+    std::wstring AnalyzeSystemUseCase::FileSystemTypeToString(domain::FileSystemType fs)
+    {
+        switch (fs) {
+        case domain::FileSystemType::NTFS:   return L"NTFS";
+        case domain::FileSystemType::FAT32:  return L"FAT32";
+        case domain::FileSystemType::exFAT:  return L"exFAT";
+        case domain::FileSystemType::ReFS:   return L"ReFS";
+        default:                             return L"Unknown";
         }
-
-        if (mLogger) mLogger->Info(
-            L"AnalyzeSystemUseCase: Volumes found = " +
-            std::to_wstring(result.Value().size()));
-        return std::make_shared<std::vector<domain::VolumeInfo>>(std::move(result.Value()));
     }
 
 }

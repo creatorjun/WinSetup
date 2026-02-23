@@ -32,12 +32,10 @@ namespace winsetup::adapters::platform {
         std::wstring FormatMessage(const std::wstring& format, uint32_t value) {
             std::wstringstream ss;
             size_t pos = format.find(L"{}");
-            if (pos != std::wstring::npos) {
+            if (pos != std::wstring::npos)
                 ss << format.substr(0, pos) << value << format.substr(pos + 2);
-            }
-            else {
+            else
                 ss << format;
-            }
             return ss.str();
         }
 
@@ -52,12 +50,10 @@ namespace winsetup::adapters::platform {
             }
 
             pos = temp.find(L"{}");
-            if (pos != std::wstring::npos) {
+            if (pos != std::wstring::npos)
                 ss << temp.substr(0, pos) << value2 << temp.substr(pos + 2);
-            }
-            else {
+            else
                 ss << temp;
-            }
 
             return ss.str();
         }
@@ -72,16 +68,11 @@ namespace winsetup::adapters::platform {
 
         domain::BusType MapBusType(STORAGE_BUS_TYPE windowsBusType) {
             switch (windowsBusType) {
-            case BusTypeSata:
-                return domain::BusType::SATA;
-            case BusTypeNvme:
-                return domain::BusType::NVME;
-            case BusTypeUsb:
-                return domain::BusType::USB;
-            case BusTypeScsi:
-                return domain::BusType::SCSI;
-            default:
-                return domain::BusType::Unknown;
+            case BusTypeSata: return domain::BusType::SATA;
+            case BusTypeNvme: return domain::BusType::NVME;
+            case BusTypeUsb:  return domain::BusType::USB;
+            case BusTypeScsi: return domain::BusType::SCSI;
+            default:          return domain::BusType::Unknown;
             }
         }
     }
@@ -89,9 +80,8 @@ namespace winsetup::adapters::platform {
     Win32DiskService::Win32DiskService(std::shared_ptr<abstractions::ILogger> logger)
         : mLogger(std::move(logger))
     {
-        if (mLogger) {
+        if (mLogger)
             mLogger->Info(L"Win32DiskService initialized");
-        }
     }
 
     adapters::platform::UniqueHandle Win32DiskService::OpenDiskHandle(uint32_t diskIndex) {
@@ -107,37 +97,31 @@ namespace winsetup::adapters::platform {
             nullptr
         );
 
-        if (hDisk == INVALID_HANDLE_VALUE) {
+        if (hDisk == INVALID_HANDLE_VALUE)
             return adapters::platform::UniqueHandle();
-        }
 
         return Win32HandleFactory::MakeHandle(hDisk);
     }
 
     domain::Expected<std::vector<domain::DiskInfo>> Win32DiskService::EnumerateDisks() {
-        if (mLogger) {
+        if (mLogger)
             mLogger->Debug(L"Enumerating disks...");
-        }
 
         std::vector<domain::DiskInfo> disks;
         disks.reserve(8);
 
         for (uint32_t i = 0; i < 32; ++i) {
             auto handle = OpenDiskHandle(i);
-            if (!handle) {
+            if (!handle)
                 continue;
-            }
 
             auto diskInfoResult = GetDiskInfo(i);
-            if (diskInfoResult.HasValue()) {
+            if (diskInfoResult.HasValue())
                 disks.push_back(std::move(diskInfoResult.Value()));
-            }
         }
 
-        if (mLogger) {
-            std::wstring msg = ConcatWithCount(L"Found ", disks.size(), L" disks");
-            mLogger->Info(msg);
-        }
+        if (mLogger)
+            mLogger->Info(ConcatWithCount(L"Found ", disks.size(), L" disks"));
 
         return disks;
     }
@@ -160,12 +144,9 @@ namespace winsetup::adapters::platform {
         BOOL result = DeviceIoControl(
             hDisk,
             IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
-            nullptr,
-            0,
-            &geometry,
-            sizeof(geometry),
-            &bytesReturned,
-            nullptr
+            nullptr, 0,
+            &geometry, sizeof(geometry),
+            &bytesReturned, nullptr
         );
 
         if (!result) {
@@ -180,12 +161,9 @@ namespace winsetup::adapters::platform {
         result = DeviceIoControl(
             hDisk,
             IOCTL_STORAGE_GET_DEVICE_NUMBER,
-            nullptr,
-            0,
-            &deviceNumber,
-            sizeof(deviceNumber),
-            &bytesReturned,
-            nullptr
+            nullptr, 0,
+            &deviceNumber, sizeof(deviceNumber),
+            &bytesReturned, nullptr
         );
 
         if (!result) {
@@ -204,16 +182,13 @@ namespace winsetup::adapters::platform {
         result = DeviceIoControl(
             hDisk,
             IOCTL_STORAGE_QUERY_PROPERTY,
-            &query,
-            sizeof(query),
-            buffer,
-            sizeof(buffer),
-            &bytesReturned,
-            nullptr
+            &query, sizeof(query),
+            buffer, sizeof(buffer),
+            &bytesReturned, nullptr
         );
 
         domain::DiskType diskType = domain::DiskType::HDD;
-        domain::BusType busType = domain::BusType::Unknown;
+        domain::BusType  busType = domain::BusType::Unknown;
 
         if (result) {
             auto descriptor = reinterpret_cast<STORAGE_DEVICE_DESCRIPTOR*>(buffer);
@@ -227,17 +202,13 @@ namespace winsetup::adapters::platform {
             result = DeviceIoControl(
                 hDisk,
                 IOCTL_STORAGE_QUERY_PROPERTY,
-                &seekQuery,
-                sizeof(seekQuery),
-                &seekPenalty,
-                sizeof(seekPenalty),
-                &bytesReturned,
-                nullptr
+                &seekQuery, sizeof(seekQuery),
+                &seekPenalty, sizeof(seekPenalty),
+                &bytesReturned, nullptr
             );
 
-            if (result && !seekPenalty.IncursSeekPenalty) {
+            if (result && !seekPenalty.IncursSeekPenalty)
                 diskType = domain::DiskType::SSD;
-            }
         }
 
         domain::DiskInfo diskInfo;
@@ -246,13 +217,18 @@ namespace winsetup::adapters::platform {
         diskInfo.SetDiskType(diskType);
         diskInfo.SetBusType(busType);
 
+        auto layoutResult = GetCurrentLayout(diskIndex);
+        if (layoutResult.HasValue()) {
+            for (const auto& partition : layoutResult.Value().partitions)
+                diskInfo.AddPartition(partition);
+        }
+
         return diskInfo;
     }
 
     domain::Expected<void> Win32DiskService::CleanDisk(uint32_t diskIndex) {
-        if (mLogger) {
+        if (mLogger)
             mLogger->Info(FormatMessage(L"Cleaning disk {}...", diskIndex));
-        }
 
         auto handle = OpenDiskHandle(diskIndex);
         if (!handle) {
@@ -272,34 +248,25 @@ namespace winsetup::adapters::platform {
 
         DWORD bytesReturned = 0;
         BOOL result = DeviceIoControl(
-            hDisk,
-            IOCTL_DISK_SET_DRIVE_LAYOUT_EX,
-            nullptr,
-            0,
-            nullptr,
-            0,
-            &bytesReturned,
-            nullptr
+            hDisk, IOCTL_DISK_SET_DRIVE_LAYOUT_EX,
+            nullptr, 0, nullptr, 0,
+            &bytesReturned, nullptr
         );
 
         if (!result) {
-            uint32_t error = GetLastError();
             if (mLogger) {
-                std::wstring msg = L"IOCTL_DISK_SET_DRIVE_LAYOUT_EX returned error " +
-                    std::to_wstring(error) + L", trying alternative method";
-                mLogger->Warning(msg);
+                mLogger->Warning(
+                    L"IOCTL_DISK_SET_DRIVE_LAYOUT_EX returned error " +
+                    std::to_wstring(GetLastError()) + L", trying alternative method"
+                );
             }
         }
 
         result = DeviceIoControl(
-            hDisk,
-            IOCTL_DISK_CREATE_DISK,
-            &createDisk,
-            sizeof(createDisk),
-            nullptr,
-            0,
-            &bytesReturned,
-            nullptr
+            hDisk, IOCTL_DISK_CREATE_DISK,
+            &createDisk, sizeof(createDisk),
+            nullptr, 0,
+            &bytesReturned, nullptr
         );
 
         if (!result) {
@@ -311,25 +278,18 @@ namespace winsetup::adapters::platform {
         }
 
         result = DeviceIoControl(
-            hDisk,
-            IOCTL_DISK_UPDATE_PROPERTIES,
-            nullptr,
-            0,
-            nullptr,
-            0,
-            &bytesReturned,
-            nullptr
+            hDisk, IOCTL_DISK_UPDATE_PROPERTIES,
+            nullptr, 0, nullptr, 0,
+            &bytesReturned, nullptr
         );
 
         if (!result) {
-            if (mLogger) {
+            if (mLogger)
                 mLogger->Warning(L"IOCTL_DISK_UPDATE_PROPERTIES failed, but continuing...");
-            }
         }
 
-        if (mLogger) {
+        if (mLogger)
             mLogger->Info(FormatMessage(L"Disk {} cleaned successfully", diskIndex));
-        }
 
         return domain::Expected<void>();
     }
@@ -338,9 +298,8 @@ namespace winsetup::adapters::platform {
         uint32_t diskIndex,
         const abstractions::PartitionLayout& layout
     ) {
-        if (mLogger) {
+        if (mLogger)
             mLogger->Info(FormatMessage(L"Creating partition layout on disk {}...", diskIndex));
-        }
 
         if (!layout.IsValid()) {
             return domain::Error{
@@ -362,12 +321,11 @@ namespace winsetup::adapters::platform {
         HANDLE hDisk = Win32HandleFactory::ToWin32Handle(handle);
 
         auto geometryResult = GetDiskGeometry(hDisk);
-        if (!geometryResult.HasValue()) {
+        if (!geometryResult.HasValue())
             return geometryResult.GetError();
-        }
 
         const auto& geometry = geometryResult.Value();
-        uint64_t totalSize = geometry.DiskSize.QuadPart;
+        uint64_t    totalSize = geometry.DiskSize.QuadPart;
 
         size_t layoutBufferSize = sizeof(DRIVE_LAYOUT_INFORMATION_EX) +
             (layout.partitions.size() * sizeof(PARTITION_INFORMATION_EX));
@@ -397,12 +355,9 @@ namespace winsetup::adapters::platform {
             const auto& partition = layout.partitions[i];
             auto& partInfo = driveLayout->PartitionEntry[i];
 
-            if (layout.style == abstractions::PartitionLayout::Style::GPT) {
-                partInfo.PartitionStyle = PARTITION_STYLE_GPT;
-            }
-            else {
-                partInfo.PartitionStyle = PARTITION_STYLE_MBR;
-            }
+            partInfo.PartitionStyle = (layout.style == abstractions::PartitionLayout::Style::GPT)
+                ? PARTITION_STYLE_GPT
+                : PARTITION_STYLE_MBR;
 
             partInfo.StartingOffset.QuadPart = currentOffset;
             partInfo.PartitionLength.QuadPart = partition.GetSize().ToBytes();
@@ -412,20 +367,16 @@ namespace winsetup::adapters::platform {
             if (layout.style == abstractions::PartitionLayout::Style::GPT) {
                 CoCreateGuid(&partInfo.Gpt.PartitionId);
 
-                if (partition.GetType() == domain::PartitionType::EFI) {
+                if (partition.GetType() == domain::PartitionType::EFI)
                     partInfo.Gpt.PartitionType = PARTITION_SYSTEM_GUID;
-                }
-                else if (partition.GetType() == domain::PartitionType::MSR) {
+                else if (partition.GetType() == domain::PartitionType::MSR)
                     partInfo.Gpt.PartitionType = PARTITION_MSFT_RESERVED_GUID;
-                }
-                else {
+                else
                     partInfo.Gpt.PartitionType = PARTITION_BASIC_DATA_GUID;
-                }
 
                 std::wstring name = partition.GetLabel();
-                if (name.length() > 36) {
+                if (name.length() > 36)
                     name = name.substr(0, 36);
-                }
                 wcsncpy_s(partInfo.Gpt.Name, 36, name.c_str(), _TRUNCATE);
                 partInfo.Gpt.Attributes = 0;
             }
@@ -441,14 +392,10 @@ namespace winsetup::adapters::platform {
 
         DWORD bytesReturned = 0;
         BOOL result = DeviceIoControl(
-            hDisk,
-            IOCTL_DISK_SET_DRIVE_LAYOUT_EX,
-            driveLayout,
-            static_cast<DWORD>(layoutBufferSize),
-            nullptr,
-            0,
-            &bytesReturned,
-            nullptr
+            hDisk, IOCTL_DISK_SET_DRIVE_LAYOUT_EX,
+            driveLayout, static_cast<DWORD>(layoutBufferSize),
+            nullptr, 0,
+            &bytesReturned, nullptr
         );
 
         if (!result) {
@@ -459,15 +406,10 @@ namespace winsetup::adapters::platform {
             };
         }
 
-        result = DeviceIoControl(
-            hDisk,
-            IOCTL_DISK_UPDATE_PROPERTIES,
-            nullptr,
-            0,
-            nullptr,
-            0,
-            &bytesReturned,
-            nullptr
+        DeviceIoControl(
+            hDisk, IOCTL_DISK_UPDATE_PROPERTIES,
+            nullptr, 0, nullptr, 0,
+            &bytesReturned, nullptr
         );
 
         if (mLogger) {
@@ -485,15 +427,15 @@ namespace winsetup::adapters::platform {
         bool quickFormat
     ) {
         if (mLogger) {
-            std::wstring msg = L"Formatting partition " + std::to_wstring(partitionIndex) +
-                L" on disk " + std::to_wstring(diskIndex) + L"...";
-            mLogger->Info(msg);
+            mLogger->Info(
+                L"Formatting partition " + std::to_wstring(partitionIndex) +
+                L" on disk " + std::to_wstring(diskIndex) + L"..."
+            );
         }
 
         auto volumeResult = GetPartitionVolumePath(diskIndex, partitionIndex);
-        if (!volumeResult.HasValue()) {
+        if (!volumeResult.HasValue())
             return volumeResult.GetError();
-        }
 
         std::wstring volumePath = volumeResult.Value();
 
@@ -501,10 +443,7 @@ namespace winsetup::adapters::platform {
             volumePath.c_str(),
             GENERIC_READ | GENERIC_WRITE,
             FILE_SHARE_READ | FILE_SHARE_WRITE,
-            nullptr,
-            OPEN_EXISTING,
-            0,
-            nullptr
+            nullptr, OPEN_EXISTING, 0, nullptr
         );
 
         if (hVolume == INVALID_HANDLE_VALUE) {
@@ -519,14 +458,9 @@ namespace winsetup::adapters::platform {
 
         DWORD bytesReturned = 0;
         BOOL result = DeviceIoControl(
-            hVolume,
-            FSCTL_LOCK_VOLUME,
-            nullptr,
-            0,
-            nullptr,
-            0,
-            &bytesReturned,
-            nullptr
+            hVolume, FSCTL_LOCK_VOLUME,
+            nullptr, 0, nullptr, 0,
+            &bytesReturned, nullptr
         );
 
         if (!result) {
@@ -538,14 +472,9 @@ namespace winsetup::adapters::platform {
         }
 
         result = DeviceIoControl(
-            hVolume,
-            FSCTL_DISMOUNT_VOLUME,
-            nullptr,
-            0,
-            nullptr,
-            0,
-            &bytesReturned,
-            nullptr
+            hVolume, FSCTL_DISMOUNT_VOLUME,
+            nullptr, 0, nullptr, 0,
+            &bytesReturned, nullptr
         );
 
         if (!result) {
@@ -561,39 +490,23 @@ namespace winsetup::adapters::platform {
         DWORD clusterSize = 4096;
 
         switch (fileSystem) {
-        case domain::FileSystemType::NTFS:
-            fsName = L"NTFS";
-            clusterSize = 4096;
-            break;
-        case domain::FileSystemType::FAT32:
-            fsName = L"FAT32";
-            clusterSize = 4096;
-            break;
-        case domain::FileSystemType::exFAT:
-            fsName = L"EXFAT";
-            clusterSize = 32768;
-            break;
-        case domain::FileSystemType::ReFS:
-            fsName = L"REFS";
-            clusterSize = 65536;
-            break;
-        default:
-            fsName = L"NTFS";
-            clusterSize = 4096;
-            break;
+        case domain::FileSystemType::NTFS:  fsName = L"NTFS";  clusterSize = 4096;  break;
+        case domain::FileSystemType::FAT32: fsName = L"FAT32"; clusterSize = 4096;  break;
+        case domain::FileSystemType::exFAT: fsName = L"EXFAT"; clusterSize = 32768; break;
+        case domain::FileSystemType::ReFS:  fsName = L"REFS";  clusterSize = 65536; break;
+        default:                            fsName = L"NTFS";  clusterSize = 4096;  break;
         }
 
         std::wstring label = L"Windows";
-
-        BOOL formatResult = FALSE;
+        BOOL         formatResult = FALSE;
 
         if (fileSystem == domain::FileSystemType::NTFS) {
             struct FORMAT_PARAMETERS {
                 MEDIA_TYPE MediaType;
-                ULONG StartingOffset;
-                ULONG ClusterSize;
-                ULONG LabelLength;
-                WCHAR Label[11];
+                ULONG      StartingOffset;
+                ULONG      ClusterSize;
+                ULONG      LabelLength;
+                WCHAR      Label[11];
             };
 
             FORMAT_PARAMETERS formatParams{};
@@ -604,14 +517,10 @@ namespace winsetup::adapters::platform {
             wcsncpy_s(formatParams.Label, 11, label.c_str(), _TRUNCATE);
 
             formatResult = DeviceIoControl(
-                hVolume,
-                FSCTL_FORMAT_VOLUME,
-                &formatParams,
-                sizeof(formatParams),
-                nullptr,
-                0,
-                &bytesReturned,
-                nullptr
+                hVolume, FSCTL_FORMAT_VOLUME,
+                &formatParams, sizeof(formatParams),
+                nullptr, 0,
+                &bytesReturned, nullptr
             );
         }
 
@@ -625,7 +534,8 @@ namespace winsetup::adapters::platform {
             sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NO_CONSOLE;
             sei.lpVerb = L"runas";
             sei.lpFile = L"cmd.exe";
-            sei.lpParameters = (L"/C " + cmd).c_str();
+            std::wstring params = L"/C " + cmd;
+            sei.lpParameters = params.c_str();
             sei.nShow = SW_HIDE;
 
             if (!ShellExecuteExW(&sei)) {
@@ -643,9 +553,10 @@ namespace winsetup::adapters::platform {
         }
 
         if (mLogger) {
-            std::wstring msg = L"Partition " + std::to_wstring(partitionIndex) +
-                L" formatted as " + fsName;
-            mLogger->Info(msg);
+            mLogger->Info(
+                L"Partition " + std::to_wstring(partitionIndex) +
+                L" formatted as " + fsName
+            );
         }
 
         return domain::Expected<void>();
@@ -668,14 +579,10 @@ namespace winsetup::adapters::platform {
 
         DWORD bytesReturned = 0;
         BOOL result = DeviceIoControl(
-            hDisk,
-            IOCTL_DISK_GET_DRIVE_LAYOUT_EX,
-            nullptr,
-            0,
-            driveLayout,
-            static_cast<DWORD>(buffer.size()),
-            &bytesReturned,
-            nullptr
+            hDisk, IOCTL_DISK_GET_DRIVE_LAYOUT_EX,
+            nullptr, 0,
+            driveLayout, static_cast<DWORD>(buffer.size()),
+            &bytesReturned, nullptr
         );
 
         if (!result) {
@@ -694,19 +601,16 @@ namespace winsetup::adapters::platform {
         for (DWORD i = 0; i < driveLayout->PartitionCount; ++i) {
             const auto& partInfo = driveLayout->PartitionEntry[i];
 
-            if (partInfo.PartitionLength.QuadPart == 0) {
+            if (partInfo.PartitionLength.QuadPart == 0)
                 continue;
-            }
 
             domain::PartitionType partType = domain::PartitionType::Basic;
 
             if (layout.style == abstractions::PartitionLayout::Style::GPT) {
-                if (AreGuidsEqual(partInfo.Gpt.PartitionType, PARTITION_SYSTEM_GUID)) {
+                if (AreGuidsEqual(partInfo.Gpt.PartitionType, PARTITION_SYSTEM_GUID))
                     partType = domain::PartitionType::EFI;
-                }
-                else if (AreGuidsEqual(partInfo.Gpt.PartitionType, PARTITION_MSFT_RESERVED_GUID)) {
+                else if (AreGuidsEqual(partInfo.Gpt.PartitionType, PARTITION_MSFT_RESERVED_GUID))
                     partType = domain::PartitionType::MSR;
-                }
             }
 
             domain::PartitionInfo partition(
@@ -731,14 +635,12 @@ namespace winsetup::adapters::platform {
         uint32_t diskIndex,
         const abstractions::PartitionLayout& layout
     ) {
-        if (mLogger) {
+        if (mLogger)
             mLogger->Info(FormatMessage(L"Restoring layout on disk {}...", diskIndex));
-        }
 
         auto cleanResult = CleanDisk(diskIndex);
-        if (!cleanResult.HasValue()) {
+        if (!cleanResult.HasValue())
             return cleanResult;
-        }
 
         return CreatePartitionLayout(diskIndex, layout);
     }
@@ -748,14 +650,10 @@ namespace winsetup::adapters::platform {
         DWORD bytesReturned = 0;
 
         BOOL result = DeviceIoControl(
-            hDisk,
-            IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
-            nullptr,
-            0,
-            &geometry,
-            sizeof(geometry),
-            &bytesReturned,
-            nullptr
+            hDisk, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
+            nullptr, 0,
+            &geometry, sizeof(geometry),
+            &bytesReturned, nullptr
         );
 
         if (!result) {
@@ -773,10 +671,8 @@ namespace winsetup::adapters::platform {
         uint32_t diskIndex,
         uint32_t partitionIndex
     ) {
-        std::wstring path = L"\\\\.\\PHYSICALDRIVE" + std::to_wstring(diskIndex);
-        path += L"\\Partition" + std::to_wstring(partitionIndex);
-
-        return path;
+        return L"\\\\.\\PHYSICALDRIVE" + std::to_wstring(diskIndex) +
+            L"\\Partition" + std::to_wstring(partitionIndex);
     }
 
 }

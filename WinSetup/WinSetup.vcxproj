@@ -64,6 +64,7 @@
     <ClCompile Include="src\application\services\TaskScheduler.cpp" />
     <ClCompile Include="src\application\usecases\disk\AnalyzeDisksUseCase.cpp" />
     <ClCompile Include="src\application\usecases\disk\EnumerateDisksUseCase.cpp" />
+    <ClCompile Include="src\application\usecases\disk\EnumerateVolumesUseCase.cpp" />
     <ClCompile Include="src\application\usecases\disk\SelectTargetDisksUseCase.cpp" />
     <ClCompile Include="src\application\usecases\install\ApplyImageUseCase.cpp" />
     <ClCompile Include="src\application\usecases\install\BackupUserDataUseCase.cpp" />
@@ -123,6 +124,8 @@
     <ClInclude Include="src\abstractions\ui\IWidget.h" />
     <ClInclude Include="src\abstractions\ui\IWindow.h" />
     <ClInclude Include="src\abstractions\usecases\IAnalyzeSystemUseCase.h" />
+    <ClInclude Include="src\abstractions\usecases\IEnumerateDisksUseCase.h" />
+    <ClInclude Include="src\abstractions\usecases\IEnumerateVolumesUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\ILoadConfigurationUseCase.h" />
     <ClInclude Include="src\adapters\imaging\DismAdapter.h" />
     <ClInclude Include="src\adapters\imaging\WimlibAdapter.h" />
@@ -176,6 +179,7 @@
     <ClInclude Include="src\application\services\TaskScheduler.h" />
     <ClInclude Include="src\application\usecases\disk\AnalyzeDisksUseCase.h" />
     <ClInclude Include="src\application\usecases\disk\EnumerateDisksUseCase.h" />
+    <ClInclude Include="src\application\usecases\disk\EnumerateVolumesUseCase.h" />
     <ClInclude Include="src\application\usecases\disk\SelectTargetDisksUseCase.h" />
     <ClInclude Include="src\application\usecases\install\ApplyImageUseCase.h" />
     <ClInclude Include="src\application\usecases\install\BackupUserDataUseCase.h" />
