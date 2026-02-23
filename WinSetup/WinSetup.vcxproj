@@ -169,9 +169,6 @@
     <ClInclude Include="src\application\async\Task.h" />
     <ClInclude Include="src\application\core\DIContainer.h" />
     <ClInclude Include="src\application\core\ServiceLocator.h" />
-    <ClInclude Include="src\application\dto\DiskAnalysisResult.h" />
-    <ClInclude Include="src\application\dto\InstallationProgress.h" />
-    <ClInclude Include="src\application\dto\SystemAnalysisResult.h" />
     <ClInclude Include="src\application\eventhandlers\DiskAnalyzedEventHandler.h" />
     <ClInclude Include="src\application\eventhandlers\InstallProgressEventHandler.h" />
     <ClInclude Include="src\application\services\Dispatcher.h" />

@@ -362,15 +362,6 @@
     <ClInclude Include="src\application\core\ServiceLocator.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\dto\DiskAnalysisResult.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\dto\InstallationProgress.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\dto\SystemAnalysisResult.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="src\application\eventhandlers\DiskAnalyzedEventHandler.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
