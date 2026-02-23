@@ -135,10 +135,12 @@ namespace winsetup::application {
             const std::wstring sizeStr = std::to_wstring(static_cast<uint64_t>(vol.GetSize().ToGB())) + L" GB";
             const std::wstring fsStr = FileSystemTypeToString(vol.GetFileSystem());
             const std::wstring mounted = vol.IsMounted() ? L"Mounted" : L"Unmounted";
+            const std::wstring letter = vol.GetLetter().empty() ? L"-" : vol.GetLetter();
+            const std::wstring guid = vol.GetVolumePath();
             mLogger->Info(
-                L"  Vol[" + vol.GetLetter() + L"] " +
+                L"  Vol[" + letter + L"] " +
                 L"\"" + vol.GetLabel() + L"\" " +
-                sizeStr + L" / " + fsStr + L" / " + mounted
+                sizeStr + L" / " + fsStr + L" / " + mounted + L" / " + guid
             );
         }
     }

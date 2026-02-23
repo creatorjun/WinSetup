@@ -7,9 +7,13 @@
 #include <winioctl.h>
 #include <ntddscsi.h>
 #include <shellapi.h>
+#include <setupapi.h>
+#include <devguid.h>
 #include <vector>
 #include <algorithm>
 #include <sstream>
+
+#pragma comment(lib, "setupapi.lib")
 
 namespace winsetup::adapters::platform {
 
@@ -75,6 +79,62 @@ namespace winsetup::adapters::platform {
             default:          return domain::BusType::Unknown;
             }
         }
+
+        std::vector<uint32_t> EnumerateDiskIndicesViaSetupAPI() {
+            std::vector<uint32_t> indices;
+
+            HDEVINFO hDevInfo = SetupDiGetClassDevsW(
+                &GUID_DEVINTERFACE_DISK,
+                nullptr, nullptr,
+                DIGCF_PRESENT | DIGCF_DEVICEINTERFACE
+            );
+
+            if (hDevInfo == INVALID_HANDLE_VALUE)
+                return indices;
+
+            SP_DEVICE_INTERFACE_DATA ifData{};
+            ifData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+
+            for (DWORD j = 0; SetupDiEnumDeviceInterfaces(hDevInfo, nullptr, &GUID_DEVINTERFACE_DISK, j, &ifData); ++j) {
+                DWORD requiredSize = 0;
+                SetupDiGetDeviceInterfaceDetailW(hDevInfo, &ifData, nullptr, 0, &requiredSize, nullptr);
+
+                std::vector<BYTE> detailBuffer(requiredSize);
+                auto detail = reinterpret_cast<SP_DEVICE_INTERFACE_DETAIL_DATA_W*>(detailBuffer.data());
+                detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_W);
+
+                if (!SetupDiGetDeviceInterfaceDetailW(hDevInfo, &ifData, detail, requiredSize, nullptr, nullptr))
+                    continue;
+
+                HANDLE hDisk = CreateFileW(
+                    detail->DevicePath,
+                    0,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    nullptr, OPEN_EXISTING, 0, nullptr
+                );
+
+                if (hDisk == INVALID_HANDLE_VALUE)
+                    continue;
+
+                STORAGE_DEVICE_NUMBER sdn{};
+                DWORD bytesReturned = 0;
+                if (DeviceIoControl(hDisk, IOCTL_STORAGE_GET_DEVICE_NUMBER,
+                    nullptr, 0, &sdn, sizeof(sdn), &bytesReturned, nullptr))
+                {
+                    if (sdn.DeviceType == FILE_DEVICE_DISK)
+                        indices.push_back(sdn.DeviceNumber);
+                }
+
+                CloseHandle(hDisk);
+            }
+
+            SetupDiDestroyDeviceInfoList(hDevInfo);
+
+            std::sort(indices.begin(), indices.end());
+            indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+
+            return indices;
+        }
     }
 
     Win32DiskService::Win32DiskService(std::shared_ptr<abstractions::ILogger> logger)
@@ -91,10 +151,7 @@ namespace winsetup::adapters::platform {
             path.c_str(),
             GENERIC_READ | GENERIC_WRITE,
             FILE_SHARE_READ | FILE_SHARE_WRITE,
-            nullptr,
-            OPEN_EXISTING,
-            0,
-            nullptr
+            nullptr, OPEN_EXISTING, 0, nullptr
         );
 
         if (hDisk == INVALID_HANDLE_VALUE)
@@ -108,14 +165,11 @@ namespace winsetup::adapters::platform {
             mLogger->Debug(L"Enumerating disks...");
 
         std::vector<domain::DiskInfo> disks;
-        disks.reserve(8);
 
-        for (uint32_t i = 0; i < 32; ++i) {
-            auto handle = OpenDiskHandle(i);
-            if (!handle)
-                continue;
+        const auto indices = EnumerateDiskIndicesViaSetupAPI();
 
-            auto diskInfoResult = GetDiskInfo(i);
+        for (uint32_t index : indices) {
+            auto diskInfoResult = GetDiskInfo(index);
             if (diskInfoResult.HasValue())
                 disks.push_back(std::move(diskInfoResult.Value()));
         }
@@ -142,8 +196,7 @@ namespace winsetup::adapters::platform {
         DWORD bytesReturned = 0;
 
         BOOL result = DeviceIoControl(
-            hDisk,
-            IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
+            hDisk, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX,
             nullptr, 0,
             &geometry, sizeof(geometry),
             &bytesReturned, nullptr
@@ -159,8 +212,7 @@ namespace winsetup::adapters::platform {
 
         STORAGE_DEVICE_NUMBER deviceNumber{};
         result = DeviceIoControl(
-            hDisk,
-            IOCTL_STORAGE_GET_DEVICE_NUMBER,
+            hDisk, IOCTL_STORAGE_GET_DEVICE_NUMBER,
             nullptr, 0,
             &deviceNumber, sizeof(deviceNumber),
             &bytesReturned, nullptr
@@ -180,8 +232,7 @@ namespace winsetup::adapters::platform {
 
         alignas(8) BYTE buffer[4096]{};
         result = DeviceIoControl(
-            hDisk,
-            IOCTL_STORAGE_QUERY_PROPERTY,
+            hDisk, IOCTL_STORAGE_QUERY_PROPERTY,
             &query, sizeof(query),
             buffer, sizeof(buffer),
             &bytesReturned, nullptr
@@ -200,8 +251,7 @@ namespace winsetup::adapters::platform {
             seekQuery.QueryType = PropertyStandardQuery;
 
             result = DeviceIoControl(
-                hDisk,
-                IOCTL_STORAGE_QUERY_PROPERTY,
+                hDisk, IOCTL_STORAGE_QUERY_PROPERTY,
                 &seekQuery, sizeof(seekQuery),
                 &seekPenalty, sizeof(seekPenalty),
                 &bytesReturned, nullptr
@@ -244,7 +294,14 @@ namespace winsetup::adapters::platform {
         CREATE_DISK createDisk{};
         createDisk.PartitionStyle = PARTITION_STYLE_GPT;
         createDisk.Gpt.MaxPartitionCount = 128;
-        CoCreateGuid(&createDisk.Gpt.DiskId);
+
+        if (FAILED(CoCreateGuid(&createDisk.Gpt.DiskId))) {
+            return domain::Error{
+                FormatMessage(L"CoCreateGuid failed for disk {}", diskIndex),
+                static_cast<uint32_t>(E_FAIL),
+                domain::ErrorCategory::Disk
+            };
+        }
 
         DWORD bytesReturned = 0;
         BOOL result = DeviceIoControl(
@@ -335,7 +392,13 @@ namespace winsetup::adapters::platform {
 
         if (layout.style == abstractions::PartitionLayout::Style::GPT) {
             driveLayout->PartitionStyle = PARTITION_STYLE_GPT;
-            CoCreateGuid(&driveLayout->Gpt.DiskId);
+            if (FAILED(CoCreateGuid(&driveLayout->Gpt.DiskId))) {
+                return domain::Error{
+                    FormatMessage(L"CoCreateGuid failed for disk {}", diskIndex),
+                    static_cast<uint32_t>(E_FAIL),
+                    domain::ErrorCategory::Disk
+                };
+            }
             driveLayout->Gpt.StartingUsableOffset.QuadPart = 1024 * 1024;
             driveLayout->Gpt.UsableLength.QuadPart = totalSize - (2 * 1024 * 1024);
             driveLayout->Gpt.MaxPartitionCount = 128;
@@ -356,8 +419,7 @@ namespace winsetup::adapters::platform {
             auto& partInfo = driveLayout->PartitionEntry[i];
 
             partInfo.PartitionStyle = (layout.style == abstractions::PartitionLayout::Style::GPT)
-                ? PARTITION_STYLE_GPT
-                : PARTITION_STYLE_MBR;
+                ? PARTITION_STYLE_GPT : PARTITION_STYLE_MBR;
 
             partInfo.StartingOffset.QuadPart = currentOffset;
             partInfo.PartitionLength.QuadPart = partition.GetSize().ToBytes();
@@ -365,7 +427,13 @@ namespace winsetup::adapters::platform {
             partInfo.RewritePartition = TRUE;
 
             if (layout.style == abstractions::PartitionLayout::Style::GPT) {
-                CoCreateGuid(&partInfo.Gpt.PartitionId);
+                if (FAILED(CoCreateGuid(&partInfo.Gpt.PartitionId))) {
+                    return domain::Error{
+                        FormatMessage(L"CoCreateGuid failed for partition {}", static_cast<uint32_t>(i)),
+                        static_cast<uint32_t>(E_FAIL),
+                        domain::ErrorCategory::Disk
+                    };
+                }
 
                 if (partition.GetType() == domain::PartitionType::EFI)
                     partInfo.Gpt.PartitionType = PARTITION_SYSTEM_GUID;
@@ -528,13 +596,13 @@ namespace winsetup::adapters::platform {
 
         if (!formatResult) {
             std::wstring cmd = L"format " + volumePath + L" /FS:" + fsName + L" /Q /Y";
+            std::wstring params = L"/C " + cmd;
 
             SHELLEXECUTEINFOW sei{};
             sei.cbSize = sizeof(sei);
             sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NO_CONSOLE;
             sei.lpVerb = L"runas";
             sei.lpFile = L"cmd.exe";
-            std::wstring params = L"/C " + cmd;
             sei.lpParameters = params.c_str();
             sei.nShow = SW_HIDE;
 

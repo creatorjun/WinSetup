@@ -16,7 +16,7 @@ namespace winsetup::abstractions {
             GPT
         };
 
-        Style style;
+        Style style = Style::GPT;
         std::vector<domain::PartitionInfo> partitions;
 
         [[nodiscard]] bool IsValid() const noexcept {

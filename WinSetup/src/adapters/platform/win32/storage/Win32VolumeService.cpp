@@ -47,20 +47,16 @@ namespace winsetup::adapters::platform {
             if (volumePath.back() == L'\\')
                 volumePath.pop_back();
 
+            std::wstring displayLetter;
+
             auto driveLettersResult = GetDriveLetters(volumePath);
-            if (!driveLettersResult.HasValue()) {
-                if (mLogger)
-                    mLogger->Debug(L"Volume has no drive letters: " + volumePath);
-                continue;
+            if (driveLettersResult.HasValue() && !driveLettersResult.Value().empty()) {
+                const auto& first = driveLettersResult.Value()[0];
+                displayLetter = (first.length() >= 2) ? first.substr(0, 2) : first;
             }
-
-            const auto& driveLetters = driveLettersResult.Value();
-            if (driveLetters.empty())
-                continue;
-
-            std::wstring primaryLetter = driveLetters[0];
-            if (primaryLetter.length() >= 2)
-                primaryLetter = primaryLetter.substr(0, 2);
+            else {
+                displayLetter = volumePath;
+            }
 
             auto labelResult = GetVolumeLabel(volumePath);
             std::wstring label = labelResult.HasValue() ? labelResult.Value() : L"";
@@ -77,7 +73,7 @@ namespace winsetup::adapters::platform {
             std::wstring volumeType = volumeTypeResult.HasValue() ?
                 volumeTypeResult.Value() : L"";
 
-            domain::VolumeInfo volume(volumeIndex, primaryLetter, label, fileSystem, size);
+            domain::VolumeInfo volume(volumeIndex, displayLetter, label, fileSystem, size);
             volume.SetVolumeType(volumeType);
             volume.SetVolumePath(volumePath);
             volume.SetMounted(IsVolumeMounted(volumePath));
