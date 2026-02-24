@@ -1,6 +1,7 @@
 // src/adapters/persistence/filesystem/Win32PathChecker.cpp
 #include <adapters/persistence/filesystem/Win32PathChecker.h>
 #include <Windows.h>
+#include <winioctl.h>
 
 namespace winsetup::adapters::persistence {
 
@@ -56,6 +57,44 @@ namespace winsetup::adapters::persistence {
         const DWORD attr = GetAttributes(volumeGuid, relativePath);
         if (attr == INVALID_FILE_ATTRIBUTES) return false;
         return (attr & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    }
+
+    std::optional<uint32_t> Win32PathChecker::FindDiskIndexByVolumeGuid(
+        const std::wstring& volumeGuid
+    ) const noexcept {
+        if (volumeGuid.empty()) return std::nullopt;
+
+        wchar_t mountBuf[MAX_PATH] = {};
+        DWORD   mountBufLen = MAX_PATH;
+        if (!::GetVolumePathNamesForVolumeNameW(
+            volumeGuid.c_str(), mountBuf, mountBufLen, &mountBufLen)
+            && ::GetLastError() != ERROR_MORE_DATA)
+            return std::nullopt;
+
+        const std::wstring mountPath(mountBuf);
+        if (mountPath.size() < 2) return std::nullopt;
+
+        const std::wstring query = L"\\\\.\\" + mountPath.substr(0, 2);
+        HANDLE hVol = ::CreateFileW(
+            query.c_str(), 0,
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            nullptr, OPEN_EXISTING, 0, nullptr
+        );
+        if (hVol == INVALID_HANDLE_VALUE) return std::nullopt;
+
+        STORAGE_DEVICE_NUMBER sdn{};
+        DWORD bytesReturned = 0;
+        const BOOL ok = ::DeviceIoControl(
+            hVol,
+            IOCTL_STORAGE_GET_DEVICE_NUMBER,
+            nullptr, 0,
+            &sdn, sizeof(sdn),
+            &bytesReturned, nullptr
+        );
+        ::CloseHandle(hVol);
+
+        if (!ok) return std::nullopt;
+        return static_cast<uint32_t>(sdn.DeviceNumber);
     }
 
 }

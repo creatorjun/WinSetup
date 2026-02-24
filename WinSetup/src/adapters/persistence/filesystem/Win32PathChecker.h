@@ -2,6 +2,8 @@
 #pragma once
 #include <abstractions/services/storage/IPathChecker.h>
 #include <string>
+#include <optional>
+#include <cstdint>
 
 namespace winsetup::adapters::persistence {
 
@@ -25,6 +27,10 @@ namespace winsetup::adapters::persistence {
         [[nodiscard]] bool IsDirectory(
             const std::wstring& volumeGuid,
             const std::wstring& relativePath
+        ) const noexcept override;
+
+        [[nodiscard]] std::optional<uint32_t> FindDiskIndexByVolumeGuid(
+            const std::wstring& volumeGuid
         ) const noexcept override;
     };
 

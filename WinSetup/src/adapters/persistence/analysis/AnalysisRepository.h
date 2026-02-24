@@ -29,6 +29,9 @@ namespace winsetup::adapters::persistence {
             std::shared_ptr<const std::vector<domain::VolumeInfo>> volumes
         ) override;
 
+        void StoreUpdatedVolumes(std::vector<domain::VolumeInfo> volumes) override;
+        void StoreUpdatedDisks(std::vector<domain::DiskInfo> disks)       override;
+
         [[nodiscard]] domain::Expected<std::shared_ptr<const domain::SystemInfo>>
             GetSystemInfo() const override;
 

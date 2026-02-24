@@ -22,6 +22,14 @@ namespace winsetup::adapters::persistence {
         mVolumes = std::move(volumes);
     }
 
+    void AnalysisRepository::StoreUpdatedVolumes(std::vector<domain::VolumeInfo> volumes) {
+        mVolumes = std::make_shared<const std::vector<domain::VolumeInfo>>(std::move(volumes));
+    }
+
+    void AnalysisRepository::StoreUpdatedDisks(std::vector<domain::DiskInfo> disks) {
+        mDisks = std::make_shared<const std::vector<domain::DiskInfo>>(std::move(disks));
+    }
+
     domain::Expected<std::shared_ptr<const domain::SystemInfo>>
         AnalysisRepository::GetSystemInfo() const
     {
