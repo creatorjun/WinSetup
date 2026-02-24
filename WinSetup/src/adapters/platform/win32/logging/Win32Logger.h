@@ -1,14 +1,12 @@
-﻿// src/adapters/platform/win32/logging/Win32Logger.h
-#pragma once
-
-#include <abstractions/infrastructure/logging/ILogger.h>
-#include "../memory/UniqueHandle.h"
+﻿#pragma once
+#include "abstractions/infrastructure/logging/ILogger.h"
+#include "adapters/platform/win32/memory/UniqueHandle.h"
 #include <string>
 #include <mutex>
 
 namespace winsetup::adapters::platform {
 
-    class Win32Logger : public abstractions::ILogger {
+    class Win32Logger final : public abstractions::ILogger {
     public:
         explicit Win32Logger(const std::wstring& logFilePath = L"log/log.txt");
         ~Win32Logger() override;
@@ -19,8 +17,7 @@ namespace winsetup::adapters::platform {
         void Log(
             abstractions::LogLevel level,
             const std::wstring& message,
-            const std::source_location& location
-        ) override;
+            const std::source_location& location) override;
 
         void Flush();
 
@@ -34,13 +31,13 @@ namespace winsetup::adapters::platform {
         [[nodiscard]] bool EnsureDirectoryExists();
         [[nodiscard]] bool ShouldFlushImmediately(abstractions::LogLevel level) const noexcept;
 
-        UniqueHandle m_hFile;
-        std::mutex m_mutex;
-        std::wstring m_buffer;
-        std::wstring m_logFilePath;
+        UniqueHandle mHFile;
+        std::mutex mMutex;
+        std::wstring mBuffer;
+        std::wstring mLogFilePath;
 
-        static constexpr size_t BUFFER_SIZE = 16384;
-        static constexpr size_t FLUSH_THRESHOLD = 8192;
+        static constexpr size_t kBufferSize = 16384;
+        static constexpr size_t kFlushThreshold = 8192;
     };
 
-}
+} // namespace winsetup::adapters::platform

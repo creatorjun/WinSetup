@@ -234,7 +234,7 @@
     <ClCompile Include="src\adapters\persistence\filesystem\Win32PathChecker.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\application\usecases\disk\SelectTargetVolumeUseCase.cpp">
+    <ClCompile Include="src\application\usecases\disk\AnalyzeVolumesUseCase.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -638,10 +638,10 @@
     <ClInclude Include="src\adapters\persistence\filesystem\Win32PathChecker.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\usecases\ISelectTargetVolumeUseCase.h">
+    <ClInclude Include="src\abstractions\usecases\IAnalyzeVolumesUseCase.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\usecases\disk\SelectTargetVolumeUseCase.h">
+    <ClInclude Include="src\application\usecases\disk\AnalyzeVolumesUseCase.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

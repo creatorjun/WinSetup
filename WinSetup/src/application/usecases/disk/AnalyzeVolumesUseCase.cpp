@@ -1,0 +1,194 @@
+#include "application/usecases/disk/AnalyzeVolumesUseCase.h"
+#include <algorithm>
+
+namespace winsetup::application {
+
+    AnalyzeVolumesUseCase::AnalyzeVolumesUseCase(
+        std::shared_ptr<abstractions::IAnalysisRepository> analysisRepository,
+        std::shared_ptr<abstractions::IConfigRepository> configRepository,
+        std::shared_ptr<abstractions::IPathChecker> pathChecker,
+        std::shared_ptr<abstractions::ILogger> logger)
+        : mAnalysisRepository(std::move(analysisRepository))
+        , mConfigRepository(std::move(configRepository))
+        , mPathChecker(std::move(pathChecker))
+        , mLogger(std::move(logger))
+    {
+    }
+
+    domain::Expected<void> AnalyzeVolumesUseCase::Execute()
+    {
+        if (!mAnalysisRepository)
+            return domain::Error(L"IAnalysisRepository not provided", 0, domain::ErrorCategory::System);
+        if (!mConfigRepository)
+            return domain::Error(L"IConfigRepository not provided", 0, domain::ErrorCategory::System);
+        if (!mPathChecker)
+            return domain::Error(L"IPathChecker not provided", 0, domain::ErrorCategory::System);
+
+        auto configResult = mConfigRepository->GetConfig();
+        if (!configResult.HasValue())
+            return configResult.GetError();
+
+        auto volumeResult = mAnalysisRepository->GetVolumes();
+        if (!volumeResult.HasValue())
+            return volumeResult.GetError();
+
+        auto diskResult = mAnalysisRepository->GetDisks();
+        if (!diskResult.HasValue())
+            return diskResult.GetError();
+
+        const std::wstring userProfile = configResult.Value()->GetUserProfile();
+
+        if (mLogger)
+            mLogger->Info(L"AnalyzeVolumesUseCase: Started. UserProfile=" + userProfile);
+
+        std::vector<domain::VolumeInfo> volumes(*volumeResult.Value());
+        std::vector<domain::DiskInfo> disks(*diskResult.Value());
+
+        int systemVolIdx = -1;
+        for (int i = 0; i < static_cast<int>(volumes.size()); i++) {
+            if (IsSystemVolume(volumes[i], userProfile)) {
+                volumes[i].SetIsSystem(true);
+                systemVolIdx = i;
+                break;
+            }
+        }
+
+        for (auto& vol : volumes) {
+            if (vol.IsSystem())
+                continue;
+            if (IsDataVolume(vol, userProfile)) {
+                vol.SetIsData(true);
+                break;
+            }
+        }
+
+        if (systemVolIdx >= 0) {
+            const std::wstring systemGuid = volumes[systemVolIdx].GetVolumePath();
+            const auto systemDiskIdx = mPathChecker->FindDiskIndexByVolumeGuid(systemGuid);
+
+            if (systemDiskIdx.has_value()) {
+                for (auto& disk : disks) {
+                    if (disk.GetIndex() == systemDiskIdx.value()) {
+                        disk.SetIsSystem(true);
+                        break;
+                    }
+                }
+
+                for (auto& vol : volumes) {
+                    if (vol.IsSystem() || vol.IsData())
+                        continue;
+                    const auto volDiskIdx = mPathChecker->FindDiskIndexByVolumeGuid(vol.GetVolumePath());
+                    if (!volDiskIdx.has_value())
+                        continue;
+                    if (volDiskIdx.value() != systemDiskIdx.value())
+                        continue;
+                    if (IsBootVolume(vol, disks)) {
+                        vol.SetIsBoot(true);
+                        break;
+                    }
+                }
+            }
+        }
+
+        auto dataVolIt = std::find_if(volumes.begin(), volumes.end(),
+            [](const domain::VolumeInfo& v) { return v.IsData(); });
+        if (dataVolIt != volumes.end()) {
+            const auto dataDiskIdx = mPathChecker->FindDiskIndexByVolumeGuid(dataVolIt->GetVolumePath());
+            if (dataDiskIdx.has_value()) {
+                for (auto& disk : disks) {
+                    if (disk.GetIndex() == dataDiskIdx.value() && !disk.IsSystem()) {
+                        disk.SetIsData(true);
+                        break;
+                    }
+                }
+            }
+        }
+
+        mAnalysisRepository->StoreUpdatedVolumes(std::move(volumes));
+        mAnalysisRepository->StoreUpdatedDisks(std::move(disks));
+
+        LogResult();
+
+        if (mLogger)
+            mLogger->Info(L"AnalyzeVolumesUseCase: Complete.");
+
+        return domain::Expected<void>();
+    }
+
+    void AnalyzeVolumesUseCase::LogResult() const
+    {
+        if (!mLogger)
+            return;
+
+        auto volumeResult = mAnalysisRepository->GetVolumes();
+        if (!volumeResult.HasValue())
+            return;
+
+        const auto& volumes = *volumeResult.Value();
+
+        const auto logVolume = [&](const domain::VolumeInfo& vol, const std::wstring& role) {
+            const std::wstring letter = vol.GetLetter().empty() ? L"-" : vol.GetLetter();
+            const std::wstring label = vol.GetLabel().empty() ? L"-" : vol.GetLabel();
+            mLogger->Info(L"AnalyzeVolumesUseCase: [" + role + L"] "
+                + letter + L" [" + label + L"] "
+                + vol.GetVolumePath());
+            };
+
+        bool foundSystem = false, foundData = false, foundBoot = false;
+
+        for (const auto& vol : volumes) {
+            if (vol.IsSystem()) { logVolume(vol, L"System"); foundSystem = true; }
+            if (vol.IsData()) { logVolume(vol, L"Data");   foundData = true; }
+            if (vol.IsBoot()) { logVolume(vol, L"Boot");   foundBoot = true; }
+        }
+
+        if (!foundSystem) mLogger->Warning(L"AnalyzeVolumesUseCase: [System] volume not found");
+        if (!foundData)   mLogger->Warning(L"AnalyzeVolumesUseCase: [Data]   volume not found");
+        if (!foundBoot)   mLogger->Warning(L"AnalyzeVolumesUseCase: [Boot]   volume not found");
+    }
+
+    bool AnalyzeVolumesUseCase::IsSystemVolume(
+        const domain::VolumeInfo& volume,
+        const std::wstring& userProfile) const noexcept
+    {
+        const std::wstring& guid = volume.GetVolumePath();
+        if (guid.empty())
+            return false;
+        return mPathChecker->IsDirectory(guid, L"Windows\\System32")
+            && mPathChecker->IsDirectory(guid, L"Users\\" + userProfile);
+    }
+
+    bool AnalyzeVolumesUseCase::IsDataVolume(
+        const domain::VolumeInfo& volume,
+        const std::wstring& userProfile) const noexcept
+    {
+        const std::wstring& guid = volume.GetVolumePath();
+        if (guid.empty())
+            return false;
+        return mPathChecker->IsDirectory(guid, userProfile + L"\\desktop")
+            || mPathChecker->IsDirectory(guid, userProfile + L"\\Documents");
+    }
+
+    bool AnalyzeVolumesUseCase::IsBootVolume(
+        const domain::VolumeInfo& volume,
+        const std::vector<domain::DiskInfo>& disks) const noexcept
+    {
+        if (volume.GetFileSystem() != domain::FileSystemType::FAT32)
+            return false;
+
+        const auto volDiskIdx = mPathChecker->FindDiskIndexByVolumeGuid(volume.GetVolumePath());
+        if (!volDiskIdx.has_value())
+            return false;
+
+        for (const auto& disk : disks) {
+            if (disk.GetIndex() != volDiskIdx.value())
+                continue;
+            for (const auto& partition : disk.GetPartitions()) {
+                if (partition.GetType() == domain::PartitionType::EFI)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+} // namespace winsetup::application

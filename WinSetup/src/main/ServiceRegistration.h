@@ -1,5 +1,4 @@
-﻿// src/main/ServiceRegistration.h
-#pragma once
+﻿#pragma once
 #include "application/core/DIContainer.h"
 #include <Windows.h>
 
@@ -11,8 +10,7 @@ namespace winsetup {
 
         static void RegisterAllServices(
             application::DIContainer& container,
-            HINSTANCE hInstance
-        );
+            HINSTANCE hInstance);
 
     private:
         static void RegisterInfrastructureServices(application::DIContainer& container);
@@ -22,10 +20,7 @@ namespace winsetup {
         static void RegisterStorageServices(application::DIContainer& container);
         static void RegisterUseCaseServices(application::DIContainer& container);
         static void RegisterApplicationServices(application::DIContainer& container);
-        static void RegisterUIServices(
-            application::DIContainer& container,
-            HINSTANCE hInstance
-        );
+        static void RegisterUIServices(application::DIContainer& container, HINSTANCE hInstance);
     };
 
-}
+} // namespace winsetup

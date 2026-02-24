@@ -1,89 +1,83 @@
-﻿// src/adapters/platform/win32/logging/Win32Logger.cpp
-#include "Win32Logger.h"
-#include "../core/Win32HandleFactory.h"
+﻿#include "adapters/platform/win32/logging/Win32Logger.h"
+#include "adapters/platform/win32/core/Win32HandleFactory.h"
 #include <Windows.h>
 #include <chrono>
 
 namespace winsetup::adapters::platform {
 
     Win32Logger::Win32Logger(const std::wstring& logFilePath)
-        : m_logFilePath(logFilePath)
+        : mLogFilePath(logFilePath)
     {
-        m_buffer.reserve(BUFFER_SIZE);
+        mBuffer.reserve(kBufferSize);
 
-        if (EnsureFileOpen() && m_hFile) {
+        if (EnsureFileOpen() && mHFile) {
             std::wstring initMsg = L"[INIT] Win32Logger initialized\r\n";
             DWORD bytesWritten = 0;
             WriteFile(
-                Win32HandleFactory::ToWin32Handle(m_hFile),
+                Win32HandleFactory::ToWin32Handle(mHFile),
                 initMsg.data(),
                 static_cast<DWORD>(initMsg.size() * sizeof(wchar_t)),
                 &bytesWritten,
-                nullptr
-            );
-            FlushFileBuffers(Win32HandleFactory::ToWin32Handle(m_hFile));
+                nullptr);
+            FlushFileBuffers(Win32HandleFactory::ToWin32Handle(mHFile));
         }
     }
 
-    Win32Logger::~Win32Logger() {
-        std::lock_guard<std::mutex> lock(m_mutex);
+    Win32Logger::~Win32Logger()
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
         FlushBufferUnsafe();
     }
 
-    bool Win32Logger::EnsureDirectoryExists() {
-        size_t lastSlash = m_logFilePath.find_last_of(L"\\/");
-        if (lastSlash == std::wstring::npos) {
+    bool Win32Logger::EnsureDirectoryExists()
+    {
+        const size_t lastSlash = mLogFilePath.find_last_of(L"\\/");
+        if (lastSlash == std::wstring::npos)
             return true;
-        }
 
-        std::wstring dirPath = m_logFilePath.substr(0, lastSlash);
+        const std::wstring dirPath = mLogFilePath.substr(0, lastSlash);
 
-        DWORD attribs = GetFileAttributesW(dirPath.c_str());
-        if (attribs != INVALID_FILE_ATTRIBUTES) {
+        const DWORD attribs = GetFileAttributesW(dirPath.c_str());
+        if (attribs != INVALID_FILE_ATTRIBUTES)
             return (attribs & FILE_ATTRIBUTE_DIRECTORY) != 0;
-        }
 
         if (!CreateDirectoryW(dirPath.c_str(), nullptr)) {
-            DWORD error = GetLastError();
-            if (error != ERROR_ALREADY_EXISTS) {
+            const DWORD error = GetLastError();
+            if (error != ERROR_ALREADY_EXISTS)
                 return false;
-            }
         }
-
         return true;
     }
 
-    bool Win32Logger::EnsureFileOpen() {
-        if (m_hFile) {
+    bool Win32Logger::EnsureFileOpen()
+    {
+        if (mHFile)
             return true;
-        }
 
-        if (!EnsureDirectoryExists()) {
+        if (!EnsureDirectoryExists())
             return false;
-        }
 
         HANDLE hFile = CreateFileW(
-            m_logFilePath.c_str(),
+            mLogFilePath.c_str(),
             GENERIC_WRITE,
             FILE_SHARE_READ,
             nullptr,
             CREATE_ALWAYS,
             FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH,
-            nullptr
-        );
+            nullptr);
 
-        if (hFile == INVALID_HANDLE_VALUE) {
+        if (hFile == INVALID_HANDLE_VALUE)
             return false;
-        }
 
         SetFilePointer(hFile, 0, nullptr, FILE_END);
-        m_hFile = Win32HandleFactory::MakeHandle(hFile);
+        mHFile = Win32HandleFactory::MakeHandle(hFile);
         return true;
     }
 
-    bool Win32Logger::ShouldFlushImmediately(abstractions::LogLevel level) const noexcept {
-        return level == abstractions::LogLevel::Error ||
-            level == abstractions::LogLevel::Fatal;
+    bool Win32Logger::ShouldFlushImmediately(abstractions::LogLevel level) const noexcept
+    {
+        return level == abstractions::LogLevel::Error
+            || level == abstractions::LogLevel::Fatal;
     }
 
     void Win32Logger::Log(
@@ -105,55 +99,47 @@ namespace winsetup::adapters::platform {
 
         OutputDebugStringW(entry.c_str());
 
-        bool forceFlush = ShouldFlushImmediately(level);
+        const bool forceFlush = ShouldFlushImmediately(level);
 
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-
-            if (!EnsureFileOpen()) {
-                return;
-            }
-
-            WriteBufferedEntry(entry, forceFlush);
-        }
+        std::lock_guard<std::mutex> lock(mMutex);
+        if (!EnsureFileOpen())
+            return;
+        WriteBufferedEntry(entry, forceFlush);
     }
 
-    void Win32Logger::WriteBufferedEntry(const std::wstring& entry, bool forceFlush) {
-        m_buffer += entry;
+    void Win32Logger::WriteBufferedEntry(const std::wstring& entry, bool forceFlush)
+    {
+        mBuffer += entry;
 
-        bool shouldFlush = forceFlush ||
-            (m_buffer.size() >= FLUSH_THRESHOLD);
-
-        if (shouldFlush) {
+        if (forceFlush || mBuffer.size() >= kFlushThreshold)
             FlushBufferUnsafe();
-        }
     }
 
-    void Win32Logger::Flush() {
-        std::lock_guard<std::mutex> lock(m_mutex);
+    void Win32Logger::Flush()
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
         FlushBufferUnsafe();
     }
 
-    void Win32Logger::FlushBufferUnsafe() {
-        if (!m_hFile || m_buffer.empty()) {
+    void Win32Logger::FlushBufferUnsafe()
+    {
+        if (!mHFile || mBuffer.empty())
             return;
-        }
 
         DWORD bytesWritten = 0;
         WriteFile(
-            Win32HandleFactory::ToWin32Handle(m_hFile),
-            m_buffer.data(),
-            static_cast<DWORD>(m_buffer.size() * sizeof(wchar_t)),
+            Win32HandleFactory::ToWin32Handle(mHFile),
+            mBuffer.data(),
+            static_cast<DWORD>(mBuffer.size() * sizeof(wchar_t)),
             &bytesWritten,
-            nullptr
-        );
+            nullptr);
 
-        FlushFileBuffers(Win32HandleFactory::ToWin32Handle(m_hFile));
-
-        m_buffer.clear();
+        FlushFileBuffers(Win32HandleFactory::ToWin32Handle(mHFile));
+        mBuffer.clear();
     }
 
-    const wchar_t* Win32Logger::GetLevelString(abstractions::LogLevel level) const noexcept {
+    const wchar_t* Win32Logger::GetLevelString(abstractions::LogLevel level) const noexcept
+    {
         switch (level) {
         case abstractions::LogLevel::Trace:   return L"TRACE";
         case abstractions::LogLevel::Debug:   return L"DEBUG";
@@ -165,7 +151,8 @@ namespace winsetup::adapters::platform {
         }
     }
 
-    void Win32Logger::FormatTimestamp(wchar_t* buffer, size_t bufferSize) const noexcept {
+    void Win32Logger::FormatTimestamp(wchar_t* buffer, size_t bufferSize) const noexcept
+    {
         SYSTEMTIME st;
         GetLocalTime(&st);
         swprintf_s(
@@ -173,8 +160,7 @@ namespace winsetup::adapters::platform {
             bufferSize,
             L"%04d-%02d-%02d %02d:%02d:%02d.%03d",
             st.wYear, st.wMonth, st.wDay,
-            st.wHour, st.wMinute, st.wSecond, st.wMilliseconds
-        );
+            st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
     }
 
-}
+} // namespace winsetup::adapters::platform
