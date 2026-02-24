@@ -12,10 +12,10 @@ namespace winsetup::adapters::ui {
 
     void ActionPanel::Create(HWND hParent, HINSTANCE hInstance, int x, int y, int width, int height) {
         mHParent = hParent;
-        mBtnStartStop.Create(hParent, L"시작", x, y, width, BTNHEIGHT, ID_BTN_STARTSTOP, hInstance);
+        mBtnStartStop.Create(hParent, L"시작", x, y, width, BTNHEIGHT, IDBTNSTARTSTOP, hInstance);
         mBtnStartStop.SetFontSize(15);
         const int progressY = y + BTNHEIGHT + GAP * 2;
-        mProgressBar.Create(hParent, hInstance, x, progressY, width, PROGRESSH, ID_PROGRESSBAR);
+        mProgressBar.Create(hParent, hInstance, x, progressY, width, PROGRESSH, IDPROGRESSBAR);
         mProgressBar.Reset();
     }
 
@@ -23,8 +23,12 @@ namespace winsetup::adapters::ui {
         mViewModel = std::move(viewModel);
     }
 
+    void ActionPanel::OnPaint(HDC hdc) {}
+
+    void ActionPanel::OnTimer(UINT_PTR timerId) {}
+
     bool ActionPanel::OnCommand(WPARAM wParam, LPARAM lParam) {
-        if (HIWORD(wParam) != BN_CLICKED || LOWORD(wParam) != ID_BTN_STARTSTOP || !mViewModel)
+        if (HIWORD(wParam) != BN_CLICKED || LOWORD(wParam) != IDBTNSTARTSTOP || !mViewModel)
             return false;
         mViewModel->SetProcessing(!mViewModel->IsProcessing());
         return true;
@@ -38,7 +42,7 @@ namespace winsetup::adapters::ui {
         if (!mViewModel) return;
         if (propertyName == L"IsProcessing") {
             const bool processing = mViewModel->IsProcessing();
-            mBtnStartStop.SetText(processing ? L"중단" : L"시작");
+            mBtnStartStop.SetText(processing ? L"중지" : L"시작");
             mProgressBar.Reset();
         }
         else if (propertyName == L"Progress" || propertyName == L"RemainingSeconds") {

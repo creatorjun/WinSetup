@@ -146,12 +146,12 @@ namespace winsetup::adapters::ui {
         RebuildTypeSelector();
 
         const int optionY = mselectorRect.bottom + gap * 2;
-        const int optionH = 36 * 2 + gap;
+        const int optionH = btnH * 2 + gap;
         moptionPanel.SetViewModel(mviewModel);
         moptionPanel.Create(mhWnd, mhInstance, marginH, optionY, panelW, optionH);
 
         const int actionY = optionY + optionH + gap;
-        const int actionH = 44 + gap * 2 + 36;
+        const int actionH = btnH + gap * 2 + btnH;
         mactionPanel.SetViewModel(mviewModel);
         mactionPanel.Create(mhWnd, mhInstance, marginH, actionY, panelW, actionH);
 
@@ -246,12 +246,12 @@ namespace winsetup::adapters::ui {
 
     LRESULT Win32MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
         switch (uMsg) {
-        case WM_CREATE:   OnCreate();              return 0;
-        case WM_DESTROY:  OnDestroy();             return 0;
-        case WM_PAINT:    OnPaint();               return 0;
+        case WM_CREATE:   OnCreate();               return 0;
+        case WM_DESTROY:  OnDestroy();              return 0;
+        case WM_PAINT:    OnPaint();                return 0;
         case WM_COMMAND:  OnCommand(wParam, lParam); return 0;
-        case WM_TIMER:    OnTimer(wParam);         return 0;
-        case WM_CLOSE:    DestroyWindow(mhWnd);    return 0;
+        case WM_TIMER:    OnTimer(wParam);          return 0;
+        case WM_CLOSE:    DestroyWindow(mhWnd);     return 0;
         default:          return DefWindowProcW(mhWnd, uMsg, wParam, lParam);
         }
     }

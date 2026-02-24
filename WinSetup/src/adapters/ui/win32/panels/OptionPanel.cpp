@@ -9,31 +9,16 @@ namespace winsetup::adapters::ui {
     {
     }
 
-    void OptionPanel::Create(
-        HWND hParent, HINSTANCE hInstance,
-        int x, int y, int width, int height)
-    {
-        mBtnDataPreserve.Create(
-            hParent, L"데이터 보존",
-            x, y,
-            width, BTN_HEIGHT,
-            ID_TOGGLE_DATA_PRESERVE, hInstance);
-
-        mBtnBitlocker.Create(
-            hParent, L"BitLocker 설정",
-            x, y + BTN_HEIGHT + BTN_GAP,
-            width, BTN_HEIGHT,
-            ID_TOGGLE_BITLOCKER, hInstance);
-
+    void OptionPanel::Create(HWND hParent, HINSTANCE hInstance, int x, int y, int width, int height) {
+        mBtnDataPreserve.Create(hParent, L"데이터 보존", x, y, width, BTNHEIGHT, IDTOGGLEDATAPRESERVE, hInstance);
+        mBtnBitlocker.Create(hParent, L"BitLocker", x, y + BTNHEIGHT + BTNGAP, width, BTNHEIGHT, IDTOGGLEBITLOCKER, hInstance);
         if (mViewModel) {
             mBtnDataPreserve.SetChecked(mViewModel->GetDataPreservation());
             mBtnBitlocker.SetChecked(mViewModel->GetBitlockerEnabled());
         }
     }
 
-    void OptionPanel::SetViewModel(
-        std::shared_ptr<abstractions::IMainViewModel> viewModel)
-    {
+    void OptionPanel::SetViewModel(std::shared_ptr<abstractions::IMainViewModel> viewModel) {
         mViewModel = std::move(viewModel);
         if (mViewModel && IsValid()) {
             mBtnDataPreserve.SetChecked(mViewModel->GetDataPreservation());
@@ -41,15 +26,18 @@ namespace winsetup::adapters::ui {
         }
     }
 
-    bool OptionPanel::OnCommand(WPARAM wParam, LPARAM /*lParam*/) {
+    void OptionPanel::OnPaint(HDC hdc) {}
+
+    void OptionPanel::OnTimer(UINT_PTR timerId) {}
+
+    bool OptionPanel::OnCommand(WPARAM wParam, LPARAM lParam) {
         if (HIWORD(wParam) != BN_CLICKED) return false;
         const int ctrlId = LOWORD(wParam);
-
-        if (ctrlId == ID_TOGGLE_DATA_PRESERVE && mViewModel) {
+        if (ctrlId == IDTOGGLEDATAPRESERVE && mViewModel) {
             mViewModel->SetDataPreservation(mBtnDataPreserve.IsChecked());
             return true;
         }
-        if (ctrlId == ID_TOGGLE_BITLOCKER && mViewModel) {
+        if (ctrlId == IDTOGGLEBITLOCKER && mViewModel) {
             mViewModel->SetBitlockerEnabled(mBtnBitlocker.IsChecked());
             return true;
         }
@@ -63,7 +51,6 @@ namespace winsetup::adapters::ui {
 
     void OptionPanel::OnPropertyChanged(const std::wstring& propertyName) {
         if (!mViewModel) return;
-
         if (propertyName == L"DataPreservation" && mBtnDataPreserve.Handle()) {
             mBtnDataPreserve.SetChecked(mViewModel->GetDataPreservation());
             InvalidateRect(mBtnDataPreserve.Handle(), nullptr, TRUE);
@@ -73,8 +60,7 @@ namespace winsetup::adapters::ui {
             InvalidateRect(mBtnBitlocker.Handle(), nullptr, TRUE);
         }
         else if (propertyName == L"IsProcessing") {
-            const bool processing = mViewModel->IsProcessing();
-            SetEnabled(!processing);
+            SetEnabled(!mViewModel->IsProcessing());
         }
     }
 
