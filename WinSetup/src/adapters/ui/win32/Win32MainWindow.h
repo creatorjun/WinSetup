@@ -65,7 +65,7 @@ namespace winsetup::adapters::ui {
         std::vector<abstractions::IWidget*> mwidgets;
 
         static constexpr int       WINDOWWIDTH = 640;
-        static constexpr int       WINDOWHEIGHT = 480;
+        static constexpr int       WINDOWHEIGHT = 430;
         static constexpr int       TYPESELECTORGROUPID = 100;
         static constexpr UINT_PTR  MAIN_TIMER_ID = 2001;
         static constexpr auto      CLASSNAME = L"WinSetupMainWindow";
