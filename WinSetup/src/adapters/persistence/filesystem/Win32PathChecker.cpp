@@ -4,31 +4,33 @@
 
 namespace winsetup::adapters::persistence {
 
-    std::wstring Win32PathChecker::BuildFullPath(
-        const std::wstring& volumeGuid,
-        const std::wstring& relativePath
-    ) noexcept {
-        std::wstring base = volumeGuid;
+    namespace {
 
-        if (!base.empty() && base.back() != L'\\')
-            base += L'\\';
+        std::wstring BuildFullPath(
+            const std::wstring& volumeGuid,
+            const std::wstring& relativePath
+        ) noexcept {
+            std::wstring base = volumeGuid;
+            if (!base.empty() && base.back() != L'\\')
+                base += L'\\';
 
-        std::wstring rel = relativePath;
-        if (!rel.empty() && (rel.front() == L'\\' || rel.front() == L'/'))
-            rel = rel.substr(1);
+            std::wstring rel = relativePath;
+            if (!rel.empty() && (rel.front() == L'\\' || rel.front() == L'/'))
+                rel = rel.substr(1);
 
-        for (auto& c : rel)
-            if (c == L'/') c = L'\\';
+            for (auto& c : rel)
+                if (c == L'/') c = L'\\';
 
-        return base + rel;
-    }
+            return base + rel;
+        }
 
-    DWORD Win32PathChecker::GetAttributes(
-        const std::wstring& volumeGuid,
-        const std::wstring& relativePath
-    ) noexcept {
-        const std::wstring fullPath = BuildFullPath(volumeGuid, relativePath);
-        return ::GetFileAttributesW(fullPath.c_str());
+        DWORD GetAttributes(
+            const std::wstring& volumeGuid,
+            const std::wstring& relativePath
+        ) noexcept {
+            return ::GetFileAttributesW(BuildFullPath(volumeGuid, relativePath).c_str());
+        }
+
     }
 
     bool Win32PathChecker::Exists(

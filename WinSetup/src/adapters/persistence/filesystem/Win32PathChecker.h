@@ -26,17 +26,6 @@ namespace winsetup::adapters::persistence {
             const std::wstring& volumeGuid,
             const std::wstring& relativePath
         ) const noexcept override;
-
-    private:
-        [[nodiscard]] static std::wstring BuildFullPath(
-            const std::wstring& volumeGuid,
-            const std::wstring& relativePath
-        ) noexcept;
-
-        [[nodiscard]] static DWORD GetAttributes(
-            const std::wstring& volumeGuid,
-            const std::wstring& relativePath
-        ) noexcept;
     };
 
 }

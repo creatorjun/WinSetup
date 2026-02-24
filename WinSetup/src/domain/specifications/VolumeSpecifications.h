@@ -1,5 +1,4 @@
 ﻿// src/domain/specifications/VolumeSpecifications.h
-
 #pragma once
 
 #include <domain/specifications/ISpecification.h>
@@ -12,7 +11,7 @@ namespace winsetup::domain {
     class VolumeIsSystemSpec : public ISpecification<VolumeInfo> {
     public:
         bool IsSatisfiedBy(const VolumeInfo& volume) const override {
-            return volume.IsSystemVolume();
+            return volume.IsSystem();
         }
 
         std::shared_ptr<ISpecification<VolumeInfo>> Clone() const override {
@@ -23,7 +22,7 @@ namespace winsetup::domain {
     class VolumeIsBootSpec : public ISpecification<VolumeInfo> {
     public:
         bool IsSatisfiedBy(const VolumeInfo& volume) const override {
-            return volume.IsBootVolume();
+            return volume.IsBoot();
         }
 
         std::shared_ptr<ISpecification<VolumeInfo>> Clone() const override {

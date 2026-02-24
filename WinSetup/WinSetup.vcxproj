@@ -26,6 +26,7 @@
     <ClCompile Include="src\adapters\persistence\config\IniConfigRepository.cpp" />
     <ClCompile Include="src\adapters\persistence\config\IniParser.cpp" />
     <ClCompile Include="src\adapters\persistence\filesystem\Win32FileSystem.cpp" />
+    <ClCompile Include="src\adapters\persistence\filesystem\Win32PathChecker.cpp" />
     <ClCompile Include="src\adapters\platform\win32\memory\UniqueHandle.cpp" />
     <ClCompile Include="src\adapters\platform\win32\core\Win32ErrorHandler.cpp" />
     <ClCompile Include="src\adapters\platform\win32\core\Win32HandleFactory.cpp" />
@@ -116,6 +117,7 @@
     <ClInclude Include="src\abstractions\services\storage\IFileCopyService.h" />
     <ClInclude Include="src\abstractions\services\storage\IImagingService.h" />
     <ClInclude Include="src\abstractions\services\storage\IPartitionService.h" />
+    <ClInclude Include="src\abstractions\services\storage\IPathChecker.h" />
     <ClInclude Include="src\abstractions\services\storage\IStorageScanner.h" />
     <ClInclude Include="src\abstractions\services\storage\IVolumeService.h" />
     <ClInclude Include="src\abstractions\ui\IMainViewModel.h" />
@@ -134,6 +136,7 @@
     <ClInclude Include="src\adapters\persistence\config\IniConfigRepository.h" />
     <ClInclude Include="src\adapters\persistence\config\IniParser.h" />
     <ClInclude Include="src\adapters\persistence\filesystem\Win32FileSystem.h" />
+    <ClInclude Include="src\adapters\persistence\filesystem\Win32PathChecker.h" />
     <ClInclude Include="src\adapters\platform\win32\memory\UniqueFindHandle.h" />
     <ClInclude Include="src\adapters\platform\win32\memory\UniqueHandle.h" />
     <ClInclude Include="src\adapters\platform\win32\memory\UniqueLibrary.h" />

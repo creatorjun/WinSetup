@@ -31,7 +31,7 @@ namespace winsetup::domain {
     }
 
     bool PartitionAnalyzer::IsSystemPartition(const VolumeInfo& volume) noexcept {
-        return volume.IsSystemVolume() || volume.IsBootVolume();
+        return volume.IsSystem() || volume.IsBoot();
     }
 
 }

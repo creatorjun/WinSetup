@@ -115,18 +115,19 @@ namespace winsetup::application {
         const std::vector<domain::VolumeInfo>& volumes
     ) const
     {
-        if (!mLogger)
-            return;
+        if (!mLogger) return;
 
         mLogger->Info(L"AnalyzeSystemUseCase: ---- Disk Summary (" + std::to_wstring(disks.size()) + L") ----");
         for (const auto& disk : disks) {
             const std::wstring sizeStr = std::to_wstring(static_cast<uint64_t>(disk.GetSize().ToGB())) + L" GB";
-            const std::wstring typeStr = disk.GetDiskType() == domain::DiskType::SSD ? L"SSD" : L"HDD";
+            const std::wstring typeStr = disk.IsSSD() ? L"SSD" : (disk.IsNVMe() ? L"NVMe" : L"HDD");
             const std::wstring busStr = BusTypeToString(disk.GetBusType());
             const std::wstring partStr = std::to_wstring(disk.GetPartitions().size()) + L" partition(s)";
+            const std::wstring roleStr = disk.IsSystem() ? L"[System]" : (disk.IsData() ? L"[Data]" : L"");
             mLogger->Info(
                 L"  Disk[" + std::to_wstring(disk.GetIndex()) + L"] " +
-                sizeStr + L" / " + typeStr + L" / " + busStr + L" / " + partStr
+                sizeStr + L" / " + typeStr + L" / " + busStr + L" / " + partStr +
+                (roleStr.empty() ? L"" : L" " + roleStr)
             );
         }
 
@@ -136,11 +137,15 @@ namespace winsetup::application {
             const std::wstring fsStr = FileSystemTypeToString(vol.GetFileSystem());
             const std::wstring mounted = vol.IsMounted() ? L"Mounted" : L"Unmounted";
             const std::wstring letter = vol.GetLetter().empty() ? L"-" : vol.GetLetter();
-            const std::wstring guid = vol.GetVolumePath();
+            const std::wstring roleStr = vol.IsSystem() ? L"[System]"
+                : vol.IsData() ? L"[Data]"
+                : vol.IsBoot() ? L"[Boot]"
+                : L"";
             mLogger->Info(
                 L"  Vol[" + letter + L"] " +
                 L"\"" + vol.GetLabel() + L"\" " +
-                sizeStr + L" / " + fsStr + L" / " + mounted + L" / " + guid
+                sizeStr + L" / " + fsStr + L" / " + mounted + L" / " + vol.GetVolumePath() +
+                (roleStr.empty() ? L"" : L" " + roleStr)
             );
         }
     }
@@ -148,22 +153,22 @@ namespace winsetup::application {
     std::wstring AnalyzeSystemUseCase::BusTypeToString(domain::BusType busType)
     {
         switch (busType) {
-        case domain::BusType::SATA:  return L"SATA";
-        case domain::BusType::NVME:  return L"NVMe";
-        case domain::BusType::USB:   return L"USB";
-        case domain::BusType::SCSI:  return L"SCSI";
-        default:                     return L"Unknown";
+        case domain::BusType::SATA: return L"SATA";
+        case domain::BusType::NVME: return L"NVMe";
+        case domain::BusType::USB:  return L"USB";
+        case domain::BusType::SCSI: return L"SCSI";
+        default:                    return L"Unknown";
         }
     }
 
     std::wstring AnalyzeSystemUseCase::FileSystemTypeToString(domain::FileSystemType fs)
     {
         switch (fs) {
-        case domain::FileSystemType::NTFS:   return L"NTFS";
-        case domain::FileSystemType::FAT32:  return L"FAT32";
-        case domain::FileSystemType::exFAT:  return L"exFAT";
-        case domain::FileSystemType::ReFS:   return L"ReFS";
-        default:                             return L"Unknown";
+        case domain::FileSystemType::NTFS:  return L"NTFS";
+        case domain::FileSystemType::FAT32: return L"FAT32";
+        case domain::FileSystemType::exFAT: return L"exFAT";
+        case domain::FileSystemType::ReFS:  return L"ReFS";
+        default:                            return L"Unknown";
         }
     }
 

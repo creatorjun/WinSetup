@@ -7,6 +7,7 @@
 #include <domain/entities/DiskInfo.h>
 #include <domain/entities/VolumeInfo.h>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace winsetup::adapters::persistence {
@@ -36,6 +37,12 @@ namespace winsetup::adapters::persistence {
 
         [[nodiscard]] domain::Expected<std::shared_ptr<const std::vector<domain::VolumeInfo>>>
             GetVolumes() const override;
+
+        [[nodiscard]] std::optional<domain::VolumeInfo> GetSystemVolume() const override;
+        [[nodiscard]] std::optional<domain::VolumeInfo> GetDataVolume()   const override;
+        [[nodiscard]] std::optional<domain::VolumeInfo> GetBootVolume()   const override;
+        [[nodiscard]] std::optional<domain::DiskInfo>   GetSystemDisk()   const override;
+        [[nodiscard]] std::optional<domain::DiskInfo>   GetDataDisk()     const override;
 
         [[nodiscard]] bool IsLoaded() const noexcept override;
 

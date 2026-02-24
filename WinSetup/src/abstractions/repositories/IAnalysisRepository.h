@@ -6,6 +6,7 @@
 #include <domain/entities/DiskInfo.h>
 #include <domain/entities/VolumeInfo.h>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace winsetup::abstractions {
@@ -34,6 +35,21 @@ namespace winsetup::abstractions {
 
         [[nodiscard]] virtual domain::Expected<std::shared_ptr<const std::vector<domain::VolumeInfo>>>
             GetVolumes() const = 0;
+
+        [[nodiscard]] virtual std::optional<domain::VolumeInfo>
+            GetSystemVolume() const = 0;
+
+        [[nodiscard]] virtual std::optional<domain::VolumeInfo>
+            GetDataVolume() const = 0;
+
+        [[nodiscard]] virtual std::optional<domain::VolumeInfo>
+            GetBootVolume() const = 0;
+
+        [[nodiscard]] virtual std::optional<domain::DiskInfo>
+            GetSystemDisk() const = 0;
+
+        [[nodiscard]] virtual std::optional<domain::DiskInfo>
+            GetDataDisk() const = 0;
 
         [[nodiscard]] virtual bool IsLoaded() const noexcept = 0;
 

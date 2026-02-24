@@ -1,5 +1,6 @@
 // src/adapters/persistence/analysis/AnalysisRepository.cpp
 #include <adapters/persistence/analysis/AnalysisRepository.h>
+#include <algorithm>
 
 namespace winsetup::adapters::persistence {
 
@@ -51,15 +52,53 @@ namespace winsetup::adapters::persistence {
         return mVolumes;
     }
 
-    bool AnalysisRepository::IsLoaded() const noexcept
-    {
+    std::optional<domain::VolumeInfo> AnalysisRepository::GetSystemVolume() const {
+        if (!mVolumes) return std::nullopt;
+        auto it = std::find_if(mVolumes->begin(), mVolumes->end(),
+            [](const domain::VolumeInfo& v) { return v.IsSystem(); });
+        if (it == mVolumes->end()) return std::nullopt;
+        return *it;
+    }
+
+    std::optional<domain::VolumeInfo> AnalysisRepository::GetDataVolume() const {
+        if (!mVolumes) return std::nullopt;
+        auto it = std::find_if(mVolumes->begin(), mVolumes->end(),
+            [](const domain::VolumeInfo& v) { return v.IsData(); });
+        if (it == mVolumes->end()) return std::nullopt;
+        return *it;
+    }
+
+    std::optional<domain::VolumeInfo> AnalysisRepository::GetBootVolume() const {
+        if (!mVolumes) return std::nullopt;
+        auto it = std::find_if(mVolumes->begin(), mVolumes->end(),
+            [](const domain::VolumeInfo& v) { return v.IsBoot(); });
+        if (it == mVolumes->end()) return std::nullopt;
+        return *it;
+    }
+
+    std::optional<domain::DiskInfo> AnalysisRepository::GetSystemDisk() const {
+        if (!mDisks) return std::nullopt;
+        auto it = std::find_if(mDisks->begin(), mDisks->end(),
+            [](const domain::DiskInfo& d) { return d.IsSystem(); });
+        if (it == mDisks->end()) return std::nullopt;
+        return *it;
+    }
+
+    std::optional<domain::DiskInfo> AnalysisRepository::GetDataDisk() const {
+        if (!mDisks) return std::nullopt;
+        auto it = std::find_if(mDisks->begin(), mDisks->end(),
+            [](const domain::DiskInfo& d) { return d.IsData(); });
+        if (it == mDisks->end()) return std::nullopt;
+        return *it;
+    }
+
+    bool AnalysisRepository::IsLoaded() const noexcept {
         return mSystemInfo != nullptr
             && mDisks != nullptr
             && mVolumes != nullptr;
     }
 
-    void AnalysisRepository::Clear() noexcept
-    {
+    void AnalysisRepository::Clear() noexcept {
         mSystemInfo.reset();
         mDisks.reset();
         mVolumes.reset();
