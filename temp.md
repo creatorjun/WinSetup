@@ -5,20 +5,6 @@
 코드베이스 전체를 처음부터 끝까지 꼼꼼히 검토했습니다. 클린 아키텍처(Domain → Abstractions → Application → Adapters)를 매우 일관되게 지키고 있고, RAII, `Expected<T>`, `UniqueHandle` 등 코드 품질도 전반적으로 높습니다. 그러나 성능 관점에서 개선할 수 있는 포인트를 우선순위별로 정리합니다.
 
 
-## 🟡 개선 권장
-
-### 9. `IniParser` — Adapter 내부 구현이 `IConfigRepository`를 우회
-
-`IniConfigRepository::LoadConfig()`가 내부적으로 `IniParser`를 **직접 `new` 없이 스택에 생성**합니다. `IniParser`를 `IParser` 인터페이스로 추상화하면 파서 교체 및 단위 테스트가 용이해집니다. 현재는 직접 결합로 테스트 시 파서 모킹이 불가합니다.
-
-***
-
-### 10. `ErrorCategory::IO` 누락
-
-`Win32FileCopyService`에서 `ErrorCategory::IO`를 사용하고 있으나, 현재 `ErrorCategory` enum에는 `IO` 항목이 없고 `Volume`, `Disk` 등만 있습니다. 정의되지 않은 enum 값 사용은 컴파일러에 따라 경고/오류가 됩니다.
-
-***
-
 ***
 
 ## P2 — 최적화 기회
