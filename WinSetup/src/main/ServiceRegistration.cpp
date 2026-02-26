@@ -14,6 +14,7 @@
 #include "application/usecases/disk/EnumerateDisksUseCase.h"
 #include "application/usecases/disk/EnumerateVolumesUseCase.h"
 #include "application/usecases/disk/AnalyzeVolumesUseCase.h"
+#include "application/usecases/disk/AnalyzeDisksUseCase.h"
 #include "application/viewmodels/MainViewModel.h"
 #include "application/services/Dispatcher.h"
 #include "abstractions/infrastructure/logging/ILogger.h"
@@ -26,6 +27,7 @@
 #include "abstractions/services/storage/IPathChecker.h"
 #include "abstractions/usecases/IAnalyzeSystemUseCase.h"
 #include "abstractions/usecases/IAnalyzeVolumesUseCase.h"
+#include "abstractions/usecases/IAnalyzeDisksUseCase.h"
 #include "abstractions/usecases/ILoadConfigurationUseCase.h"
 #include "abstractions/usecases/IEnumerateDisksUseCase.h"
 #include "abstractions/usecases/IEnumerateVolumesUseCase.h"
@@ -134,11 +136,16 @@ namespace winsetup {
         container.RegisterInstance<abstractions::IAnalyzeVolumesUseCase>(
             std::static_pointer_cast<abstractions::IAnalyzeVolumesUseCase>(analyzeVolumes));
 
+        auto analyzeDisks = std::make_shared<application::AnalyzeDisksUseCase>(analysis, logger);
+        container.RegisterInstance<abstractions::IAnalyzeDisksUseCase>(
+            std::static_pointer_cast<abstractions::IAnalyzeDisksUseCase>(analyzeDisks));
+
         container.RegisterInstance<abstractions::IAnalyzeSystemUseCase>(
             std::static_pointer_cast<abstractions::IAnalyzeSystemUseCase>(
                 std::make_shared<application::AnalyzeSystemUseCase>(
                     sysInfo, loadConfig, enumerateDisks,
-                    enumerateVolumes, analyzeVolumes, analysis, logger)));
+                    enumerateVolumes, analyzeVolumes, analyzeDisks,
+                    analysis, logger)));
     }
 
     void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container) {

@@ -4,18 +4,21 @@
 namespace winsetup::application {
 
     AnalyzeSystemUseCase::AnalyzeSystemUseCase(
-        std::shared_ptr<abstractions::ISystemInfoService> systemInfoService,
+        std::shared_ptr<abstractions::ISystemInfoService>        systemInfoService,
         std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfiguration,
-        std::shared_ptr<abstractions::IEnumerateDisksUseCase> enumerateDisks,
-        std::shared_ptr<abstractions::IEnumerateVolumesUseCase> enumerateVolumes,
-        std::shared_ptr<abstractions::IAnalyzeVolumesUseCase> analyzeVolumes,
-        std::shared_ptr<abstractions::IAnalysisRepository> analysisRepository,
-        std::shared_ptr<abstractions::ILogger> logger)
+        std::shared_ptr<abstractions::IEnumerateDisksUseCase>    enumerateDisks,
+        std::shared_ptr<abstractions::IEnumerateVolumesUseCase>  enumerateVolumes,
+        std::shared_ptr<abstractions::IAnalyzeVolumesUseCase>    analyzeVolumes,
+        std::shared_ptr<abstractions::IAnalyzeDisksUseCase>      analyzeDisks,
+        std::shared_ptr<abstractions::IAnalysisRepository>       analysisRepository,
+        std::shared_ptr<abstractions::ILogger>                   logger
+    )
         : mSystemInfoService(std::move(systemInfoService))
         , mLoadConfiguration(std::move(loadConfiguration))
         , mEnumerateDisks(std::move(enumerateDisks))
         , mEnumerateVolumes(std::move(enumerateVolumes))
         , mAnalyzeVolumes(std::move(analyzeVolumes))
+        , mAnalyzeDisks(std::move(analyzeDisks))
         , mAnalysisRepository(std::move(analysisRepository))
         , mLogger(std::move(logger))
     {
@@ -76,14 +79,25 @@ namespace winsetup::application {
             }
         }
 
+        if (mAnalyzeDisks) {
+            auto analyzeResult = mAnalyzeDisks->Execute();
+            if (!analyzeResult.HasValue()) {
+                if (mLogger)
+                    mLogger->Warning(L"AnalyzeSystemUseCase: AnalyzeDisks failed - "
+                        + analyzeResult.GetError().GetMessage());
+            }
+        }
+
         if (mLogger)
             mLogger->Info(L"AnalyzeSystemUseCase: Analysis complete.");
 
-        LogStoredResults(*diskResult.Value(), *volumeResult.Value());
+        auto finalDisks = mAnalysisRepository->GetDisks();
+        auto finalVolumes = mAnalysisRepository->GetVolumes();
+        if (finalDisks.HasValue() && finalVolumes.HasValue())
+            LogStoredResults(*finalDisks.Value(), *finalVolumes.Value());
 
         return domain::Expected<void>();
     }
-
 
     domain::Expected<std::shared_ptr<domain::SystemInfo>> AnalyzeSystemUseCase::CollectSystemInfo() const
     {

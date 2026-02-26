@@ -129,7 +129,7 @@ namespace winsetup::application {
             const auto it = cache.find(dataVolIt->GetVolumePath());
             if (it != cache.end() && it->second.has_value()) {
                 for (auto& disk : disks) {
-                    if (disk.GetIndex() == it->second.value() && !disk.IsSystem()) {
+                    if (disk.GetIndex() == it->second.value()) {
                         disk.SetIsData(true);
                         break;
                     }

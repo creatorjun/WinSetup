@@ -127,6 +127,7 @@
     <ClInclude Include="src\abstractions\ui\IUIDispatcher.h" />
     <ClInclude Include="src\abstractions\ui\IWidget.h" />
     <ClInclude Include="src\abstractions\ui\IWindow.h" />
+    <ClInclude Include="src\abstractions\usecases\IAnalyzeDisksUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\IAnalyzeSystemUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\IEnumerateDisksUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\IEnumerateVolumesUseCase.h" />
