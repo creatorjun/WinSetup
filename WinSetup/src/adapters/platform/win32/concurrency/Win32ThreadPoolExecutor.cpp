@@ -1,4 +1,3 @@
-// src/adapters/platform/win32/concurrency/Win32ThreadPoolExecutor.cpp
 #include <adapters/platform/win32/concurrency/Win32ThreadPoolExecutor.h>
 #include <adapters/platform/win32/core/Win32HandleFactory.h>
 #include <Windows.h>
@@ -16,7 +15,8 @@ namespace winsetup::adapters::platform {
         }
         threadCount = std::min(threadCount, kMaxThreadCount);
 
-        mWakeEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+        mIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0,
+            static_cast<DWORD>(threadCount));
 
         mThreads.reserve(threadCount);
         for (size_t i = 0; i < threadCount; ++i) {
@@ -28,25 +28,25 @@ namespace winsetup::adapters::platform {
 
     Win32ThreadPoolExecutor::~Win32ThreadPoolExecutor() {
         mShutdown.store(true);
-        if (mWakeEvent)
-            SetEvent(mWakeEvent);
+
+        for (size_t i = 0; i < mThreads.size(); ++i)
+            PostQueuedCompletionStatus(mIOCP, 0, kShutdownKey, nullptr);
 
         for (auto& t : mThreads)
             WaitForSingleObject(Win32HandleFactory::ToWin32Handle(t), INFINITE);
 
-        if (mWakeEvent) {
-            CloseHandle(mWakeEvent);
-            mWakeEvent = nullptr;
+        if (mIOCP) {
+            CloseHandle(mIOCP);
+            mIOCP = nullptr;
         }
     }
 
     void Win32ThreadPoolExecutor::Post(std::function<void()> task) {
-        {
-            std::lock_guard<std::mutex> lock(mQueueMutex);
-            mTaskQueue.push(std::move(task));
+        auto* raw = new std::function<void()>(std::move(task));
+        if (!PostQueuedCompletionStatus(mIOCP, 0, kTaskKey,
+            reinterpret_cast<LPOVERLAPPED>(raw))) {
+            delete raw;
         }
-        if (mWakeEvent)
-            SetEvent(mWakeEvent);
     }
 
     DWORD WINAPI Win32ThreadPoolExecutor::WorkerThreadProc(LPVOID lpParam) {
@@ -56,22 +56,21 @@ namespace winsetup::adapters::platform {
 
     void Win32ThreadPoolExecutor::WorkerLoop() {
         while (true) {
-            WaitForSingleObject(mWakeEvent, INFINITE);
+            DWORD       bytesTransferred = 0;
+            ULONG_PTR   completionKey = 0;
+            LPOVERLAPPED pOverlapped = nullptr;
 
-            while (true) {
-                std::function<void()> task;
-                {
-                    std::lock_guard<std::mutex> lock(mQueueMutex);
-                    if (mTaskQueue.empty()) break;
-                    task = std::move(mTaskQueue.front());
-                    mTaskQueue.pop();
-                    if (!mTaskQueue.empty())
-                        SetEvent(mWakeEvent);
-                }
-                task();
+            BOOL ok = GetQueuedCompletionStatus(mIOCP, &bytesTransferred,
+                &completionKey, &pOverlapped, INFINITE);
+
+            if (!ok || completionKey == kShutdownKey)
+                break;
+
+            if (completionKey == kTaskKey && pOverlapped) {
+                auto* fn = reinterpret_cast<std::function<void()>*>(pOverlapped);
+                (*fn)();
+                delete fn;
             }
-
-            if (mShutdown.load()) break;
         }
     }
 

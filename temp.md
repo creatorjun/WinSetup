@@ -25,23 +25,6 @@ if (hThread)
 
 ***
 
-### 8. `Win32MainWindow` — View에서 `IMainViewModel::Initialize()` 직접 호출 의존
-
-```cpp
-// MainViewModel.cpp
-domain::Expected<void> MainViewModel::Initialize() {
-    // RunAnalyzeSystem, RunLoadConfiguration 직접 호출
-    auto sysResult = RunAnalyzeSystem();
-    auto cfgResult = RunLoadConfiguration();
-    ...
-}
-```
-
-`ViewModel::Initialize()`가 UseCase들을 동기적으로 순차 실행합니다. 이는 UI 스레드를 블로킹하며, `Task<T>` 코루틴 인프라를 이미 갖추고 있음에도 활용하지 않고 있습니다. MVVM의 핵심인 **비동기 초기화 패턴**이 적용되지 않았습니다.
-
-**수정**: `Initialize()`를 `Task<Expected<void>> InitializeAsync()`로 전환하고, `ITaskScheduler`를 통해 백그라운드에서 실행 후 결과를 `IPropertyChanged`로 통보.
-
-***
 
 ## 🟡 개선 권장
 

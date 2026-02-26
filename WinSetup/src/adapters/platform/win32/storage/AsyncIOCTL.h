@@ -1,6 +1,4 @@
-﻿// src/adapters/platform/win32/storage/AsyncIOCTL.h
-#pragma once
-#include <abstractions/infrastructure/async/IExecutor.h>
+﻿#pragma once
 #include <domain/primitives/Expected.h>
 #include <adapters/platform/win32/memory/UniqueHandle.h>
 #include <Windows.h>
@@ -20,9 +18,9 @@ namespace winsetup::adapters::platform {
     };
 
     struct AsyncIOCTLResult {
-        DWORD           bytesTransferred = 0;
-        DWORD           errorCode = 0;
-        AsyncIOCTLState state = AsyncIOCTLState::Pending;
+        DWORD             bytesTransferred = 0;
+        DWORD             errorCode = 0;
+        AsyncIOCTLState   state = AsyncIOCTLState::Pending;
         std::vector<BYTE> outputBuffer;
 
         [[nodiscard]] bool IsCompleted() const noexcept { return state == AsyncIOCTLState::Completed; }
@@ -34,35 +32,35 @@ namespace winsetup::adapters::platform {
 
     class AsyncIOCTL {
     public:
-        explicit AsyncIOCTL(std::shared_ptr<abstractions::IExecutor> executor);
+        AsyncIOCTL();
         ~AsyncIOCTL();
 
         AsyncIOCTL(const AsyncIOCTL&) = delete;
         AsyncIOCTL& operator=(const AsyncIOCTL&) = delete;
 
         [[nodiscard]] domain::Expected<uint32_t> SendAsync(
-            HANDLE hDevice,
-            DWORD ioControlCode,
+            HANDLE             hDevice,
+            DWORD              ioControlCode,
             const void* inputBuffer,
-            DWORD inputBufferSize,
-            DWORD outputBufferSize,
+            DWORD              inputBufferSize,
+            DWORD              outputBufferSize,
             AsyncIOCTLCallback callback
         );
 
         [[nodiscard]] domain::Expected<AsyncIOCTLResult> Wait(
             uint32_t operationId,
-            DWORD timeoutMs = INFINITE
+            DWORD    timeoutMs = INFINITE
         );
 
         [[nodiscard]] domain::Expected<std::vector<AsyncIOCTLResult>> WaitAll(
             const std::vector<uint32_t>& operationIds,
-            DWORD timeoutMs = INFINITE
+            DWORD                        timeoutMs = INFINITE
         );
 
         [[nodiscard]] domain::Expected<void> Cancel(uint32_t operationId);
         void CancelAll();
 
-        [[nodiscard]] bool IsOperationPending(uint32_t operationId) const;
+        [[nodiscard]] bool   IsOperationPending(uint32_t operationId) const;
         [[nodiscard]] size_t GetPendingOperationCount() const noexcept { return mPendingOperations.load(); }
         void SetMaxConcurrentOperations(size_t maxOps) noexcept { mMaxConcurrentOps = maxOps; }
 
@@ -83,20 +81,25 @@ namespace winsetup::adapters::platform {
             AsyncOperation() = default;
         };
 
-        void ProcessOperation(std::shared_ptr<AsyncOperation> op);
+        void CompletionLoop();
         void NotifyCompletion(std::shared_ptr<AsyncOperation> op);
         [[nodiscard]] std::shared_ptr<AsyncOperation> FindOperation(uint32_t operationId);
         void RemoveOperation(uint32_t operationId);
 
-        std::shared_ptr<abstractions::IExecutor>     mExecutor;
+        HANDLE                                       mIOCP = nullptr;
+        UniqueHandle                                 mCompletionThread;
         std::atomic<uint32_t>                        mNextOperationId{ 1 };
         std::atomic<size_t>                          mPendingOperations{ 0 };
-        size_t                                       mMaxConcurrentOps{ MAX_CONCURRENT_OPERATIONS };
+        size_t                                       mMaxConcurrentOps{ kMaxConcurrentOperations };
         std::vector<std::shared_ptr<AsyncOperation>> mOperations;
         mutable std::mutex                           mOperationsMutex;
         std::atomic<bool>                            mShutdown{ false };
 
-        static constexpr size_t MAX_CONCURRENT_OPERATIONS = 32;
+        static constexpr size_t   kMaxConcurrentOperations = 32;
+        static constexpr ULONG_PTR kShutdownKey = 0;
+        static constexpr ULONG_PTR kOperationKey = 1;
+
+        static DWORD WINAPI CompletionThreadProc(LPVOID lpParam);
     };
 
     class AsyncIOCTLBatch {
@@ -104,11 +107,11 @@ namespace winsetup::adapters::platform {
         explicit AsyncIOCTLBatch(AsyncIOCTL& asyncIO) : mAsyncIO(asyncIO) {}
 
         void AddOperation(
-            HANDLE hDevice,
-            DWORD ioControlCode,
+            HANDLE      hDevice,
+            DWORD       ioControlCode,
             const void* inputBuffer,
-            DWORD inputBufferSize,
-            DWORD outputBufferSize
+            DWORD       inputBufferSize,
+            DWORD       outputBufferSize
         ) {
             Operation op{};
             op.hDevice = hDevice;
@@ -139,8 +142,8 @@ namespace winsetup::adapters::platform {
         };
 
         AsyncIOCTL& mAsyncIO;
-        std::vector<Operation>   mOperations;
-        std::vector<uint32_t>    mOperationIds;
+        std::vector<Operation>  mOperations;
+        std::vector<uint32_t>   mOperationIds;
     };
 
 } // namespace winsetup::adapters::platform

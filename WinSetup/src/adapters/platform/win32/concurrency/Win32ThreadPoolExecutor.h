@@ -1,12 +1,9 @@
-// src/adapters/platform/win32/concurrency/Win32ThreadPoolExecutor.h
 #pragma once
 #include <abstractions/infrastructure/async/IExecutor.h>
 #include <adapters/platform/win32/memory/UniqueHandle.h>
 #include <Windows.h>
 #include <atomic>
 #include <functional>
-#include <mutex>
-#include <queue>
 #include <vector>
 
 namespace winsetup::adapters::platform {
@@ -25,14 +22,14 @@ namespace winsetup::adapters::platform {
         static DWORD WINAPI WorkerThreadProc(LPVOID lpParam);
         void WorkerLoop();
 
-        std::vector<UniqueHandle>           mThreads;
-        std::queue<std::function<void()>>   mTaskQueue;
-        std::mutex                          mQueueMutex;
-        HANDLE                              mWakeEvent = nullptr;
-        std::atomic<bool>                   mShutdown{ false };
+        std::vector<UniqueHandle>   mThreads;
+        HANDLE                      mIOCP = nullptr;
+        std::atomic<bool>           mShutdown{ false };
 
-        static constexpr size_t kDefaultThreadCount = 4;
-        static constexpr size_t kMaxThreadCount = 16;
+        static constexpr size_t   kDefaultThreadCount = 4;
+        static constexpr size_t   kMaxThreadCount = 16;
+        static constexpr ULONG_PTR kTaskKey = 1;
+        static constexpr ULONG_PTR kShutdownKey = 0;
     };
 
 } // namespace winsetup::adapters::platform

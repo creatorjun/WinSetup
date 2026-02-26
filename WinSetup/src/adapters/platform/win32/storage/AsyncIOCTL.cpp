@@ -1,5 +1,4 @@
-﻿// src/adapters/platform/win32/storage/AsyncIOCTL.cpp
-#include "AsyncIOCTL.h"
+﻿#include "AsyncIOCTL.h"
 #include <adapters/platform/win32/core/Win32HandleFactory.h>
 #include <adapters/platform/win32/core/Win32ErrorHandler.h>
 #include <algorithm>
@@ -8,23 +7,34 @@
 
 namespace winsetup::adapters::platform {
 
-    AsyncIOCTL::AsyncIOCTL(std::shared_ptr<abstractions::IExecutor> executor)
-        : mExecutor(std::move(executor))
-    {
-        mOperations.reserve(MAX_CONCURRENT_OPERATIONS);
+    AsyncIOCTL::AsyncIOCTL() {
+        mOperations.reserve(kMaxConcurrentOperations);
+
+        mIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
+
+        HANDLE hThread = CreateThread(nullptr, 0, CompletionThreadProc, this, 0, nullptr);
+        if (hThread)
+            mCompletionThread = Win32HandleFactory::MakeHandle(hThread);
     }
 
     AsyncIOCTL::~AsyncIOCTL() {
         mShutdown.store(true);
-        CancelAll();
+        if (mIOCP)
+            PostQueuedCompletionStatus(mIOCP, 0, kShutdownKey, nullptr);
+        if (mCompletionThread)
+            WaitForSingleObject(Win32HandleFactory::ToWin32Handle(mCompletionThread), INFINITE);
+        if (mIOCP) {
+            CloseHandle(mIOCP);
+            mIOCP = nullptr;
+        }
     }
 
     domain::Expected<uint32_t> AsyncIOCTL::SendAsync(
-        HANDLE hDevice,
-        DWORD ioControlCode,
+        HANDLE             hDevice,
+        DWORD              ioControlCode,
         const void* inputBuffer,
-        DWORD inputBufferSize,
-        DWORD outputBufferSize,
+        DWORD              inputBufferSize,
+        DWORD              outputBufferSize,
         AsyncIOCTLCallback callback
     ) {
         if (mPendingOperations.load() >= mMaxConcurrentOps)
@@ -51,21 +61,16 @@ namespace winsetup::adapters::platform {
 
         op->hEvent = Win32HandleFactory::MakeHandle(hEvent);
         ZeroMemory(&op->overlapped, sizeof(OVERLAPPED));
-        op->overlapped.hEvent = Win32HandleFactory::ToWin32Handle(op->hEvent);
+
+        if (!CreateIoCompletionPort(hDevice, mIOCP, kOperationKey, 0))
+            return domain::Error{ L"Failed to associate device with IOCP",
+                GetLastError(), domain::ErrorCategory::System };
 
         {
             std::lock_guard<std::mutex> lock(mOperationsMutex);
             mOperations.push_back(op);
         }
         mPendingOperations.fetch_add(1);
-
-        mExecutor->Post([this, op]() { ProcessOperation(op); });
-
-        return op->id;
-    }
-
-    void AsyncIOCTL::ProcessOperation(std::shared_ptr<AsyncOperation> op) {
-        if (!op || mShutdown.load()) return;
 
         DWORD bytesReturned = 0;
         BOOL result = DeviceIoControl(
@@ -81,37 +86,82 @@ namespace winsetup::adapters::platform {
 
         if (!result) {
             DWORD error = GetLastError();
-            if (error == ERROR_IO_PENDING) {
-                DWORD waitResult = WaitForSingleObject(op->overlapped.hEvent, INFINITE);
-                if (waitResult == WAIT_OBJECT_0) {
-                    if (GetOverlappedResult(op->hDevice, &op->overlapped, &bytesReturned, FALSE)) {
-                        op->state.store(AsyncIOCTLState::Completed);
-                        op->bytesTransferred = bytesReturned;
-                        op->errorCode = ERROR_SUCCESS;
-                    }
-                    else {
-                        op->state.store(AsyncIOCTLState::Failed);
-                        op->errorCode = GetLastError();
-                    }
-                }
-                else {
-                    op->state.store(AsyncIOCTLState::Failed);
-                    op->errorCode = GetLastError();
-                }
-            }
-            else {
+            if (error != ERROR_IO_PENDING) {
                 op->state.store(AsyncIOCTLState::Failed);
                 op->errorCode = error;
+                NotifyCompletion(op);
+                mPendingOperations.fetch_sub(1);
+                RemoveOperation(op->id);
+                return domain::Error{ L"DeviceIoControl failed",
+                    error, domain::ErrorCategory::System };
             }
         }
         else {
-            op->state.store(AsyncIOCTLState::Completed);
             op->bytesTransferred = bytesReturned;
             op->errorCode = ERROR_SUCCESS;
+            op->state.store(AsyncIOCTLState::Completed);
+            SetEvent(Win32HandleFactory::ToWin32Handle(op->hEvent));
+            NotifyCompletion(op);
+            mPendingOperations.fetch_sub(1);
+            RemoveOperation(op->id);
         }
 
-        NotifyCompletion(op);
-        mPendingOperations.fetch_sub(1);
+        return op->id;
+    }
+
+    DWORD WINAPI AsyncIOCTL::CompletionThreadProc(LPVOID lpParam) {
+        static_cast<AsyncIOCTL*>(lpParam)->CompletionLoop();
+        return 0;
+    }
+
+    void AsyncIOCTL::CompletionLoop() {
+        while (true) {
+            DWORD        bytesTransferred = 0;
+            ULONG_PTR    completionKey = 0;
+            LPOVERLAPPED pOverlapped = nullptr;
+
+            BOOL ok = GetQueuedCompletionStatus(
+                mIOCP, &bytesTransferred, &completionKey, &pOverlapped, INFINITE);
+
+            if (completionKey == kShutdownKey)
+                break;
+
+            if (!pOverlapped)
+                continue;
+
+            std::shared_ptr<AsyncOperation> op;
+            {
+                std::lock_guard<std::mutex> lock(mOperationsMutex);
+                auto it = std::find_if(mOperations.begin(), mOperations.end(),
+                    [pOverlapped](const auto& o) {
+                        return o && &o->overlapped == pOverlapped;
+                    });
+                if (it != mOperations.end())
+                    op = *it;
+            }
+
+            if (!op)
+                continue;
+
+            if (ok) {
+                op->bytesTransferred = bytesTransferred;
+                op->errorCode = ERROR_SUCCESS;
+                op->state.store(AsyncIOCTLState::Completed);
+            }
+            else {
+                op->errorCode = GetLastError();
+                op->state.store(
+                    op->state.load() == AsyncIOCTLState::Cancelled
+                    ? AsyncIOCTLState::Cancelled
+                    : AsyncIOCTLState::Failed
+                );
+            }
+
+            SetEvent(Win32HandleFactory::ToWin32Handle(op->hEvent));
+            NotifyCompletion(op);
+            mPendingOperations.fetch_sub(1);
+            RemoveOperation(op->id);
+        }
     }
 
     void AsyncIOCTL::NotifyCompletion(std::shared_ptr<AsyncOperation> op) {
@@ -124,7 +174,9 @@ namespace winsetup::adapters::platform {
         op->callback(result);
     }
 
-    domain::Expected<AsyncIOCTLResult> AsyncIOCTL::Wait(uint32_t operationId, DWORD timeoutMs) {
+    domain::Expected<AsyncIOCTLResult> AsyncIOCTL::Wait(
+        uint32_t operationId, DWORD timeoutMs
+    ) {
         auto op = FindOperation(operationId);
         if (!op)
             return domain::Error{ L"Operation not found",
@@ -148,18 +200,17 @@ namespace winsetup::adapters::platform {
         result.errorCode = op->errorCode;
         result.state = op->state.load();
         result.outputBuffer = op->outputBuffer;
-
-        RemoveOperation(operationId);
         return result;
     }
 
     domain::Expected<std::vector<AsyncIOCTLResult>> AsyncIOCTL::WaitAll(
         const std::vector<uint32_t>& operationIds,
-        DWORD timeoutMs
+        DWORD                        timeoutMs
     ) {
-        if (operationIds.empty()) return std::vector<AsyncIOCTLResult>{};
+        if (operationIds.empty())
+            return std::vector<AsyncIOCTLResult>{};
 
-        std::vector<HANDLE> events;
+        std::vector<HANDLE>                          events;
         std::vector<std::shared_ptr<AsyncOperation>> operations;
         events.reserve(operationIds.size());
         operations.reserve(operationIds.size());
@@ -181,7 +232,6 @@ namespace winsetup::adapters::platform {
         if (waitResult == WAIT_TIMEOUT)
             return domain::Error{ L"Operations timeout",
                 ERROR_TIMEOUT, domain::ErrorCategory::System };
-
         if (waitResult < WAIT_OBJECT_0 || waitResult >= WAIT_OBJECT_0 + events.size())
             return domain::Error{ L"Wait failed",
                 GetLastError(), domain::ErrorCategory::System };
@@ -195,7 +245,6 @@ namespace winsetup::adapters::platform {
             result.state = op->state.load();
             result.outputBuffer = op->outputBuffer;
             results.push_back(std::move(result));
-            RemoveOperation(op->id);
         }
         return results;
     }
@@ -214,7 +263,6 @@ namespace winsetup::adapters::platform {
         }
         op->state.store(AsyncIOCTLState::Cancelled);
         SetEvent(Win32HandleFactory::ToWin32Handle(op->hEvent));
-        RemoveOperation(operationId);
         return domain::Expected<void>();
     }
 
@@ -236,10 +284,13 @@ namespace winsetup::adapters::platform {
         std::lock_guard<std::mutex> lock(mOperationsMutex);
         auto it = std::find_if(mOperations.begin(), mOperations.end(),
             [operationId](const auto& op) { return op && op->id == operationId; });
-        return (it != mOperations.end()) && (*it)->state.load() == AsyncIOCTLState::Pending;
+        return (it != mOperations.end()) &&
+            (*it)->state.load() == AsyncIOCTLState::Pending;
     }
 
-    std::shared_ptr<AsyncIOCTL::AsyncOperation> AsyncIOCTL::FindOperation(uint32_t operationId) {
+    std::shared_ptr<AsyncIOCTL::AsyncOperation> AsyncIOCTL::FindOperation(
+        uint32_t operationId
+    ) {
         std::lock_guard<std::mutex> lock(mOperationsMutex);
         auto it = std::find_if(mOperations.begin(), mOperations.end(),
             [operationId](const auto& op) { return op && op->id == operationId; });
@@ -253,7 +304,9 @@ namespace winsetup::adapters::platform {
         mOperations.erase(it, mOperations.end());
     }
 
-    domain::Expected<std::vector<AsyncIOCTLResult>> AsyncIOCTLBatch::ExecuteAll(DWORD timeoutMs) {
+    domain::Expected<std::vector<AsyncIOCTLResult>> AsyncIOCTLBatch::ExecuteAll(
+        DWORD timeoutMs
+    ) {
         mOperationIds.clear();
         mOperationIds.reserve(mOperations.size());
         for (const auto& op : mOperations) {
