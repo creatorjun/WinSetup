@@ -130,9 +130,14 @@ namespace winsetup::adapters::ui {
         const int selectorH = innerPadTop + btnRows * btnH + (btnRows - 1) * btnGapV + innerPadBot;
         const int panelW = cw - marginH * 2;
 
+        abstractions::IWidget::CreateParams p;
+        p.hParent = mhWnd;
+        p.hInstance = mhInstance;
+
         const int statusPanelH = statusH + typeDescH + gap;
         mstatusPanel.SetViewModel(mviewModel);
-        mstatusPanel.Create(mhWnd, mhInstance, marginH, 0, panelW, statusPanelH);
+        p.x = marginH; p.y = 0; p.width = panelW; p.height = statusPanelH;
+        mstatusPanel.Create(p);
 
         const int selectorY = statusPanelH + gap;
         mselectorRect = { marginH, selectorY, cw - marginH, selectorY + selectorH };
@@ -148,12 +153,14 @@ namespace winsetup::adapters::ui {
         const int optionY = mselectorRect.bottom + gap * 2;
         const int optionH = btnH * 2 + gap;
         moptionPanel.SetViewModel(mviewModel);
-        moptionPanel.Create(mhWnd, mhInstance, marginH, optionY, panelW, optionH);
+        p.x = marginH; p.y = optionY; p.width = panelW; p.height = optionH;
+        moptionPanel.Create(p);
 
         const int actionY = optionY + optionH + gap;
         const int actionH = btnH + gap * 2 + btnH;
         mactionPanel.SetViewModel(mviewModel);
-        mactionPanel.Create(mhWnd, mhInstance, marginH, actionY, panelW, actionH);
+        p.x = marginH; p.y = actionY; p.width = panelW; p.height = actionH;
+        mactionPanel.Create(p);
 
         mwidgets.clear();
         mwidgets.push_back(&mstatusPanel);
@@ -217,7 +224,7 @@ namespace winsetup::adapters::ui {
         PAINTSTRUCT ps{};
         HDC hdc = BeginPaint(mhWnd, &ps);
         for (auto& widget : mwidgets)
-            widget->OnPaint(hdc);
+            widget->OnPaint(static_cast<void*>(hdc));
         mtypeSelectorGroup.OnPaint(hdc);
         EndPaint(mhWnd, &ps);
     }
@@ -226,12 +233,13 @@ namespace winsetup::adapters::ui {
         if (static_cast<UINT_PTR>(timerId) == MAIN_TIMER_ID && mviewModel)
             mviewModel->TickTimer();
         for (auto& widget : mwidgets)
-            widget->OnTimer(static_cast<UINT_PTR>(timerId));
+            widget->OnTimer(static_cast<uintptr_t>(timerId));
     }
 
     void Win32MainWindow::OnCommand(WPARAM wParam, LPARAM lParam) {
         for (auto& widget : mwidgets)
-            if (widget->OnCommand(wParam, lParam)) return;
+            if (widget->OnCommand(static_cast<uintptr_t>(wParam),
+                static_cast<uintptr_t>(lParam))) return;
         mtypeSelectorGroup.OnCommand(wParam, lParam);
     }
 

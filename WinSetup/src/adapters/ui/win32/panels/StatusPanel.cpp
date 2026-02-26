@@ -1,6 +1,7 @@
 ﻿// src/adapters/ui/win32/panels/StatusPanel.cpp
-#include <adapters/ui/win32/panels/StatusPanel.h>
-#include <adapters/platform/win32/core/Win32HandleFactory.h>
+#include "adapters/ui/win32/panels/StatusPanel.h"
+#include "adapters/platform/win32/core/Win32HandleFactory.h"
+#include <Windows.h>
 
 namespace winsetup::adapters::ui {
 
@@ -11,12 +12,12 @@ namespace winsetup::adapters::ui {
     {
     }
 
-    void StatusPanel::Create(HWND hParent, HINSTANCE hInstance, int x, int y, int width, int height) {
-        mhParent = hParent;
-        mx = x;
-        my = y;
-        mwidth = width;
-        mheight = height;
+    void StatusPanel::Create(const CreateParams& params) {
+        mhParent = params.hParent;
+        mx = params.x;
+        my = params.y;
+        mwidth = params.width;
+        mheight = params.height;
         EnsureFonts();
     }
 
@@ -40,22 +41,23 @@ namespace winsetup::adapters::ui {
     void StatusPanel::SetViewModel(std::shared_ptr<abstractions::IMainViewModel> viewModel) {
         mviewModel = std::move(viewModel);
         if (mhParent)
-            InvalidateRect(mhParent, nullptr, TRUE);
+            InvalidateRect(static_cast<HWND>(mhParent), nullptr, TRUE);
     }
 
     void StatusPanel::OnPropertyChanged(const std::wstring& propertyName) {
         if (!mhParent) return;
         if (propertyName == L"StatusText" || propertyName == L"TypeDescription")
-            InvalidateRect(mhParent, nullptr, TRUE);
+            InvalidateRect(static_cast<HWND>(mhParent), nullptr, TRUE);
     }
 
-    void StatusPanel::OnPaint(HDC hdc) {
+    void StatusPanel::OnPaint(void* paintContext) {
         EnsureFonts();
-        DrawStatusText(hdc);
-        DrawTypeDescription(hdc);
+        DrawStatusText(paintContext);
+        DrawTypeDescription(paintContext);
     }
 
-    void StatusPanel::DrawStatusText(HDC hdc) const {
+    void StatusPanel::DrawStatusText(void* paintContext) const {
+        HDC hdc = static_cast<HDC>(paintContext);
         const std::wstring text = mviewModel ? mviewModel->GetStatusText() : L"Ready";
         const RECT rc = { mx, my, mx + mwidth, my + STATUSH };
 
@@ -71,7 +73,8 @@ namespace winsetup::adapters::ui {
         SelectObject(hdc, hOldFont);
     }
 
-    void StatusPanel::DrawTypeDescription(HDC hdc) const {
+    void StatusPanel::DrawTypeDescription(void* paintContext) const {
+        HDC hdc = static_cast<HDC>(paintContext);
         const std::wstring text = mviewModel ? mviewModel->GetTypeDescription() : L"";
         const bool         empty = text.empty();
 
@@ -102,4 +105,4 @@ namespace winsetup::adapters::ui {
         SelectObject(hdc, hOldFont);
     }
 
-}
+} // namespace winsetup::adapters::ui

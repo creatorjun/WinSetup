@@ -1,10 +1,8 @@
 ﻿// src/adapters/ui/win32/panels/StatusPanel.h
 #pragma once
-
-#include <abstractions/ui/IWidget.h>
-#include <abstractions/ui/IMainViewModel.h>
-#include <adapters/platform/win32/memory/UniqueHandle.h>
-#include <Windows.h>
+#include "abstractions/ui/IWidget.h"
+#include "abstractions/ui/IMainViewModel.h"
+#include "adapters/platform/win32/memory/UniqueHandle.h"
 #include <memory>
 #include <string>
 
@@ -17,27 +15,27 @@ namespace winsetup::adapters::ui {
         StatusPanel(const StatusPanel&) = delete;
         StatusPanel& operator=(const StatusPanel&) = delete;
 
-        void Create(HWND hParent, HINSTANCE hInstance, int x, int y, int width, int height) override;
+        void Create(const CreateParams& params) override;
         void SetViewModel(std::shared_ptr<abstractions::IMainViewModel> viewModel);
 
-        void OnPaint(HDC hdc) override;
-        bool OnCommand(WPARAM wParam, LPARAM lParam) override { return false; }
-        void OnTimer(UINT_PTR timerId) override {}
+        void OnPaint(void* paintContext) override;
+        bool OnCommand(uintptr_t wParam, uintptr_t lParam) override { return false; }
+        void OnTimer(uintptr_t timerId) override {}
         void SetEnabled(bool enabled) override {}
         void OnPropertyChanged(const std::wstring& propertyName) override;
 
         [[nodiscard]] bool IsValid() const noexcept override { return mhParent != nullptr; }
 
     private:
-        void DrawStatusText(HDC hdc) const;
-        void DrawTypeDescription(HDC hdc) const;
+        void DrawStatusText(void* hdc) const;
+        void DrawTypeDescription(void* hdc) const;
         void EnsureFonts();
 
-        HWND mhParent;
-        int  mx;
-        int  my;
-        int  mwidth;
-        int  mheight;
+        void* mhParent = nullptr;
+        int    mx = 0;
+        int    my = 0;
+        int    mwidth = 0;
+        int    mheight = 0;
 
         std::shared_ptr<abstractions::IMainViewModel> mviewModel;
 
@@ -49,4 +47,4 @@ namespace winsetup::adapters::ui {
         static constexpr int INNERGAP = 8;
     };
 
-}
+} // namespace winsetup::adapters::ui

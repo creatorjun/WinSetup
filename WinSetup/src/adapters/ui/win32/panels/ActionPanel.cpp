@@ -1,5 +1,6 @@
 ﻿// src/adapters/ui/win32/panels/ActionPanel.cpp
-#include <adapters/ui/win32/panels/ActionPanel.h>
+#include "adapters/ui/win32/panels/ActionPanel.h"
+#include <Windows.h>
 #include <windowsx.h>
 
 namespace winsetup::adapters::ui {
@@ -10,12 +11,18 @@ namespace winsetup::adapters::ui {
     {
     }
 
-    void ActionPanel::Create(HWND hParent, HINSTANCE hInstance, int x, int y, int width, int height) {
-        mHParent = hParent;
-        mBtnStartStop.Create(hParent, L"시작", x, y, width, BTNHEIGHT, IDBTNSTARTSTOP, hInstance);
+    void ActionPanel::Create(const CreateParams& params) {
+        mHParent = params.hParent;
+        HWND  hParent = static_cast<HWND>(params.hParent);
+        HINSTANCE hInst = static_cast<HINSTANCE>(params.hInstance);
+        const int x = params.x;
+        const int y = params.y;
+        const int width = params.width;
+
+        mBtnStartStop.Create(hParent, L"시작", x, y, width, BTNHEIGHT, IDBTNSTARTSTOP, hInst);
         mBtnStartStop.SetFontSize(15);
         const int progressY = y + BTNHEIGHT + GAP * 2;
-        mProgressBar.Create(hParent, hInstance, x, progressY, width, PROGRESSH, IDPROGRESSBAR);
+        mProgressBar.Create(hParent, hInst, x, progressY, width, PROGRESSH, IDPROGRESSBAR);
         mProgressBar.Reset();
     }
 
@@ -23,11 +30,7 @@ namespace winsetup::adapters::ui {
         mViewModel = std::move(viewModel);
     }
 
-    void ActionPanel::OnPaint(HDC hdc) {}
-
-    void ActionPanel::OnTimer(UINT_PTR timerId) {}
-
-    bool ActionPanel::OnCommand(WPARAM wParam, LPARAM lParam) {
+    bool ActionPanel::OnCommand(uintptr_t wParam, uintptr_t lParam) {
         if (HIWORD(wParam) != BN_CLICKED || LOWORD(wParam) != IDBTNSTARTSTOP || !mViewModel)
             return false;
         mViewModel->SetProcessing(!mViewModel->IsProcessing());
@@ -56,4 +59,4 @@ namespace winsetup::adapters::ui {
         mProgressBar.SetRemainingSeconds(mViewModel->GetRemainingSeconds());
     }
 
-}
+} // namespace winsetup::adapters::ui

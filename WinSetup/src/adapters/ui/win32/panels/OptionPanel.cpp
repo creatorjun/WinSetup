@@ -1,5 +1,6 @@
 ﻿// src/adapters/ui/win32/panels/OptionPanel.cpp
-#include <adapters/ui/win32/panels/OptionPanel.h>
+#include "adapters/ui/win32/panels/OptionPanel.h"
+#include <Windows.h>
 #include <windowsx.h>
 
 namespace winsetup::adapters::ui {
@@ -9,9 +10,16 @@ namespace winsetup::adapters::ui {
     {
     }
 
-    void OptionPanel::Create(HWND hParent, HINSTANCE hInstance, int x, int y, int width, int height) {
-        mBtnDataPreserve.Create(hParent, L"데이터 보존", x, y, width, BTNHEIGHT, IDTOGGLEDATAPRESERVE, hInstance);
-        mBtnBitlocker.Create(hParent, L"BitLocker", x, y + BTNHEIGHT + BTNGAP, width, BTNHEIGHT, IDTOGGLEBITLOCKER, hInstance);
+    void OptionPanel::Create(const CreateParams& params) {
+        HWND      hParent = static_cast<HWND>(params.hParent);
+        HINSTANCE hInst = static_cast<HINSTANCE>(params.hInstance);
+        const int x = params.x;
+        const int y = params.y;
+        const int width = params.width;
+
+        mBtnDataPreserve.Create(hParent, L"데이터 보존", x, y, width, BTNHEIGHT, IDTOGGLEDATAPRESERVE, hInst);
+        mBtnBitlocker.Create(hParent, L"BitLocker", x, y + BTNHEIGHT + BTNGAP, width, BTNHEIGHT, IDTOGGLEBITLOCKER, hInst);
+
         if (mViewModel) {
             mBtnDataPreserve.SetChecked(mViewModel->GetDataPreservation());
             mBtnBitlocker.SetChecked(mViewModel->GetBitlockerEnabled());
@@ -26,11 +34,7 @@ namespace winsetup::adapters::ui {
         }
     }
 
-    void OptionPanel::OnPaint(HDC hdc) {}
-
-    void OptionPanel::OnTimer(UINT_PTR timerId) {}
-
-    bool OptionPanel::OnCommand(WPARAM wParam, LPARAM lParam) {
+    bool OptionPanel::OnCommand(uintptr_t wParam, uintptr_t lParam) {
         if (HIWORD(wParam) != BN_CLICKED) return false;
         const int ctrlId = LOWORD(wParam);
         if (ctrlId == IDTOGGLEDATAPRESERVE && mViewModel) {
@@ -64,4 +68,4 @@ namespace winsetup::adapters::ui {
         }
     }
 
-}
+} // namespace winsetup::adapters::ui
