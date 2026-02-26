@@ -11,13 +11,15 @@ namespace winsetup::adapters::platform {
         mQueue.reserve(kQueueReserve);
         mFlushQueue.reserve(kQueueReserve);
 
-        InitializeCriticalSectionAndSpinCount(&mQueueLock, 1000);
+        if (!InitializeCriticalSectionAndSpinCount(&mQueueLock, 1000))
+            InitializeCriticalSection(&mQueueLock);
         InitializeConditionVariable(&mQueueCV);
 
         HANDLE hThread = CreateThread(nullptr, 0, WriterThreadProc, this, 0, nullptr);
         if (hThread)
             mWriterThread = Win32HandleFactory::MakeHandle(hThread);
     }
+
 
     Win32Logger::~Win32Logger() {
         Flush();
