@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿// src/adapters/platform/win32/system/Win32SystemInfoService.h
+#pragma once
 
 #include <abstractions/services/platform/ISystemInfoService.h>
 #include <abstractions/infrastructure/logging/ILogger.h>
@@ -28,9 +29,9 @@ namespace winsetup::adapters::platform {
     private:
         [[nodiscard]] domain::Expected<void> EnsureSMBIOSInitialized();
 
-        std::shared_ptr<abstractions::ILogger> m_logger;
-        std::unique_ptr<SMBIOSParser> m_smbiosParser;
-        bool m_smbiosInitialized;
+        std::shared_ptr<abstractions::ILogger> mLogger;
+        std::unique_ptr<SMBIOSParser> mSmbiosParser;
+        bool mSmbiosInitialized;
     };
 
 }
