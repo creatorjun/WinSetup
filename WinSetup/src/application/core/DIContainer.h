@@ -26,16 +26,20 @@ namespace winsetup::application {
         template<typename TInterface, typename TImplementation>
         void Register(ServiceLifetime lifetime = ServiceLifetime::Singleton) {
             std::unique_lock lock(mMutex);
-            auto factory = [this]() -> std::shared_ptr<void> {
+            auto factory = [this]() -> std::shared_ptr<TInterface> {
                 return std::make_shared<TImplementation>();
                 };
-            mRegistrations[std::type_index(typeid(TInterface))] = { factory, lifetime };
+            mRegistrations[std::type_index(typeid(TInterface))] = {
+                [factory]() -> std::shared_ptr<void> { return factory(); },
+                [factory]() -> std::shared_ptr<void> { return factory(); },
+                lifetime
+            };
         }
 
         template<typename TInterface, typename TImplementation, typename... TDeps>
         void RegisterWithDependencies(ServiceLifetime lifetime = ServiceLifetime::Singleton) {
             std::unique_lock lock(mMutex);
-            auto factory = [this]() -> std::shared_ptr<void> {
+            auto factory = [this]() -> std::shared_ptr<TInterface> {
                 auto resolveDep = [this]<typename T>() -> std::shared_ptr<T> {
                     auto result = Resolve<T>();
                     if (!result.HasValue())
@@ -51,7 +55,11 @@ namespace winsetup::application {
                             std::forward<decltype(args)>(args)...);
                     }, deps);
                 };
-            mRegistrations[std::type_index(typeid(TInterface))] = { factory, lifetime };
+            mRegistrations[std::type_index(typeid(TInterface))] = {
+                [factory]() -> std::shared_ptr<void> { return factory(); },
+                [factory]() -> std::shared_ptr<void> { return factory(); },
+                lifetime
+            };
         }
 
         template<typename TInterface>
@@ -59,8 +67,11 @@ namespace winsetup::application {
             std::unique_lock lock(mMutex);
             auto typeIndex = std::type_index(typeid(TInterface));
             mSingletons[typeIndex] = instance;
-            auto factory = [instance]() -> std::shared_ptr<void> { return instance; };
-            mRegistrations[typeIndex] = { factory, ServiceLifetime::Singleton };
+            mRegistrations[typeIndex] = {
+                [instance]() -> std::shared_ptr<void> { return instance; },
+                [instance]() -> std::shared_ptr<void> { return instance; },
+                ServiceLifetime::Singleton
+            };
         }
 
         template<typename TInterface>
@@ -75,16 +86,19 @@ namespace winsetup::application {
                         0, domain::ErrorCategory::System);
 
                 if (regIt->second.lifetime != ServiceLifetime::Singleton) {
-                    auto instance = regIt->second.factory();
+                    auto instance = regIt->second.typedFactory();
                     if (!instance)
-                        return domain::Error(L"Failed to create instance: " + GetTypeName<TInterface>(),
+                        return domain::Error(L"Factory returned null: " + GetTypeName<TInterface>(),
                             0, domain::ErrorCategory::System);
-                    return std::static_pointer_cast<TInterface>(instance);
+                    auto typed = std::static_pointer_cast<TInterface>(instance);
+                    return typed;
                 }
 
                 auto singletonIt = mSingletons.find(typeIndex);
-                if (singletonIt != mSingletons.end())
-                    return std::static_pointer_cast<TInterface>(singletonIt->second);
+                if (singletonIt != mSingletons.end()) {
+                    auto typed = std::static_pointer_cast<TInterface>(singletonIt->second);
+                    return typed;
+                }
             }
 
             std::unique_lock writeLock(mMutex);
@@ -98,9 +112,9 @@ namespace winsetup::application {
             if (singletonIt != mSingletons.end())
                 return std::static_pointer_cast<TInterface>(singletonIt->second);
 
-            auto instance = regIt->second.factory();
+            auto instance = regIt->second.typedFactory();
             if (!instance)
-                return domain::Error(L"Failed to create instance: " + GetTypeName<TInterface>(),
+                return domain::Error(L"Factory returned null: " + GetTypeName<TInterface>(),
                     0, domain::ErrorCategory::System);
 
             mSingletons[typeIndex] = instance;
@@ -116,6 +130,7 @@ namespace winsetup::application {
     private:
         struct Registration {
             std::function<std::shared_ptr<void>()> factory;
+            std::function<std::shared_ptr<void>()> typedFactory;
             ServiceLifetime lifetime = ServiceLifetime::Singleton;
         };
 
@@ -136,4 +151,4 @@ namespace winsetup::application {
         mutable std::shared_mutex mMutex;
     };
 
-}
+} // namespace winsetup::application
