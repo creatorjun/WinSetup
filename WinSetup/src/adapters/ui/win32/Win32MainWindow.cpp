@@ -163,9 +163,15 @@ namespace winsetup::adapters::ui {
 
     void Win32MainWindow::RebuildTypeSelector() {
         if (!mviewModel || !mhWnd) return;
-        const auto types = mviewModel->GetInstallationTypes();
-        if (types.empty()) return;
-        mtypeSelectorGroup.Rebuild(types);
+        const auto domainTypes = mviewModel->GetInstallationTypes();
+        if (domainTypes.empty()) return;
+
+        std::vector<InstallationTypeItem> items;
+        items.reserve(domainTypes.size());
+        for (const auto& t : domainTypes)
+            items.push_back({ t.name, t.name });
+
+        mtypeSelectorGroup.Rebuild(items);
     }
 
     void Win32MainWindow::OnViewModelPropertyChanged(const std::wstring& propertyName) {

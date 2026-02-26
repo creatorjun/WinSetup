@@ -1,6 +1,7 @@
 ﻿// src/adapters/ui/win32/controls/TypeSelectorGroup.cpp
-#include <adapters/ui/win32/controls/TypeSelectorGroup.h>
-#include <adapters/platform/win32/core/Win32HandleFactory.h>
+#include "adapters/ui/win32/controls/TypeSelectorGroup.h"
+#include "adapters/platform/win32/core/Win32HandleFactory.h"
+#include <Windows.h>
 
 #undef min
 #undef max
@@ -41,16 +42,14 @@ namespace winsetup::adapters::ui {
         );
     }
 
-    void TypeSelectorGroup::Rebuild(
-        const std::vector<domain::InstallationType>& types)
-    {
+    void TypeSelectorGroup::Rebuild(const std::vector<InstallationTypeItem>& types) {
         if (!mHParent || !mHInstance) return;
 
         for (auto& btn : mButtons) {
             if (!btn) continue;
             HWND hBtn = btn->Handle();
-            btn.reset();                          // 1. ~ToggleButton() → SubclassProc 해제
-            if (hBtn) DestroyWindow(hBtn);        // 2. HWND 파괴
+            btn.reset();
+            if (hBtn) DestroyWindow(hBtn);
         }
         mButtons.clear();
 
@@ -61,7 +60,7 @@ namespace winsetup::adapters::ui {
         for (size_t i = 0; i < mTypes.size(); ++i) {
             auto btn = std::make_unique<ToggleButton>();
             HWND hBtn = btn->Create(
-                mHParent, mTypes[i].name,
+                mHParent, mTypes[i].displayName,
                 0, 0, BTNMINWIDTH, BTNHEIGHT,
                 mNextButtonId++, mHInstance);
             if (!hBtn) continue;
@@ -98,13 +97,13 @@ namespace winsetup::adapters::ui {
         for (size_t i = 0; i < mButtons.size(); ++i) {
             if (!mButtons[i] || mButtons[i]->Handle() != hCtrl) continue;
 
-            if (i < mTypes.size() && mTypes[i].name == mSelectedKey) {
+            if (i < mTypes.size() && mTypes[i].key == mSelectedKey) {
                 mButtons[i]->SetChecked(true);
                 return;
             }
 
             if (i < mTypes.size())
-                mSelectedKey = mTypes[i].name;
+                mSelectedKey = mTypes[i].key;
 
             if (mOnSelectionChanged)
                 mOnSelectionChanged(mSelectedKey);
@@ -183,4 +182,4 @@ namespace winsetup::adapters::ui {
         DrawGroupBox(hdc);
     }
 
-}
+} // namespace winsetup::adapters::ui

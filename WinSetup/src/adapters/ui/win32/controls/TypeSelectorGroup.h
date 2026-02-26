@@ -1,16 +1,19 @@
 ﻿// src/adapters/ui/win32/controls/TypeSelectorGroup.h
 #pragma once
 
-#include <adapters/ui/win32/controls/ToggleButton.h>
-#include <adapters/platform/win32/memory/UniqueHandle.h>
-#include <domain/entities/SetupConfig.h>
-#include <Windows.h>
+#include "adapters/ui/win32/controls/ToggleButton.h"
+#include "adapters/platform/win32/memory/UniqueHandle.h"
 #include <string>
 #include <vector>
 #include <memory>
 #include <functional>
 
 namespace winsetup::adapters::ui {
+
+    struct InstallationTypeItem {
+        std::wstring key;
+        std::wstring displayName;
+    };
 
     class TypeSelectorGroup {
     public:
@@ -26,7 +29,7 @@ namespace winsetup::adapters::ui {
         void Create(HWND hParent, HINSTANCE hInstance,
             const std::wstring& label, int groupId);
 
-        void Rebuild(const std::vector<domain::InstallationType>& types);
+        void Rebuild(const std::vector<InstallationTypeItem>& types);
         void SetRect(const RECT& rect);
         void SetSelectionChangedCallback(SelectionChangedCallback callback);
         void SetEnabled(bool enabled);
@@ -36,7 +39,7 @@ namespace winsetup::adapters::ui {
 
         [[nodiscard]] const std::wstring& GetSelectedKey() const noexcept { return mSelectedKey; }
         [[nodiscard]] const RECT& GetRect()        const noexcept { return mRect; }
-        [[nodiscard]] bool        IsReady()         const noexcept { return !mTypes.empty(); }
+        [[nodiscard]] bool                IsReady()        const noexcept { return !mTypes.empty(); }
 
     private:
         void RecalcButtonRects();
@@ -47,7 +50,7 @@ namespace winsetup::adapters::ui {
         HINSTANCE mHInstance = nullptr;
 
         std::wstring                               mLabel;
-        std::vector<domain::InstallationType>      mTypes;
+        std::vector<InstallationTypeItem>          mTypes;
         std::vector<std::unique_ptr<ToggleButton>> mButtons;
         std::wstring                               mSelectedKey;
         SelectionChangedCallback                   mOnSelectionChanged;
@@ -72,4 +75,4 @@ namespace winsetup::adapters::ui {
         static constexpr int BTNIDBASE = 3000;
     };
 
-}
+} // namespace winsetup::adapters::ui
