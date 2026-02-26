@@ -650,6 +650,9 @@
     <ClInclude Include="src\adapters\platform\win32\concurrency\Win32ThreadPoolExecutor.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="src\abstractions\ui\IUIDispatcher.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="docs\API_REFERENCE.md" />

@@ -125,6 +125,7 @@
     <ClInclude Include="src\abstractions\ui\IMainViewModel.h" />
     <ClInclude Include="src\abstractions\ui\IProgressBar.h" />
     <ClInclude Include="src\abstractions\ui\IPropertyChanged.h" />
+    <ClInclude Include="src\abstractions\ui\IUIDispatcher.h" />
     <ClInclude Include="src\abstractions\ui\IWidget.h" />
     <ClInclude Include="src\abstractions\ui\IWindow.h" />
     <ClInclude Include="src\abstractions\usecases\IAnalyzeSystemUseCase.h" />

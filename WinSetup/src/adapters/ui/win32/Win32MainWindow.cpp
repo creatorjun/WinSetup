@@ -1,7 +1,6 @@
-﻿// src/adapters/ui/win32/Win32MainWindow.cpp
-#include <adapters/ui/win32/Win32MainWindow.h>
-#include <adapters/ui/win32/controls/ToggleButton.h>
-#include <resources/resource.h>
+﻿#include "adapters/ui/win32/Win32MainWindow.h"
+#include "adapters/ui/win32/controls/ToggleButton.h"
+#include "resources/resource.h"
 #include <windowsx.h>
 #undef min
 #undef max
@@ -9,26 +8,27 @@
 namespace winsetup::adapters::ui {
 
     Win32MainWindow::Win32MainWindow(
-        std::shared_ptr<abstractions::ILogger>        logger,
-        std::shared_ptr<abstractions::IMainViewModel> viewModel
+        std::shared_ptr<abstractions::ILogger> logger,
+        std::shared_ptr<abstractions::IMainViewModel> viewModel,
+        std::shared_ptr<application::Dispatcher> dispatcher
     )
-        : mhWnd(nullptr)
-        , mhInstance(nullptr)
-        , mlogger(std::move(logger))
-        , mviewModel(std::move(viewModel))
-        , mselectorRect{}
+        : mLogger(std::move(logger))
+        , mViewModel(std::move(viewModel))
+        , mDispatcher(std::move(dispatcher))
     {
-        if (mviewModel)
-            mviewModel->AddPropertyChangedHandler(
-                [this](const std::wstring& propertyName) {
-                    OnViewModelPropertyChanged(propertyName);
-                }
-            );
+        if (mViewModel) {
+            mViewModel->AddPropertyChangedHandler([this](const std::wstring& propertyName) {
+                OnViewModelPropertyChanged(propertyName);
+                });
+        }
     }
 
     Win32MainWindow::~Win32MainWindow() {
-        if (mviewModel) mviewModel->RemoveAllPropertyChangedHandlers();
-        if (mhWnd) { DestroyWindow(mhWnd); mhWnd = nullptr; }
+        if (mViewModel) mViewModel->RemoveAllPropertyChangedHandlers();
+        if (mhWnd) {
+            DestroyWindow(mhWnd);
+            mhWnd = nullptr;
+        }
     }
 
     bool Win32MainWindow::Create(HINSTANCE hInstance, int nCmdShow) {
@@ -38,7 +38,7 @@ namespace winsetup::adapters::ui {
         HICON hIcon = LoadIconW(mhInstance, MAKEINTRESOURCE(IDI_MAIN_ICON));
         HICON hIconSm = LoadIconW(mhInstance, MAKEINTRESOURCE(IDI_MAIN_ICON));
         if (!hIcon || !hIconSm) {
-            if (mlogger) mlogger->Warning(L"Failed to load application icon, using default");
+            if (mLogger) mLogger->Warning(L"Failed to load application icon, using default");
             hIcon = LoadIcon(nullptr, IDI_APPLICATION);
             hIconSm = LoadIcon(nullptr, IDI_APPLICATION);
         }
@@ -52,49 +52,42 @@ namespace winsetup::adapters::ui {
         wc.hIconSm = hIconSm;
         wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
         wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-        wc.lpszClassName = CLASSNAME;
-
+        wc.lpszClassName = CLASS_NAME;
         if (!RegisterClassExW(&wc)) {
-            if (mlogger) mlogger->Error(L"Failed to register window class");
+            if (mLogger) mLogger->Error(L"Failed to register window class");
             return false;
         }
 
         DWORD dwStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
-        RECT  windowRect{ 0, 0, WINDOWWIDTH, WINDOWHEIGHT };
+        RECT windowRect{ 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
         AdjustWindowRect(&windowRect, dwStyle, FALSE);
-
         const int adjustedWidth = windowRect.right - windowRect.left;
         const int adjustedHeight = windowRect.bottom - windowRect.top;
         const int posX = (GetSystemMetrics(SM_CXSCREEN) - adjustedWidth) / 2;
         const int posY = (GetSystemMetrics(SM_CYSCREEN) - adjustedHeight) / 2;
 
-        const std::wstring title = mviewModel
-            ? mviewModel->GetWindowTitle()
-            : L"WinSetup  v 1.0";
-
+        const std::wstring title = mViewModel ? mViewModel->GetWindowTitle() : L"WinSetup v1.0";
         mhWnd = CreateWindowExW(
-            0, CLASSNAME, title.c_str(), dwStyle,
+            0, CLASS_NAME, title.c_str(), dwStyle,
             posX, posY, adjustedWidth, adjustedHeight,
-            nullptr, nullptr, mhInstance, this
-        );
+            nullptr, nullptr, mhInstance, this);
 
         if (!mhWnd) {
-            if (mlogger) mlogger->Error(L"Failed to create window");
+            if (mLogger) mLogger->Error(L"Failed to create window");
             return false;
         }
 
+        if (mDispatcher) mDispatcher->SetTargetHwnd(mhWnd);
+
         ShowWindow(mhWnd, nCmdShow);
         UpdateWindow(mhWnd);
-
-        if (mlogger) mlogger->Info(L"Main window created successfully");
+        if (mLogger) mLogger->Info(L"Main window created successfully");
         return true;
     }
 
     void Win32MainWindow::Show() { if (mhWnd) ShowWindow(mhWnd, SW_SHOW); }
     void Win32MainWindow::Hide() { if (mhWnd) ShowWindow(mhWnd, SW_HIDE); }
-
     bool Win32MainWindow::IsValid() const noexcept { return mhWnd != nullptr; }
-
     HWND Win32MainWindow::GetHWND() const noexcept { return mhWnd; }
 
     bool Win32MainWindow::RunMessageLoop() {
@@ -114,107 +107,13 @@ namespace winsetup::adapters::ui {
         if (mhWnd) KillTimer(mhWnd, MAIN_TIMER_ID);
     }
 
-    void Win32MainWindow::InitializeWidgets() {
-        RECT clientRect{};
-        GetClientRect(mhWnd, &clientRect);
-        const int cw = clientRect.right;
-        const int marginH = 16;
-        const int statusH = 60;
-        const int typeDescH = 40;
-        const int gap = 8;
-        const int innerPadTop = 28;
-        const int innerPadBot = 12;
-        const int btnRows = 2;
-        const int btnH = 32;
-        const int btnGapV = 8;
-        const int selectorH = innerPadTop + btnRows * btnH + (btnRows - 1) * btnGapV + innerPadBot;
-        const int panelW = cw - marginH * 2;
-
-        abstractions::IWidget::CreateParams p;
-        p.hParent = mhWnd;
-        p.hInstance = mhInstance;
-
-        const int statusPanelH = statusH + typeDescH + gap;
-        mstatusPanel.SetViewModel(mviewModel);
-        p.x = marginH; p.y = 0; p.width = panelW; p.height = statusPanelH;
-        mstatusPanel.Create(p);
-
-        const int selectorY = statusPanelH + gap;
-        mselectorRect = { marginH, selectorY, cw - marginH, selectorY + selectorH };
-        mtypeSelectorGroup.Create(mhWnd, mhInstance, L"설치 유형", TYPESELECTORGROUPID);
-        mtypeSelectorGroup.SetRect(mselectorRect);
-        mtypeSelectorGroup.SetSelectionChangedCallback(
-            [this](const std::wstring& key) {
-                if (mviewModel) mviewModel->SetTypeDescription(key);
-            }
-        );
-        RebuildTypeSelector();
-
-        const int optionY = mselectorRect.bottom + gap * 2;
-        const int optionH = btnH * 2 + gap;
-        moptionPanel.SetViewModel(mviewModel);
-        p.x = marginH; p.y = optionY; p.width = panelW; p.height = optionH;
-        moptionPanel.Create(p);
-
-        const int actionY = optionY + optionH + gap;
-        const int actionH = btnH + gap * 2 + btnH;
-        mactionPanel.SetViewModel(mviewModel);
-        p.x = marginH; p.y = actionY; p.width = panelW; p.height = actionH;
-        mactionPanel.Create(p);
-
-        mwidgets.clear();
-        mwidgets.push_back(&mstatusPanel);
-        mwidgets.push_back(&moptionPanel);
-        mwidgets.push_back(&mactionPanel);
-    }
-
-    void Win32MainWindow::RebuildTypeSelector() {
-        if (!mviewModel || !mhWnd) return;
-        const auto domainTypes = mviewModel->GetInstallationTypes();
-        if (domainTypes.empty()) return;
-
-        std::vector<InstallationTypeItem> items;
-        items.reserve(domainTypes.size());
-        for (const auto& t : domainTypes)
-            items.push_back({ t.name, t.name });
-
-        mtypeSelectorGroup.Rebuild(items);
-    }
-
-    void Win32MainWindow::OnViewModelPropertyChanged(const std::wstring& propertyName) {
-        if (propertyName == L"WindowTitle") {
-            UpdateWindowTitle();
-            return;
-        }
-        if (propertyName == L"InstallationTypes") {
-            RebuildTypeSelector();
-            return;
-        }
-        if (propertyName == L"IsProcessing") {
-            if (mviewModel) {
-                if (mviewModel->IsProcessing())
-                    StartTimer();
-                else
-                    StopTimer();
-            }
-            mtypeSelectorGroup.SetEnabled(!mviewModel || !mviewModel->IsProcessing());
-        }
-        for (auto& widget : mwidgets)
-            widget->OnPropertyChanged(propertyName);
-    }
-
-    void Win32MainWindow::UpdateWindowTitle() {
-        if (mhWnd && mviewModel)
-            SetWindowTextW(mhWnd, mviewModel->GetWindowTitle().c_str());
-    }
-
     void Win32MainWindow::OnCreate() {
-        if (mlogger) mlogger->Debug(L"Window WM_CREATE received");
+        if (mLogger) mLogger->Debug(L"Window WM_CREATE received");
         InitializeWidgets();
     }
 
     void Win32MainWindow::OnDestroy() {
-        if (mlogger) mlogger->Info(L"Window destroyed");
+        if (mLogger) mLogger->Info(L"Window destroyed");
         StopTimer();
         ToggleButton::Cleanup();
         PostQuitMessage(0);
@@ -223,30 +122,32 @@ namespace winsetup::adapters::ui {
     void Win32MainWindow::OnPaint() {
         PAINTSTRUCT ps{};
         HDC hdc = BeginPaint(mhWnd, &ps);
-        for (auto& widget : mwidgets)
+        for (auto* widget : mWidgets)
             widget->OnPaint(static_cast<void*>(hdc));
-        mtypeSelectorGroup.OnPaint(hdc);
+        mTypeSelectorGroup.OnPaint(hdc);
         EndPaint(mhWnd, &ps);
     }
 
     void Win32MainWindow::OnTimer(WPARAM timerId) {
-        if (static_cast<UINT_PTR>(timerId) == MAIN_TIMER_ID && mviewModel)
-            mviewModel->TickTimer();
-        for (auto& widget : mwidgets)
+        if (static_cast<UINT_PTR>(timerId) == MAIN_TIMER_ID) {
+            if (mViewModel) mViewModel->TickTimer();
+        }
+        for (auto* widget : mWidgets)
             widget->OnTimer(static_cast<uintptr_t>(timerId));
     }
 
     void Win32MainWindow::OnCommand(WPARAM wParam, LPARAM lParam) {
-        for (auto& widget : mwidgets)
-            if (widget->OnCommand(static_cast<uintptr_t>(wParam),
-                static_cast<uintptr_t>(lParam))) return;
-        mtypeSelectorGroup.OnCommand(wParam, lParam);
+        for (auto* widget : mWidgets) {
+            if (widget->OnCommand(static_cast<uintptr_t>(wParam), static_cast<uintptr_t>(lParam)))
+                return;
+        }
+        mTypeSelectorGroup.OnCommand(wParam, lParam);
     }
 
     LRESULT CALLBACK Win32MainWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         Win32MainWindow* pThis = nullptr;
         if (uMsg == WM_NCCREATE) {
-            auto pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
+            auto* pCreate = reinterpret_cast<CREATESTRUCT*>(lParam);
             pThis = static_cast<Win32MainWindow*>(pCreate->lpCreateParams);
             SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pThis));
             pThis->mhWnd = hwnd;
@@ -260,14 +161,131 @@ namespace winsetup::adapters::ui {
 
     LRESULT Win32MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam) {
         switch (uMsg) {
-        case WM_CREATE:   OnCreate();               return 0;
-        case WM_DESTROY:  OnDestroy();              return 0;
-        case WM_PAINT:    OnPaint();                return 0;
-        case WM_COMMAND:  OnCommand(wParam, lParam); return 0;
-        case WM_TIMER:    OnTimer(wParam);          return 0;
-        case WM_CLOSE:    DestroyWindow(mhWnd);     return 0;
-        default:          return DefWindowProcW(mhWnd, uMsg, wParam, lParam);
+        case WM_CREATE:
+            OnCreate();
+            return 0;
+        case WM_DESTROY:
+            OnDestroy();
+            return 0;
+        case WM_PAINT:
+            OnPaint();
+            return 0;
+        case WM_COMMAND:
+            OnCommand(wParam, lParam);
+            return 0;
+        case WM_TIMER:
+            OnTimer(wParam);
+            return 0;
+        case WM_CLOSE:
+            DestroyWindow(mhWnd);
+            return 0;
+        case application::Dispatcher::WM_DISPATCHER_INVOKE:
+            if (mDispatcher) mDispatcher->ProcessPending();
+            return 0;
+        default:
+            return DefWindowProcW(mhWnd, uMsg, wParam, lParam);
         }
+    }
+
+    void Win32MainWindow::InitializeWidgets() {
+        if (!mhWnd || !mhInstance) return;
+
+        constexpr int marginH = 16;
+        constexpr int marginT = 12;
+        constexpr int gap = 10;
+        const int panelW = WINDOW_WIDTH - marginH * 2;
+
+        // StatusPanel 최상단
+        constexpr int statusH = 60 + 8 + 40;
+        const int statusY = marginT;
+        StatusPanel::CreateParams sp{};
+        sp.hParent = mhWnd;
+        sp.x = marginH;
+        sp.y = statusY;
+        sp.width = panelW;
+        sp.height = statusH;
+        mStatusPanel.Create(sp);
+        mStatusPanel.SetViewModel(mViewModel);
+
+        // TypeSelectorGroup
+        constexpr int selectorH = 120;
+        const int selectorY = statusY + statusH + gap;
+        mSelectorRect = { marginH, selectorY, marginH + panelW, selectorY + selectorH };
+        mTypeSelectorGroup.Create(mhWnd, mhInstance, L"설치 유형", TYPE_SELECTOR_GROUP_ID);
+        mTypeSelectorGroup.SetRect(mSelectorRect);
+        mTypeSelectorGroup.SetSelectionChangedCallback([this](const std::wstring& key) {
+            if (mViewModel) mViewModel->SetTypeDescription(key);
+            });
+
+        // OptionPanel
+        constexpr int optionH = 32 + 8 + 32;
+        const int optionY = selectorY + selectorH + gap;
+        OptionPanel::CreateParams op{};
+        op.hParent = mhWnd;
+        op.hInstance = mhInstance;
+        op.x = marginH;
+        op.y = optionY;
+        op.width = panelW;
+        op.height = optionH;
+        mOptionPanel.Create(op);
+        mOptionPanel.SetViewModel(mViewModel);
+
+        // ActionPanel
+        constexpr int btnH = 32;
+        const int actionY = optionY + optionH + gap;
+        ActionPanel::CreateParams ap{};
+        ap.hParent = mhWnd;
+        ap.hInstance = mhInstance;
+        ap.x = marginH;
+        ap.y = actionY;
+        ap.width = panelW;
+        ap.height = btnH + gap * 2 + btnH;
+        mActionPanel.Create(ap);
+        mActionPanel.SetViewModel(mViewModel);
+
+        mWidgets.clear();
+        mWidgets.push_back(&mStatusPanel);
+        mWidgets.push_back(&mOptionPanel);
+        mWidgets.push_back(&mActionPanel);
+
+        RebuildTypeSelector();
+    }
+
+
+    void Win32MainWindow::RebuildTypeSelector() {
+        if (!mViewModel || !mhWnd) return;
+        const auto domainTypes = mViewModel->GetInstallationTypes();
+        if (domainTypes.empty()) return;
+        std::vector<InstallationTypeItem> items;
+        items.reserve(domainTypes.size());
+        for (const auto& t : domainTypes)
+            items.push_back({ t.name, t.name });
+        mTypeSelectorGroup.Rebuild(items);
+    }
+
+    void Win32MainWindow::OnViewModelPropertyChanged(const std::wstring& propertyName) {
+        if (propertyName == L"WindowTitle") {
+            UpdateWindowTitle();
+            return;
+        }
+        if (propertyName == L"InstallationTypes") {
+            RebuildTypeSelector();
+            return;
+        }
+        if (propertyName == L"IsProcessing") {
+            if (mViewModel) {
+                if (mViewModel->IsProcessing()) StartTimer();
+                else StopTimer();
+            }
+            mTypeSelectorGroup.SetEnabled(!mViewModel || !mViewModel->IsProcessing());
+        }
+        for (auto* widget : mWidgets)
+            widget->OnPropertyChanged(propertyName);
+    }
+
+    void Win32MainWindow::UpdateWindowTitle() {
+        if (mhWnd && mViewModel)
+            SetWindowTextW(mhWnd, mViewModel->GetWindowTitle().c_str());
     }
 
 }
