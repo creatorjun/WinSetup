@@ -1,4 +1,3 @@
-// src/adapters/platform/win32/storage/Win32FileCopyService.cpp
 #include "Win32FileCopyService.h"
 #include "adapters/platform/win32/core/Win32HandleFactory.h"
 #include "domain/primitives/Error.h"
@@ -69,7 +68,8 @@ namespace winsetup::adapters::platform {
         auto ensureResult = EnsureDirectory(dstParent);
         if (!ensureResult.HasValue()) return ensureResult;
 
-        auto copyResult = CopySingleFile(srcPath, dstPath, options.bufferSizeKB, options.overwrite);
+        auto copyResult = CopySingleFile(srcPath, dstPath,
+            options.bufferSizeKB, options.overwrite);
         if (!copyResult.HasValue()) return copyResult;
 
         if (progressCallback) {
@@ -100,7 +100,7 @@ namespace winsetup::adapters::platform {
             return dom::Error(L"Source directory not found: " + srcDir,
                 ERROR_PATH_NOT_FOUND, dom::ErrorCategory::IO);
 
-        std::vector<CopyTask>   tasks;
+        std::vector<CopyTask> tasks;
         auto collectResult = CollectFiles(srcDir, dstDir, options.recursive, tasks);
         if (!collectResult.HasValue()) return collectResult;
         if (tasks.empty()) return dom::Expected<void>();
@@ -169,33 +169,39 @@ namespace winsetup::adapters::platform {
             std::clamp(bufferSizeKB, k_minBufferSizeKB, k_maxBufferSizeKB) * 1024;
 
         auto hSrc = Win32HandleFactory::MakeHandle(
-            CreateFileW(srcPath.c_str(), GENERIC_READ,
-                FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+            CreateFileW(srcPath.c_str(),
+                GENERIC_READ,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                nullptr,
                 OPEN_EXISTING,
-                FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_NO_BUFFERING, nullptr));
+                FILE_FLAG_SEQUENTIAL_SCAN,
+                nullptr));
         if (!hSrc)
             return dom::Error(L"Failed to open source file: " + srcPath,
                 GetLastError(), dom::ErrorCategory::IO);
 
         auto hDst = Win32HandleFactory::MakeHandle(
-            CreateFileW(dstPath.c_str(), GENERIC_WRITE,
-                0, nullptr, CREATE_ALWAYS,
-                FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_WRITE_THROUGH, nullptr));
+            CreateFileW(dstPath.c_str(),
+                GENERIC_WRITE,
+                0,
+                nullptr,
+                CREATE_ALWAYS,
+                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH,
+                nullptr));
         if (!hDst)
             return dom::Error(L"Failed to create destination file: " + dstPath,
                 GetLastError(), dom::ErrorCategory::IO);
 
         std::vector<BYTE> buffer(bufSize);
-        DWORD bytesRead = 0, bytesWritten = 0;
+        DWORD bytesRead = 0;
+        DWORD bytesWritten = 0;
 
         while (!m_cancelled.load()) {
             if (!ReadFile(Win32HandleFactory::ToWin32Handle(hSrc),
                 buffer.data(), bufSize, &bytesRead, nullptr))
-            {
-                DWORD err = GetLastError();
-                if (err == ERROR_HANDLE_EOF || bytesRead == 0) break;
-                return dom::Error(L"Read failed: " + srcPath, err, dom::ErrorCategory::IO);
-            }
+                return dom::Error(L"Read failed: " + srcPath,
+                    GetLastError(), dom::ErrorCategory::IO);
+
             if (bytesRead == 0) break;
 
             if (!WriteFile(Win32HandleFactory::ToWin32Handle(hDst),
@@ -253,12 +259,15 @@ namespace winsetup::adapters::platform {
                 outTasks.push_back({ src, dst,
                     static_cast<uint64_t>(fileSize.QuadPart) });
             }
-        } while (FindNextFileW(Win32HandleFactory::ToWin32FindHandle(hFind), &findData));
+        } while (FindNextFileW(
+            Win32HandleFactory::ToWin32FindHandle(hFind), &findData));
 
         return dom::Expected<void>();
     }
 
-    dom::Expected<void> Win32FileCopyService::EnsureDirectory(const std::wstring& dirPath) {
+    dom::Expected<void> Win32FileCopyService::EnsureDirectory(
+        const std::wstring& dirPath
+    ) {
         if (dirPath.empty()) return dom::Expected<void>();
 
         DWORD attrib = GetFileAttributesW(dirPath.c_str());
@@ -346,4 +355,4 @@ namespace winsetup::adapters::platform {
         }
     }
 
-}
+} // namespace winsetup::adapters::platform
