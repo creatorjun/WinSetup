@@ -43,7 +43,13 @@ namespace winsetup::application {
             mLogger->Info(L"AnalyzeVolumesUseCase: Started. UserProfile=" + userProfile);
 
         std::vector<domain::VolumeInfo> volumes(*volumeResult.Value());
-        std::vector<domain::DiskInfo> disks(*diskResult.Value());
+        std::vector<domain::DiskInfo>   disks(*diskResult.Value());
+
+        DiskIndexCache cache;
+        cache.reserve(volumes.size());
+        for (const auto& vol : volumes)
+            cache.emplace(vol.GetVolumePath(),
+                mPathChecker->FindDiskIndexByVolumeGuid(vol.GetVolumePath()));
 
         int systemVolIdx = -1;
         for (int i = 0; i < static_cast<int>(volumes.size()); i++) {
@@ -64,8 +70,11 @@ namespace winsetup::application {
         }
 
         if (systemVolIdx >= 0) {
-            const std::wstring systemGuid = volumes[systemVolIdx].GetVolumePath();
-            const auto systemDiskIdx = mPathChecker->FindDiskIndexByVolumeGuid(systemGuid);
+            const std::wstring& systemGuid = volumes[systemVolIdx].GetVolumePath();
+            const auto systemDiskIdxIt = cache.find(systemGuid);
+            const auto& systemDiskIdx = (systemDiskIdxIt != cache.end())
+                ? systemDiskIdxIt->second
+                : std::optional<uint32_t>{};
 
             if (systemDiskIdx.has_value()) {
                 for (auto& disk : disks) {
@@ -78,12 +87,12 @@ namespace winsetup::application {
                 for (auto& vol : volumes) {
                     if (vol.IsSystem() || vol.IsData())
                         continue;
-                    const auto volDiskIdx = mPathChecker->FindDiskIndexByVolumeGuid(vol.GetVolumePath());
-                    if (!volDiskIdx.has_value())
+                    const auto it = cache.find(vol.GetVolumePath());
+                    if (it == cache.end() || !it->second.has_value())
                         continue;
-                    if (volDiskIdx.value() != systemDiskIdx.value())
+                    if (it->second.value() != systemDiskIdx.value())
                         continue;
-                    if (IsBootVolume(vol, disks)) {
+                    if (IsBootVolume(vol, disks, cache)) {
                         vol.SetIsBoot(true);
                         break;
                     }
@@ -94,10 +103,10 @@ namespace winsetup::application {
         auto dataVolIt = std::find_if(volumes.begin(), volumes.end(),
             [](const domain::VolumeInfo& v) { return v.IsData(); });
         if (dataVolIt != volumes.end()) {
-            const auto dataDiskIdx = mPathChecker->FindDiskIndexByVolumeGuid(dataVolIt->GetVolumePath());
-            if (dataDiskIdx.has_value()) {
+            const auto it = cache.find(dataVolIt->GetVolumePath());
+            if (it != cache.end() && it->second.has_value()) {
                 for (auto& disk : disks) {
-                    if (disk.GetIndex() == dataDiskIdx.value() && !disk.IsSystem()) {
+                    if (disk.GetIndex() == it->second.value() && !disk.IsSystem()) {
                         disk.SetIsData(true);
                         break;
                     }
@@ -108,7 +117,9 @@ namespace winsetup::application {
         mAnalysisRepository->StoreUpdatedVolumes(std::move(volumes));
         mAnalysisRepository->StoreUpdatedDisks(std::move(disks));
 
-        LogResult();
+        auto finalVolumeResult = mAnalysisRepository->GetVolumes();
+        if (finalVolumeResult.HasValue())
+            LogResult(*finalVolumeResult.Value());
 
         if (mLogger)
             mLogger->Info(L"AnalyzeVolumesUseCase: Complete.");
@@ -116,16 +127,10 @@ namespace winsetup::application {
         return domain::Expected<void>();
     }
 
-    void AnalyzeVolumesUseCase::LogResult() const
+    void AnalyzeVolumesUseCase::LogResult(const std::vector<domain::VolumeInfo>& volumes) const
     {
         if (!mLogger)
             return;
-
-        auto volumeResult = mAnalysisRepository->GetVolumes();
-        if (!volumeResult.HasValue())
-            return;
-
-        const auto& volumes = *volumeResult.Value();
 
         const auto logVolume = [&](const domain::VolumeInfo& vol, const std::wstring& role) {
             const std::wstring letter = vol.GetLetter().empty() ? L"-" : vol.GetLetter();
@@ -172,17 +177,19 @@ namespace winsetup::application {
 
     bool AnalyzeVolumesUseCase::IsBootVolume(
         const domain::VolumeInfo& volume,
-        const std::vector<domain::DiskInfo>& disks) const noexcept
+        const std::vector<domain::DiskInfo>& disks,
+        const DiskIndexCache& cache) const noexcept
     {
         if (volume.GetFileSystem() != domain::FileSystemType::FAT32)
             return false;
 
-        const auto volDiskIdx = mPathChecker->FindDiskIndexByVolumeGuid(volume.GetVolumePath());
-        if (!volDiskIdx.has_value())
+        const auto it = cache.find(volume.GetVolumePath());
+        if (it == cache.end() || !it->second.has_value())
             return false;
 
+        const uint32_t volDiskIdx = it->second.value();
         for (const auto& disk : disks) {
-            if (disk.GetIndex() != volDiskIdx.value())
+            if (disk.GetIndex() != volDiskIdx)
                 continue;
             for (const auto& partition : disk.GetPartitions()) {
                 if (partition.GetType() == domain::PartitionType::EFI)

@@ -93,5 +93,3 @@ const auto dataDiskIdx = mPathChecker->FindDiskIndexByVolumeGuid(dataVolIt->GetV
 | 🟡 4순위 | SetupAPI 폴백 로직 추가 | WinPE 호환성 |
 | 🟢 5순위 | `Win32TypeMapper` GUID 매핑 통합 | 유지보수성 |
 | 🟢 6순위 | `DiskSize::ToBytes()` 존재 여부 확인 | 잠재적 빌드 오류 |
-
-어떤 항목부터 적용할까요?
