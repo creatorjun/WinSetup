@@ -1,6 +1,5 @@
 ﻿// src/adapters/platform/win32/core/Win32TypeMapper.h
 #pragma once
-
 #include "../../../../domain/valueobjects/BusType.h"
 #include "../../../../domain/valueobjects/DiskType.h"
 #include "../../../../domain/valueobjects/FileSystemType.h"
@@ -12,33 +11,37 @@ namespace winsetup::adapters::platform {
 
     class Win32TypeMapper {
     public:
-        [[nodiscard]] static domain::BusType MapBusType(STORAGE_BUS_TYPE winBusType) noexcept;
+        [[nodiscard]] static domain::BusType MapBusType(
+            STORAGE_BUS_TYPE winBusType) noexcept;
 
         [[nodiscard]] static domain::DiskType MapDiskType(
             MEDIA_TYPE mediaType,
             STORAGE_BUS_TYPE busType,
-            bool hasSeekPenalty
-        ) noexcept;
+            bool hasSeekPenalty) noexcept;
 
         [[nodiscard]] static domain::FileSystemType MapFileSystemType(
-            const std::wstring& fileSystemName
-        ) noexcept;
+            const std::wstring& fileSystemName) noexcept;
 
         [[nodiscard]] static domain::PartitionType MapPartitionType(
             BYTE partitionType,
-            bool isGPT
-        ) noexcept;
+            bool isGPT) noexcept;
+
+        // GPT GUID → domain::PartitionType
+        [[nodiscard]] static domain::PartitionType FromGuid(
+            const GUID& guid) noexcept;
+
+        // domain::PartitionType → GPT GUID
+        [[nodiscard]] static GUID ToGuid(
+            domain::PartitionType partitionType) noexcept;
 
         [[nodiscard]] static STORAGE_BUS_TYPE MapToWin32BusType(
-            domain::BusType busType
-        ) noexcept;
+            domain::BusType busType) noexcept;
 
         [[nodiscard]] static MEDIA_TYPE MapToWin32MediaType(
-            domain::DiskType diskType
-        ) noexcept;
+            domain::DiskType diskType) noexcept;
 
     private:
         Win32TypeMapper() = delete;
     };
 
-}
+} // namespace winsetup::adapters::platform

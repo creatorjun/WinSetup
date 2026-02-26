@@ -1,4 +1,4 @@
-// src/application/usecases/disk/AnalyzeVolumesUseCase.cpp
+﻿// src/application/usecases/disk/AnalyzeVolumesUseCase.cpp
 #include "application/usecases/disk/AnalyzeVolumesUseCase.h"
 #include <algorithm>
 
@@ -71,9 +71,9 @@ namespace winsetup::application {
 
         if (systemVolIdx >= 0) {
             const std::wstring& systemGuid = volumes[systemVolIdx].GetVolumePath();
-            const auto systemDiskIdxIt = cache.find(systemGuid);
-            const auto& systemDiskIdx = (systemDiskIdxIt != cache.end())
-                ? systemDiskIdxIt->second
+            const auto          systemDiskIt = cache.find(systemGuid);
+            const auto& systemDiskIdx = (systemDiskIt != cache.end())
+                ? systemDiskIt->second
                 : std::optional<uint32_t>{};
 
             if (systemDiskIdx.has_value()) {
@@ -114,12 +114,10 @@ namespace winsetup::application {
             }
         }
 
+        LogResult(volumes);
+
         mAnalysisRepository->StoreUpdatedVolumes(std::move(volumes));
         mAnalysisRepository->StoreUpdatedDisks(std::move(disks));
-
-        auto finalVolumeResult = mAnalysisRepository->GetVolumes();
-        if (finalVolumeResult.HasValue())
-            LogResult(*finalVolumeResult.Value());
 
         if (mLogger)
             mLogger->Info(L"AnalyzeVolumesUseCase: Complete.");
