@@ -26,6 +26,7 @@
     <ClCompile Include="src\adapters\persistence\config\IniParser.cpp" />
     <ClCompile Include="src\adapters\persistence\filesystem\Win32FileSystem.cpp" />
     <ClCompile Include="src\adapters\persistence\filesystem\Win32PathChecker.cpp" />
+    <ClCompile Include="src\adapters\platform\win32\concurrency\Win32ThreadPoolExecutor.cpp" />
     <ClCompile Include="src\adapters\platform\win32\memory\UniqueHandle.cpp" />
     <ClCompile Include="src\adapters\platform\win32\core\Win32ErrorHandler.cpp" />
     <ClCompile Include="src\adapters\platform\win32\core\Win32HandleFactory.cpp" />
@@ -138,6 +139,7 @@
     <ClInclude Include="src\adapters\persistence\config\IniParser.h" />
     <ClInclude Include="src\adapters\persistence\filesystem\Win32FileSystem.h" />
     <ClInclude Include="src\adapters\persistence\filesystem\Win32PathChecker.h" />
+    <ClInclude Include="src\adapters\platform\win32\concurrency\Win32ThreadPoolExecutor.h" />
     <ClInclude Include="src\adapters\platform\win32\memory\UniqueFindHandle.h" />
     <ClInclude Include="src\adapters\platform\win32\memory\UniqueHandle.h" />
     <ClInclude Include="src\adapters\platform\win32\memory\UniqueLibrary.h" />

@@ -1,14 +1,14 @@
 ﻿// src/adapters/platform/win32/storage/AsyncIOCTL.h
 #pragma once
-
+#include <abstractions/infrastructure/async/IExecutor.h>
 #include <domain/primitives/Expected.h>
-#include "../memory/UniqueHandle.h"
+#include <adapters/platform/win32/memory/UniqueHandle.h>
 #include <Windows.h>
-#include <functional>
-#include <vector>
-#include <memory>
 #include <atomic>
+#include <functional>
+#include <memory>
 #include <mutex>
+#include <vector>
 
 namespace winsetup::adapters::platform {
 
@@ -20,29 +20,21 @@ namespace winsetup::adapters::platform {
     };
 
     struct AsyncIOCTLResult {
-        DWORD bytesTransferred;
-        DWORD errorCode;
-        AsyncIOCTLState state;
+        DWORD           bytesTransferred = 0;
+        DWORD           errorCode = 0;
+        AsyncIOCTLState state = AsyncIOCTLState::Pending;
         std::vector<BYTE> outputBuffer;
 
-        [[nodiscard]] bool IsCompleted() const noexcept {
-            return state == AsyncIOCTLState::Completed;
-        }
-
-        [[nodiscard]] bool IsFailed() const noexcept {
-            return state == AsyncIOCTLState::Failed;
-        }
-
-        [[nodiscard]] bool IsCancelled() const noexcept {
-            return state == AsyncIOCTLState::Cancelled;
-        }
+        [[nodiscard]] bool IsCompleted() const noexcept { return state == AsyncIOCTLState::Completed; }
+        [[nodiscard]] bool IsFailed()    const noexcept { return state == AsyncIOCTLState::Failed; }
+        [[nodiscard]] bool IsCancelled() const noexcept { return state == AsyncIOCTLState::Cancelled; }
     };
 
     using AsyncIOCTLCallback = std::function<void(const AsyncIOCTLResult&)>;
 
     class AsyncIOCTL {
     public:
-        AsyncIOCTL();
+        explicit AsyncIOCTL(std::shared_ptr<abstractions::IExecutor> executor);
         ~AsyncIOCTL();
 
         AsyncIOCTL(const AsyncIOCTL&) = delete;
@@ -57,7 +49,10 @@ namespace winsetup::adapters::platform {
             AsyncIOCTLCallback callback
         );
 
-        [[nodiscard]] domain::Expected<AsyncIOCTLResult> Wait(uint32_t operationId, DWORD timeoutMs = INFINITE);
+        [[nodiscard]] domain::Expected<AsyncIOCTLResult> Wait(
+            uint32_t operationId,
+            DWORD timeoutMs = INFINITE
+        );
 
         [[nodiscard]] domain::Expected<std::vector<AsyncIOCTLResult>> WaitAll(
             const std::vector<uint32_t>& operationIds,
@@ -65,75 +60,48 @@ namespace winsetup::adapters::platform {
         );
 
         [[nodiscard]] domain::Expected<void> Cancel(uint32_t operationId);
-
         void CancelAll();
 
         [[nodiscard]] bool IsOperationPending(uint32_t operationId) const;
-
-        [[nodiscard]] size_t GetPendingOperationCount() const noexcept {
-            return mPendingOperations.load();
-        }
-
-        void SetMaxConcurrentOperations(size_t maxOps) noexcept {
-            mMaxConcurrentOps = maxOps;
-        }
+        [[nodiscard]] size_t GetPendingOperationCount() const noexcept { return mPendingOperations.load(); }
+        void SetMaxConcurrentOperations(size_t maxOps) noexcept { mMaxConcurrentOps = maxOps; }
 
     private:
         struct AsyncOperation {
-            uint32_t id;
-            HANDLE hDevice;
-            DWORD ioControlCode;
-            std::vector<BYTE> inputBuffer;
-            std::vector<BYTE> outputBuffer;
-            OVERLAPPED overlapped;
-            UniqueHandle hEvent;
-            AsyncIOCTLCallback callback;
-            std::atomic<AsyncIOCTLState> state;
-            DWORD bytesTransferred;
-            DWORD errorCode;
+            uint32_t                     id = 0;
+            HANDLE                       hDevice = nullptr;
+            DWORD                        ioControlCode = 0;
+            std::vector<BYTE>            inputBuffer;
+            std::vector<BYTE>            outputBuffer;
+            OVERLAPPED                   overlapped{};
+            UniqueHandle                 hEvent;
+            AsyncIOCTLCallback           callback;
+            std::atomic<AsyncIOCTLState> state{ AsyncIOCTLState::Pending };
+            DWORD                        bytesTransferred = 0;
+            DWORD                        errorCode = 0;
 
-            AsyncOperation()
-                : id(0)
-                , hDevice(nullptr)
-                , ioControlCode(0)
-                , overlapped{}
-                , state(AsyncIOCTLState::Pending)
-                , bytesTransferred(0)
-                , errorCode(0)
-            {
-            }
+            AsyncOperation() = default;
         };
 
-        static DWORD WINAPI WorkerThreadProc(LPVOID lpParam);
-
         void ProcessOperation(std::shared_ptr<AsyncOperation> op);
-
         void NotifyCompletion(std::shared_ptr<AsyncOperation> op);
-
         [[nodiscard]] std::shared_ptr<AsyncOperation> FindOperation(uint32_t operationId);
-
         void RemoveOperation(uint32_t operationId);
 
-        std::atomic<uint32_t> mNextOperationId;
-        std::atomic<size_t> mPendingOperations;
-        size_t mMaxConcurrentOps;
-
+        std::shared_ptr<abstractions::IExecutor>     mExecutor;
+        std::atomic<uint32_t>                        mNextOperationId{ 1 };
+        std::atomic<size_t>                          mPendingOperations{ 0 };
+        size_t                                       mMaxConcurrentOps{ MAX_CONCURRENT_OPERATIONS };
         std::vector<std::shared_ptr<AsyncOperation>> mOperations;
-        mutable std::mutex mOperationsMutex;
+        mutable std::mutex                           mOperationsMutex;
+        std::atomic<bool>                            mShutdown{ false };
 
-        std::vector<UniqueHandle> mWorkerThreads;
-        std::atomic<bool> mShutdown;
-
-        static constexpr size_t DEFAULT_WORKER_THREADS = 4;
         static constexpr size_t MAX_CONCURRENT_OPERATIONS = 32;
     };
 
     class AsyncIOCTLBatch {
     public:
-        explicit AsyncIOCTLBatch(AsyncIOCTL& asyncIO)
-            : mAsyncIO(asyncIO)
-        {
-        }
+        explicit AsyncIOCTLBatch(AsyncIOCTL& asyncIO) : mAsyncIO(asyncIO) {}
 
         void AddOperation(
             HANDLE hDevice,
@@ -147,38 +115,32 @@ namespace winsetup::adapters::platform {
             op.ioControlCode = ioControlCode;
             op.inputBufferSize = inputBufferSize;
             op.outputBufferSize = outputBufferSize;
-
             if (inputBuffer && inputBufferSize > 0) {
                 op.inputData.resize(inputBufferSize);
                 std::memcpy(op.inputData.data(), inputBuffer, inputBufferSize);
             }
-
             mOperations.push_back(std::move(op));
         }
 
-        [[nodiscard]] domain::Expected<std::vector<AsyncIOCTLResult>> ExecuteAll(DWORD timeoutMs = INFINITE);
+        [[nodiscard]] domain::Expected<std::vector<AsyncIOCTLResult>> ExecuteAll(
+            DWORD timeoutMs = INFINITE
+        );
 
-        [[nodiscard]] size_t GetOperationCount() const noexcept {
-            return mOperations.size();
-        }
-
-        void Clear() {
-            mOperations.clear();
-            mOperationIds.clear();
-        }
+        [[nodiscard]] size_t GetOperationCount() const noexcept { return mOperations.size(); }
+        void Clear() { mOperations.clear(); mOperationIds.clear(); }
 
     private:
         struct Operation {
-            HANDLE hDevice;
-            DWORD ioControlCode;
-            DWORD inputBufferSize;
-            DWORD outputBufferSize;
+            HANDLE            hDevice = nullptr;
+            DWORD             ioControlCode = 0;
+            DWORD             inputBufferSize = 0;
+            DWORD             outputBufferSize = 0;
             std::vector<BYTE> inputData;
         };
 
         AsyncIOCTL& mAsyncIO;
-        std::vector<Operation> mOperations;
-        std::vector<uint32_t> mOperationIds;
+        std::vector<Operation>   mOperations;
+        std::vector<uint32_t>    mOperationIds;
     };
 
-}
+} // namespace winsetup::adapters::platform
