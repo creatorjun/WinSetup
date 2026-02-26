@@ -1,4 +1,4 @@
-// src/adapters/persistence/filesystem/Win32PathChecker.cpp
+﻿// src/adapters/persistence/filesystem/Win32PathChecker.cpp
 #include <adapters/persistence/filesystem/Win32PathChecker.h>
 #include <Windows.h>
 #include <winioctl.h>
@@ -30,6 +30,20 @@ namespace winsetup::adapters::persistence {
             const std::wstring& relativePath
         ) noexcept {
             return ::GetFileAttributesW(BuildFullPath(volumeGuid, relativePath).c_str());
+        }
+
+        std::optional<uint32_t> QueryDiskIndexByHandle(HANDLE hVol) noexcept {
+            STORAGE_DEVICE_NUMBER sdn{};
+            DWORD bytesReturned = 0;
+            const BOOL ok = ::DeviceIoControl(
+                hVol,
+                IOCTL_STORAGE_GET_DEVICE_NUMBER,
+                nullptr, 0,
+                &sdn, sizeof(sdn),
+                &bytesReturned, nullptr
+            );
+            if (!ok) return std::nullopt;
+            return static_cast<uint32_t>(sdn.DeviceNumber);
         }
 
     }
@@ -66,35 +80,39 @@ namespace winsetup::adapters::persistence {
 
         wchar_t mountBuf[MAX_PATH] = {};
         DWORD   mountBufLen = MAX_PATH;
-        if (!::GetVolumePathNamesForVolumeNameW(
+        if (::GetVolumePathNamesForVolumeNameW(
             volumeGuid.c_str(), mountBuf, mountBufLen, &mountBufLen)
-            && ::GetLastError() != ERROR_MORE_DATA)
-            return std::nullopt;
+            || ::GetLastError() == ERROR_MORE_DATA)
+        {
+            const std::wstring mountPath(mountBuf);
+            if (mountPath.size() >= 2) {
+                const std::wstring query = L"\\\\.\\" + mountPath.substr(0, 2);
+                HANDLE hVol = ::CreateFileW(
+                    query.c_str(), 0,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    nullptr, OPEN_EXISTING, 0, nullptr
+                );
+                if (hVol != INVALID_HANDLE_VALUE) {
+                    auto result = QueryDiskIndexByHandle(hVol);
+                    ::CloseHandle(hVol);
+                    if (result.has_value()) return result;
+                }
+            }
+        }
+        std::wstring guidPath = volumeGuid;
+        if (!guidPath.empty() && guidPath.back() == L'\\')
+            guidPath.pop_back();
 
-        const std::wstring mountPath(mountBuf);
-        if (mountPath.size() < 2) return std::nullopt;
-
-        const std::wstring query = L"\\\\.\\" + mountPath.substr(0, 2);
         HANDLE hVol = ::CreateFileW(
-            query.c_str(), 0,
+            guidPath.c_str(), 0,
             FILE_SHARE_READ | FILE_SHARE_WRITE,
             nullptr, OPEN_EXISTING, 0, nullptr
         );
         if (hVol == INVALID_HANDLE_VALUE) return std::nullopt;
 
-        STORAGE_DEVICE_NUMBER sdn{};
-        DWORD bytesReturned = 0;
-        const BOOL ok = ::DeviceIoControl(
-            hVol,
-            IOCTL_STORAGE_GET_DEVICE_NUMBER,
-            nullptr, 0,
-            &sdn, sizeof(sdn),
-            &bytesReturned, nullptr
-        );
+        auto result = QueryDiskIndexByHandle(hVol);
         ::CloseHandle(hVol);
-
-        if (!ok) return std::nullopt;
-        return static_cast<uint32_t>(sdn.DeviceNumber);
+        return result;
     }
 
 }
