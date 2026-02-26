@@ -22,7 +22,6 @@
     <ClCompile Include="src\adapters\imaging\DismAdapter.cpp" />
     <ClCompile Include="src\adapters\imaging\WimlibAdapter.cpp" />
     <ClCompile Include="src\adapters\imaging\WimlibOptimizer.cpp" />
-    <ClCompile Include="src\adapters\persistence\analysis\AnalysisRepository.cpp" />
     <ClCompile Include="src\adapters\persistence\config\IniConfigRepository.cpp" />
     <ClCompile Include="src\adapters\persistence\config\IniParser.cpp" />
     <ClCompile Include="src\adapters\persistence\filesystem\Win32FileSystem.cpp" />
@@ -60,6 +59,7 @@
     <ClCompile Include="src\application\core\ServiceLocator.cpp" />
     <ClCompile Include="src\application\eventhandlers\DiskAnalyzedEventHandler.cpp" />
     <ClCompile Include="src\application\eventhandlers\InstallProgressEventHandler.cpp" />
+    <ClCompile Include="src\application\repositories\AnalysisRepository.cpp" />
     <ClCompile Include="src\application\services\Dispatcher.cpp" />
     <ClCompile Include="src\application\services\EventBus.cpp" />
     <ClCompile Include="src\application\services\TaskScheduler.cpp" />
@@ -134,7 +134,6 @@
     <ClInclude Include="src\adapters\imaging\DismAdapter.h" />
     <ClInclude Include="src\adapters\imaging\WimlibAdapter.h" />
     <ClInclude Include="src\adapters\imaging\WimlibOptimizer.h" />
-    <ClInclude Include="src\adapters\persistence\analysis\AnalysisRepository.h" />
     <ClInclude Include="src\adapters\persistence\config\IniConfigRepository.h" />
     <ClInclude Include="src\adapters\persistence\config\IniParser.h" />
     <ClInclude Include="src\adapters\persistence\filesystem\Win32FileSystem.h" />
@@ -179,6 +178,7 @@
     <ClInclude Include="src\application\core\ServiceLocator.h" />
     <ClInclude Include="src\application\eventhandlers\DiskAnalyzedEventHandler.h" />
     <ClInclude Include="src\application\eventhandlers\InstallProgressEventHandler.h" />
+    <ClInclude Include="src\application\repositories\AnalysisRepository.h" />
     <ClInclude Include="src\application\services\Dispatcher.h" />
     <ClInclude Include="src\application\services\EventBus.h" />
     <ClInclude Include="src\application\services\TaskScheduler.h" />

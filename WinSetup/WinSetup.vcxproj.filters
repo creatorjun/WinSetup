@@ -225,9 +225,6 @@
     <ClCompile Include="src\adapters\platform\win32\storage\Win32FileCopyService.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\adapters\persistence\analysis\AnalysisRepository.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="src\application\usecases\disk\EnumerateVolumesUseCase.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -235,6 +232,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\application\usecases\disk\AnalyzeVolumesUseCase.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\repositories\AnalysisRepository.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -617,9 +617,6 @@
     <ClInclude Include="src\domain\valueobjects\InstallationType.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\adapters\persistence\analysis\AnalysisRepository.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="src\abstractions\repositories\IAnalysisRepository.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -642,6 +639,9 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\application\usecases\disk\AnalyzeVolumesUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\repositories\AnalysisRepository.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

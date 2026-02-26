@@ -1,5 +1,5 @@
 // src/adapters/persistence/analysis/AnalysisRepository.cpp
-#include <adapters/persistence/analysis/AnalysisRepository.h>
+#include <application/repositories/AnalysisRepository.h>
 #include <algorithm>
 
 namespace winsetup::adapters::persistence {

@@ -6,7 +6,7 @@
 #include "adapters/platform/win32/storage/Win32VolumeService.h"
 #include "adapters/platform/win32/storage/Win32FileCopyService.h"
 #include "adapters/persistence/config/IniConfigRepository.h"
-#include "adapters/persistence/analysis/AnalysisRepository.h"
+#include <application/repositories/AnalysisRepository.h>
 #include "adapters/persistence/filesystem/Win32PathChecker.h"
 #include "adapters/ui/win32/Win32MainWindow.h"
 #include "application/usecases/system/AnalyzeSystemUseCase.h"
