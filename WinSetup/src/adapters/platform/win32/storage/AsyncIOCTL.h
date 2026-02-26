@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 
 namespace winsetup::adapters::platform {
@@ -86,16 +87,16 @@ namespace winsetup::adapters::platform {
         [[nodiscard]] std::shared_ptr<AsyncOperation> FindOperation(uint32_t operationId);
         void RemoveOperation(uint32_t operationId);
 
-        HANDLE                                       mIOCP = nullptr;
-        UniqueHandle                                 mCompletionThread;
-        std::atomic<uint32_t>                        mNextOperationId{ 1 };
-        std::atomic<size_t>                          mPendingOperations{ 0 };
-        size_t                                       mMaxConcurrentOps{ kMaxConcurrentOperations };
-        std::vector<std::shared_ptr<AsyncOperation>> mOperations;
-        mutable std::mutex                           mOperationsMutex;
-        std::atomic<bool>                            mShutdown{ false };
+        HANDLE                                                          mIOCP = nullptr;
+        UniqueHandle                                                    mCompletionThread;
+        std::atomic<uint32_t>                                           mNextOperationId{ 1 };
+        std::atomic<size_t>                                             mPendingOperations{ 0 };
+        size_t                                                          mMaxConcurrentOps{ kMaxConcurrentOperations };
+        std::unordered_map<uint32_t, std::shared_ptr<AsyncOperation>>  mOperations;
+        mutable std::mutex                                              mOperationsMutex;
+        std::atomic<bool>                                               mShutdown{ false };
 
-        static constexpr size_t   kMaxConcurrentOperations = 32;
+        static constexpr size_t    kMaxConcurrentOperations = 32;
         static constexpr ULONG_PTR kShutdownKey = 0;
         static constexpr ULONG_PTR kOperationKey = 1;
 
@@ -146,4 +147,4 @@ namespace winsetup::adapters::platform {
         std::vector<uint32_t>   mOperationIds;
     };
 
-} // namespace winsetup::adapters::platform
+}

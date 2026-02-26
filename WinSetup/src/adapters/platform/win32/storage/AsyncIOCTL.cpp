@@ -1,7 +1,6 @@
 ﻿#include "AsyncIOCTL.h"
 #include <adapters/platform/win32/core/Win32HandleFactory.h>
 #include <adapters/platform/win32/core/Win32ErrorHandler.h>
-#include <algorithm>
 #undef min
 #undef max
 
@@ -68,7 +67,7 @@ namespace winsetup::adapters::platform {
 
         {
             std::lock_guard<std::mutex> lock(mOperationsMutex);
-            mOperations.push_back(op);
+            mOperations.emplace(returnId, op);
         }
         mPendingOperations.fetch_add(1);
 
@@ -96,11 +95,6 @@ namespace winsetup::adapters::platform {
                 return domain::Error{ L"DeviceIoControl failed",
                     error, domain::ErrorCategory::System };
             }
-            // ERROR_IO_PENDING: CompletionLoop가 완료 패킷을 처리
-        }
-        else {
-            // 동기 완료: IOCP에 완료 패킷이 자동으로 큐잉됨
-            // CompletionLoop가 패킷을 수신하여 처리하므로 여기서 별도 처리 불필요
         }
 
         return returnId;
@@ -120,11 +114,9 @@ namespace winsetup::adapters::platform {
             BOOL ok = GetQueuedCompletionStatus(
                 mIOCP, &bytesTransferred, &completionKey, &pOverlapped, INFINITE);
 
-            // IOCP 자체 오류 (pOverlapped == nullptr, ok == FALSE)
             if (!ok && pOverlapped == nullptr)
                 break;
 
-            // 명시적 종료 패킷
             if (completionKey == kShutdownKey)
                 break;
 
@@ -134,15 +126,12 @@ namespace winsetup::adapters::platform {
             std::shared_ptr<AsyncOperation> op;
             {
                 std::lock_guard<std::mutex> lock(mOperationsMutex);
-                auto it = std::find_if(mOperations.begin(), mOperations.end(),
-                    [pOverlapped](const auto& o) {
-                        return o && &o->overlapped == pOverlapped;
-                    });
+                const AsyncOperation* raw = reinterpret_cast<const AsyncOperation*>(pOverlapped);
+                auto it = mOperations.find(raw->id);
                 if (it != mOperations.end())
-                    op = *it;
+                    op = it->second;
             }
 
-            // 이미 CancelAll로 제거된 op — 카운터 보정 없이 skip
             if (!op)
                 continue;
 
@@ -272,14 +261,14 @@ namespace winsetup::adapters::platform {
     }
 
     void AsyncIOCTL::CancelAll() {
-        std::vector<std::shared_ptr<AsyncOperation>> snapshot;
+        std::unordered_map<uint32_t, std::shared_ptr<AsyncOperation>> snapshot;
         {
             std::lock_guard<std::mutex> lock(mOperationsMutex);
-            snapshot = mOperations;
+            snapshot = std::move(mOperations);
             mOperations.clear();
         }
 
-        for (auto& op : snapshot) {
+        for (auto& [id, op] : snapshot) {
             if (!op) continue;
             if (op->state.load() == AsyncIOCTLState::Pending) {
                 CancelIoEx(op->hDevice, &op->overlapped);
@@ -293,26 +282,22 @@ namespace winsetup::adapters::platform {
 
     bool AsyncIOCTL::IsOperationPending(uint32_t operationId) const {
         std::lock_guard<std::mutex> lock(mOperationsMutex);
-        auto it = std::find_if(mOperations.begin(), mOperations.end(),
-            [operationId](const auto& op) { return op && op->id == operationId; });
+        auto it = mOperations.find(operationId);
         return (it != mOperations.end()) &&
-            (*it)->state.load() == AsyncIOCTLState::Pending;
+            it->second && it->second->state.load() == AsyncIOCTLState::Pending;
     }
 
     std::shared_ptr<AsyncIOCTL::AsyncOperation> AsyncIOCTL::FindOperation(
         uint32_t operationId
     ) {
         std::lock_guard<std::mutex> lock(mOperationsMutex);
-        auto it = std::find_if(mOperations.begin(), mOperations.end(),
-            [operationId](const auto& op) { return op && op->id == operationId; });
-        return (it != mOperations.end()) ? *it : nullptr;
+        auto it = mOperations.find(operationId);
+        return (it != mOperations.end()) ? it->second : nullptr;
     }
 
     void AsyncIOCTL::RemoveOperation(uint32_t operationId) {
         std::lock_guard<std::mutex> lock(mOperationsMutex);
-        auto it = std::remove_if(mOperations.begin(), mOperations.end(),
-            [operationId](const auto& op) { return op && op->id == operationId; });
-        mOperations.erase(it, mOperations.end());
+        mOperations.erase(operationId);
     }
 
     domain::Expected<std::vector<AsyncIOCTLResult>> AsyncIOCTLBatch::ExecuteAll(
@@ -334,4 +319,4 @@ namespace winsetup::adapters::platform {
         return mAsyncIO.WaitAll(mOperationIds, timeoutMs);
     }
 
-} // namespace winsetup::adapters::platform
+}
