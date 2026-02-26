@@ -1,11 +1,10 @@
-﻿// src/adapters/persistence/config/IniParser.cpp
-#include <adapters/persistence/config/IniParser.h>
+﻿#include <adapters/persistence/config/IniParser.h>
 #include <domain/primitives/Error.h>
 #include <Windows.h>
-#include <fstream>
-#include <sstream>
 #include <algorithm>
 #include <cwctype>
+#include <fstream>
+#include <sstream>
 
 namespace winsetup::adapters::persistence {
 
@@ -23,14 +22,12 @@ namespace winsetup::adapters::persistence {
         if (bytes.empty())
             return std::wstring{};
 
-        // UTF-16 LE BOM: FF FE
         if (bytes.size() >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE) {
             const wchar_t* data = reinterpret_cast<const wchar_t*>(bytes.data() + 2);
             size_t         len = (bytes.size() - 2) / sizeof(wchar_t);
             return std::wstring(data, len);
         }
 
-        // UTF-16 BE BOM: FE FF → swap to LE
         if (bytes.size() >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF) {
             for (size_t i = 2; i + 1 < bytes.size(); i += 2)
                 std::swap(bytes[i], bytes[i + 1]);
@@ -42,28 +39,25 @@ namespace winsetup::adapters::persistence {
         const char* src = reinterpret_cast<const char*>(bytes.data());
         int         srcSize = static_cast<int>(bytes.size());
 
-        // UTF-8 BOM: EF BB BF
         if (bytes.size() >= 3 &&
             bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) {
             src += 3;
             srcSize -= 3;
         }
 
-        // UTF-8 → wstring
         int wlen = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
             src, srcSize, nullptr, 0);
         if (wlen > 0) {
-            std::wstring result(wlen, L'\0');
+            std::wstring result(static_cast<size_t>(wlen), L'\0');
             MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-                src, srcSize, &result[0], wlen);
+                src, srcSize, result.data(), wlen);
             return result;
         }
 
-        // Fallback: ANSI/CP949
         wlen = MultiByteToWideChar(CP_ACP, 0, src, srcSize, nullptr, 0);
         if (wlen > 0) {
-            std::wstring result(wlen, L'\0');
-            MultiByteToWideChar(CP_ACP, 0, src, srcSize, &result[0], wlen);
+            std::wstring result(static_cast<size_t>(wlen), L'\0');
+            MultiByteToWideChar(CP_ACP, 0, src, srcSize, result.data(), wlen);
             return result;
         }
 
@@ -77,7 +71,6 @@ namespace winsetup::adapters::persistence {
         std::wstring& lastSectionName,
         Section*& lastSectionPtr
     ) {
-        // 직전에 접근한 섹션과 동일하면 즉시 반환 (연속 키-값 삽입 시 O(1))
         if (lastSectionPtr && lastSectionName == name)
             return lastSectionPtr;
 
@@ -89,6 +82,7 @@ namespace winsetup::adapters::persistence {
             }
         }
 
+        data.reserve(data.size() + 1);
         data.emplace_back(name, Section{});
         lastSectionName = name;
         lastSectionPtr = &data.back().second;
@@ -128,7 +122,9 @@ namespace winsetup::adapters::persistence {
         IniData      data;
         std::wstring lastSectionName;
         Section* lastSectionPtr = nullptr;
-        Section* currentPtr = nullptr;
+        size_t       currentIndex = static_cast<size_t>(-1);
+
+        data.reserve(16);
 
         std::wistringstream stream(content);
         std::wstring        line;
@@ -150,24 +146,34 @@ namespace winsetup::adapters::persistence {
                     return domain::Error(
                         L"Invalid section name at line " + std::to_wstring(lineNumber),
                         lineNumber, domain::ErrorCategory::Parsing);
-                currentPtr = FindOrCreateSection(data, sectionName, lastSectionName, lastSectionPtr);
+
+                FindOrCreateSection(data, sectionName, lastSectionName, lastSectionPtr);
+
+                for (size_t i = 0; i < data.size(); ++i) {
+                    if (data[i].first == sectionName) {
+                        currentIndex = i;
+                        break;
+                    }
+                }
                 continue;
             }
 
-            if (!currentPtr)
+            if (currentIndex == static_cast<size_t>(-1))
                 continue;
 
             std::wstring key, value;
             if (ParseKeyValue(line, key, value))
-                currentPtr->emplace_back(std::move(key), std::move(value));
+                data[currentIndex].second.emplace_back(std::move(key), std::move(value));
         }
 
         return data;
     }
 
     std::wstring IniParser::Trim(const std::wstring& str) {
-        auto start = std::find_if_not(str.begin(), str.end(), [](wchar_t c) { return std::iswspace(c); });
-        auto end = std::find_if_not(str.rbegin(), str.rend(), [](wchar_t c) { return std::iswspace(c); }).base();
+        auto start = std::find_if_not(str.begin(), str.end(),
+            [](wchar_t c) { return std::iswspace(c) != 0; });
+        auto end = std::find_if_not(str.rbegin(), str.rend(),
+            [](wchar_t c) { return std::iswspace(c) != 0; }).base();
         return (start < end) ? std::wstring(start, end) : std::wstring{};
     }
 

@@ -28,15 +28,16 @@ namespace winsetup::adapters::persistence {
 
     private:
         [[nodiscard]] static domain::Expected<std::wstring> ReadFileAsWString(const std::wstring& filePath);
-        [[nodiscard]] static Section* FindOrCreateSection(IniData& data, const std::wstring& name,
-            std::wstring& lastSectionName,
-            Section*& lastSectionPtr);
+        
         [[nodiscard]] bool IsComment(const std::wstring& line)  const;
         [[nodiscard]] bool IsSection(const std::wstring& line)  const;
         [[nodiscard]] std::wstring ExtractSectionName(const std::wstring& line) const;
         [[nodiscard]] bool ParseKeyValue(const std::wstring& line,
             std::wstring& key,
             std::wstring& value) const;
+        static Section* FindOrCreateSection(IniData& data, const std::wstring& name,
+            std::wstring& lastSectionName,
+            Section*& lastSectionPtr);
     };
 
 }
