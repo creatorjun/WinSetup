@@ -1,5 +1,5 @@
-﻿// src/application/usecases/disk/EnumerateDisksUseCase.cpp
-#include <application/usecases/disk/EnumerateDisksUseCase.h>
+﻿#include <application/usecases/disk/EnumerateDisksUseCase.h>
+#include <algorithm>
 
 namespace winsetup::application {
 
@@ -28,10 +28,19 @@ namespace winsetup::application {
             return std::make_shared<std::vector<domain::DiskInfo>>();
         }
 
-        if (mLogger)
-            mLogger->Info(L"EnumerateDisksUseCase: Disks found: " + std::to_wstring(result.Value().size()));
+        auto& disks = result.Value();
+        disks.erase(
+            std::remove_if(disks.begin(), disks.end(),
+                [](const domain::DiskInfo& disk) {
+                    return disk.GetBusType() == domain::BusType::USB;
+                }),
+            disks.end()
+        );
 
-        return std::make_shared<std::vector<domain::DiskInfo>>(std::move(result.Value()));
+        if (mLogger)
+            mLogger->Info(L"EnumerateDisksUseCase: Disks found (USB excluded): " + std::to_wstring(disks.size()));
+
+        return std::make_shared<std::vector<domain::DiskInfo>>(std::move(disks));
     }
 
 }
