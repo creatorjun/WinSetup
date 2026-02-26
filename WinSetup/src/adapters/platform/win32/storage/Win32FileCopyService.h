@@ -53,16 +53,16 @@ namespace winsetup::adapters::platform {
 
         struct WorkerContext {
             Win32FileCopyService* service = nullptr;
-            winsetup::abstractions::FileCopyProgressCallback  callback;
-            winsetup::abstractions::FileCopyOptions           options;
+            winsetup::abstractions::FileCopyProgressCallback          callback;
+            winsetup::abstractions::FileCopyOptions                   options;
             std::vector<CopyTask>* tasks = nullptr;
             std::atomic<uint32_t>* taskIndex = nullptr;
             std::atomic<uint64_t>* copiedBytes = nullptr;
             std::atomic<uint32_t>* copiedFiles = nullptr;
             std::vector<winsetup::domain::Error>* errors = nullptr;
             std::mutex* errorsMutex = nullptr;
-            uint64_t                                          totalBytes = 0;
-            uint32_t                                          totalFiles = 0;
+            uint64_t                                                  totalBytes = 0;
+            uint32_t                                                  totalFiles = 0;
         };
 
         [[nodiscard]] winsetup::domain::Expected<void> CopySingleFile(

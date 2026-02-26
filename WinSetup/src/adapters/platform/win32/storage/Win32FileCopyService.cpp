@@ -100,10 +100,9 @@ namespace winsetup::adapters::platform {
             return dom::Error(L"Source directory not found: " + srcDir,
                 ERROR_PATH_NOT_FOUND, dom::ErrorCategory::IO);
 
-        std::vector<CopyTask> tasks;
+        std::vector<CopyTask>   tasks;
         auto collectResult = CollectFiles(srcDir, dstDir, options.recursive, tasks);
         if (!collectResult.HasValue()) return collectResult;
-
         if (tasks.empty()) return dom::Expected<void>();
 
         uint64_t totalBytes = 0;
@@ -118,26 +117,27 @@ namespace winsetup::adapters::platform {
         std::vector<dom::Error> errors;
         std::mutex              errorsMutex;
 
-        WorkerContext ctx;
-        ctx.service = this;
-        ctx.callback = progressCallback;
-        ctx.options = options;
-        ctx.tasks = &tasks;
-        ctx.taskIndex = &taskIndex;
-        ctx.copiedBytes = &copiedBytes;
-        ctx.copiedFiles = &copiedFiles;
-        ctx.errors = &errors;
-        ctx.errorsMutex = &errorsMutex;
-        ctx.totalBytes = totalBytes;
-        ctx.totalFiles = totalFiles;
+        auto ctx = std::make_shared<WorkerContext>();
+        ctx->service = this;
+        ctx->callback = progressCallback;
+        ctx->options = options;
+        ctx->tasks = &tasks;
+        ctx->taskIndex = &taskIndex;
+        ctx->copiedBytes = &copiedBytes;
+        ctx->copiedFiles = &copiedFiles;
+        ctx->errors = &errors;
+        ctx->errorsMutex = &errorsMutex;
+        ctx->totalBytes = totalBytes;
+        ctx->totalFiles = totalFiles;
 
         std::vector<UniqueHandle> threads;
         threads.reserve(threadCount);
         for (uint32_t i = 0; i < threadCount; ++i) {
-            HANDLE hThread = CreateThread(nullptr, 0, WorkerThreadProc, &ctx, 0, nullptr);
+            HANDLE hThread = CreateThread(nullptr, 0, WorkerThreadProc, ctx.get(), 0, nullptr);
             if (hThread)
                 threads.push_back(Win32HandleFactory::MakeHandle(hThread));
         }
+
         for (auto& t : threads)
             WaitForSingleObject(Win32HandleFactory::ToWin32Handle(t), INFINITE);
 
