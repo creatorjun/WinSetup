@@ -1,4 +1,3 @@
-// src/adapters/platform/win32/core/Win32StringHelper.h
 #pragma once
 
 #include <string>
@@ -33,15 +32,11 @@ namespace winsetup::adapters::platform {
         }
 
         static std::wstring UInt32ToString(uint32_t value) {
-            wchar_t buffer[16];
-            swprintf_s(buffer, 16, L"%u", value);
-            return std::wstring(buffer);
+            return std::to_wstring(value);
         }
 
         static std::wstring UInt64ToString(uint64_t value) {
-            wchar_t buffer[32];
-            swprintf_s(buffer, 32, L"%llu", value);
-            return std::wstring(buffer);
+            return std::to_wstring(value);
         }
     };
 

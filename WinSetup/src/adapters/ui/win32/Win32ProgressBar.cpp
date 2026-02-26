@@ -1,5 +1,4 @@
-﻿// src/adapters/ui/win32/Win32ProgressBar.cpp
-#include <adapters/ui/win32/Win32ProgressBar.h>
+﻿#include <adapters/ui/win32/Win32ProgressBar.h>
 #include <adapters/platform/win32/core/Win32HandleFactory.h>
 #include <Windows.h>
 #include <commctrl.h>
@@ -52,6 +51,7 @@ namespace winsetup::adapters::ui {
                 reinterpret_cast<DWORD_PTR>(this));
 
         EnsureFonts();
+        EnsureBrushes();
     }
 
     void Win32ProgressBar::EnsureFonts() {
@@ -67,6 +67,24 @@ namespace winsetup::adapters::ui {
                 CreateFontW(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                     DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                     CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI")
+            );
+        }
+    }
+
+    void Win32ProgressBar::EnsureBrushes() {
+        if (!mBrushBg) {
+            mBrushBg = platform::Win32HandleFactory::MakeGdiObject(
+                CreateSolidBrush(COLOR_TRACK)
+            );
+        }
+        if (!mBrushFill) {
+            mBrushFill = platform::Win32HandleFactory::MakeGdiObject(
+                CreateSolidBrush(COLOR_FILL)
+            );
+        }
+        if (!mPenBorder) {
+            mPenBorder = platform::Win32HandleFactory::MakeGdiObject(
+                CreatePen(PS_SOLID, 1, COLOR_BORDER)
             );
         }
     }
@@ -158,20 +176,17 @@ namespace winsetup::adapters::ui {
 
         HDC memDC = mCache.hMemDC;
 
-        HBRUSH hBgBrush = CreateSolidBrush(COLOR_TRACK);
-        FillRect(memDC, &rc, hBgBrush);
-        DeleteObject(hBgBrush);
+        FillRect(memDC, &rc, platform::Win32HandleFactory::ToWin32Brush(mBrushBg));
 
         const int barY = (rc.bottom - BAR_HEIGHT_MIN) / 2;
         RECT trackRect = { rc.left, barY, rc.right, barY + BAR_HEIGHT_MIN };
 
-        HPEN hPen = CreatePen(PS_SOLID, 1, COLOR_BORDER);
-        HPEN hOldPen = static_cast<HPEN>(SelectObject(memDC, hPen));
+        HPEN hOldPen = static_cast<HPEN>(
+            SelectObject(memDC, platform::Win32HandleFactory::ToWin32Pen(mPenBorder)));
         SelectObject(memDC, GetStockObject(NULL_BRUSH));
         RoundRect(memDC, trackRect.left, trackRect.top,
             trackRect.right, trackRect.bottom, 4, 4);
         SelectObject(memDC, hOldPen);
-        DeleteObject(hPen);
 
         if (mPercent > 0) {
             const int fillW = static_cast<int>(
@@ -182,9 +197,8 @@ namespace winsetup::adapters::ui {
                     trackRect.left, trackRect.top,
                     trackRect.left + fillW, trackRect.bottom
                 };
-                HBRUSH hFill = CreateSolidBrush(COLOR_FILL);
-                FillRect(memDC, &fillRect, hFill);
-                DeleteObject(hFill);
+                FillRect(memDC, &fillRect,
+                    platform::Win32HandleFactory::ToWin32Brush(mBrushFill));
             }
         }
 
@@ -209,9 +223,7 @@ namespace winsetup::adapters::ui {
         RECT rc;
         GetClientRect(mhTimeWnd, &rc);
 
-        HBRUSH hBg = CreateSolidBrush(COLOR_TEXT_BG);
-        FillRect(hdc, &rc, hBg);
-        DeleteObject(hBg);
+        FillRect(hdc, &rc, platform::Win32HandleFactory::ToWin32Brush(mBrushBg));
 
         wchar_t buf[64];
         GetWindowTextW(mhTimeWnd, buf, 64);

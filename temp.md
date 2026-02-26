@@ -9,15 +9,6 @@
 
 ## P2 — 최적화 기회
 
-### 6. `Win32StringHelper` — `swprintf_s` 매번 스택 버퍼 → `std::wstring` 복사
-```cpp
-static std::wstring UInt64ToString(uint64_t value) {
-    wchar_t buffer[32];
-    swprintf_s(buffer, 32, L"%llu", value);
-    return std::wstring(buffer);  // 복사 발생
-}
-```
-Log hot-path에서 숫자 → 문자열 변환이 빈번한 경우, `std::to_wstring()` 또는 `std::format()`(C++20)이 더 효율적이고 코드도 간결해집니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/ace7b569-44d5-4768-8e37-0000c3bba75d/merged_codebase.md)
 
 ### 7. `Win32ProgressBar::DrawProgress` — `CreateSolidBrush / DeleteObject` 매 WM_PAINT 호출
 ```cpp
@@ -40,18 +31,3 @@ auto it = std::find_if(mOperations.begin(), mOperations.end(),
 **해결 방향:** `std::unordered_map<uint32_t, std::shared_ptr<AsyncOperation>>` 으로 교체하면 O(1) 조회가 가능합니다.
 
 ***
-
-## 전체 요약
-
-| 우선순위 | 항목 | 영향 범위 |
-|---|---|---|
-| P0 | `Win32ThreadPoolExecutor` Thundering Herd | CPU 전체 |
-| P0 | `AsyncIOCTL` Executor 스레드 블로킹 | I/O 처리량 |
-| P1 | `Win32Logger` Lock contention | 모든 로그 경로 |
-| P1 | `DIContainer` Transient write-lock | 서비스 해결 전반 |
-| P1 | `Win32FileCopyService` 버퍼 미정렬 | 파일 복사 안정성/성능 |
-| P2 | `Win32StringHelper` 문자열 변환 | Log hot-path |
-| P2 | `Win32ProgressBar` GDI 오브젝트 매번 생성 | UI 렌더링 |
-| P2 | `AsyncIOCTL` 선형 탐색 O(N) | 다중 IOCTL 동시 발행 시 |
-
-P0 두 항목은 실제 처리량과 직결되는 구조적 문제이므로 우선 수정을 권장합니다. 어느 항목부터 코드 수정을 시작할지 말씀해 주시면 바로 진행하겠습니다.

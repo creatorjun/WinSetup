@@ -1,5 +1,4 @@
-﻿// src/adapters/ui/win32/Win32ProgressBar.h
-#pragma once
+﻿#pragma once
 
 #include <adapters/platform/win32/memory/UniqueHandle.h>
 #include <Windows.h>
@@ -23,6 +22,7 @@ namespace winsetup::adapters::ui {
         void DrawTime(HDC hdc) const;
         void UpdateTimeText();
         void EnsureFonts();
+        void EnsureBrushes();
 
         static LRESULT CALLBACK ProgressSubclassProc(
             HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
@@ -38,6 +38,10 @@ namespace winsetup::adapters::ui {
 
         platform::UniqueHandle mFontProgress;
         platform::UniqueHandle mFontTime;
+
+        platform::UniqueHandle mBrushBg;
+        platform::UniqueHandle mBrushFill;
+        platform::UniqueHandle mPenBorder;
 
         struct RenderCache {
             HBITMAP hBitmap = nullptr;
