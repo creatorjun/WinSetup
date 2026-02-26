@@ -1,9 +1,10 @@
-﻿#pragma once
+﻿// src/adapters/platform/win32/storage/Win32VolumeService.h
+#pragma once
 #include "abstractions/services/storage/IVolumeService.h"
 #include "abstractions/infrastructure/logging/ILogger.h"
-#include "adapters/platform/win32/memory/UniqueHandle.h"
 #include <memory>
-#include <Windows.h>
+#include <string>
+#include <vector>
 
 namespace winsetup::adapters::platform {
 

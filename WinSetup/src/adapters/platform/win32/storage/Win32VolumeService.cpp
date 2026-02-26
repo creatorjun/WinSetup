@@ -1,8 +1,10 @@
-﻿#include "Win32VolumeService.h"
+﻿// src/adapters/platform/win32/storage/Win32VolumeService.cpp
+#include "Win32VolumeService.h"
 #include "adapters/platform/win32/core/Win32HandleFactory.h"
 #include "adapters/platform/win32/core/Win32ErrorHandler.h"
 #include "domain/valueobjects/FileSystemType.h"
 #include "domain/valueobjects/DiskSize.h"
+#include <Windows.h>
 #include <algorithm>
 #include <cwctype>
 
@@ -208,10 +210,10 @@ namespace winsetup::adapters::platform {
         std::wstring fsName(fileSystemName);
         std::transform(fsName.begin(), fsName.end(), fsName.begin(), towupper);
 
-        if (fsName == L"NTFS")   return domain::FileSystemType::NTFS;
-        if (fsName == L"FAT32")  return domain::FileSystemType::FAT32;
-        if (fsName == L"EXFAT")  return domain::FileSystemType::exFAT;
-        if (fsName == L"REFS")   return domain::FileSystemType::ReFS;
+        if (fsName == L"NTFS")  return domain::FileSystemType::NTFS;
+        if (fsName == L"FAT32") return domain::FileSystemType::FAT32;
+        if (fsName == L"EXFAT") return domain::FileSystemType::exFAT;
+        if (fsName == L"REFS")  return domain::FileSystemType::ReFS;
         return domain::FileSystemType::Unknown;
     }
 
