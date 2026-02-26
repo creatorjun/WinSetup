@@ -7,6 +7,9 @@ namespace winsetup::adapters::persistence {
 
     namespace {
 
+        constexpr int   kMaxRetries = 3;
+        constexpr DWORD kRetryIntervalMs = 10;
+
         std::wstring BuildFullPath(
             const std::wstring& volumeGuid,
             const std::wstring& relativePath
@@ -33,17 +36,27 @@ namespace winsetup::adapters::persistence {
         }
 
         std::optional<uint32_t> QueryDiskIndexByHandle(HANDLE hVol) noexcept {
-            STORAGE_DEVICE_NUMBER sdn{};
-            DWORD bytesReturned = 0;
-            const BOOL ok = ::DeviceIoControl(
-                hVol,
-                IOCTL_STORAGE_GET_DEVICE_NUMBER,
-                nullptr, 0,
-                &sdn, sizeof(sdn),
-                &bytesReturned, nullptr
-            );
-            if (!ok) return std::nullopt;
-            return static_cast<uint32_t>(sdn.DeviceNumber);
+            for (int attempt = 0; attempt < kMaxRetries; ++attempt) {
+                STORAGE_DEVICE_NUMBER sdn{};
+                DWORD bytesReturned = 0;
+                if (::DeviceIoControl(
+                    hVol,
+                    IOCTL_STORAGE_GET_DEVICE_NUMBER,
+                    nullptr, 0,
+                    &sdn, sizeof(sdn),
+                    &bytesReturned, nullptr))
+                {
+                    return static_cast<uint32_t>(sdn.DeviceNumber);
+                }
+
+                const DWORD err = ::GetLastError();
+                if (err != ERROR_NOT_READY && err != ERROR_DEVICE_NOT_CONNECTED)
+                    break;
+
+                if (attempt + 1 < kMaxRetries)
+                    ::Sleep(kRetryIntervalMs);
+            }
+            return std::nullopt;
         }
 
     }
@@ -78,6 +91,7 @@ namespace winsetup::adapters::persistence {
     ) const noexcept {
         if (volumeGuid.empty()) return std::nullopt;
 
+        // 1차 시도: 마운트 포인트 경유 (드라이브 레터가 있는 볼륨)
         wchar_t mountBuf[MAX_PATH] = {};
         DWORD   mountBufLen = MAX_PATH;
         if (::GetVolumePathNamesForVolumeNameW(
@@ -99,6 +113,8 @@ namespace winsetup::adapters::persistence {
                 }
             }
         }
+
+        // 2차 시도: 볼륨 GUID 직접 오픈 (마운트 포인트 없는 언마운트 볼륨)
         std::wstring guidPath = volumeGuid;
         if (!guidPath.empty() && guidPath.back() == L'\\')
             guidPath.pop_back();

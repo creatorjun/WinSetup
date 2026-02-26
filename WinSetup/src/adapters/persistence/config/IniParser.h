@@ -1,5 +1,4 @@
 ﻿// src/adapters/persistence/config/IniParser.h
-
 #pragma once
 
 #include <domain/primitives/Expected.h>
@@ -22,16 +21,16 @@ namespace winsetup::adapters::persistence {
         [[nodiscard]] domain::Expected<IniData> Parse(const std::wstring& filePath);
         [[nodiscard]] domain::Expected<IniData> ParseContent(const std::wstring& content);
 
-        [[nodiscard]] static std::wstring Trim(const std::wstring& str);
-        [[nodiscard]] static std::wstring ToUpper(const std::wstring& str);
-
+        [[nodiscard]] static std::wstring          Trim(const std::wstring& str);
+        [[nodiscard]] static std::wstring          ToUpper(const std::wstring& str);
         [[nodiscard]] static const Section* FindSection(const IniData& data, const std::wstring& name);
         [[nodiscard]] static const std::wstring* FindValue(const Section& section, const std::wstring& key);
 
     private:
         [[nodiscard]] static domain::Expected<std::wstring> ReadFileAsWString(const std::wstring& filePath);
-
-        [[nodiscard]] static Section* FindOrCreateSection(IniData& data, const std::wstring& name);
+        [[nodiscard]] static Section* FindOrCreateSection(IniData& data, const std::wstring& name,
+            std::wstring& lastSectionName,
+            Section*& lastSectionPtr);
         [[nodiscard]] bool IsComment(const std::wstring& line)  const;
         [[nodiscard]] bool IsSection(const std::wstring& line)  const;
         [[nodiscard]] std::wstring ExtractSectionName(const std::wstring& line) const;

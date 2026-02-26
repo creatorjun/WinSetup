@@ -1,5 +1,4 @@
 ﻿// src/adapters/persistence/config/IniParser.cpp
-
 #include <adapters/persistence/config/IniParser.h>
 #include <domain/primitives/Error.h>
 #include <Windows.h>
@@ -72,16 +71,34 @@ namespace winsetup::adapters::persistence {
             domain::ErrorCategory::IO);
     }
 
-    IniParser::Section* IniParser::FindOrCreateSection(IniData& data, const std::wstring& name) {
+    IniParser::Section* IniParser::FindOrCreateSection(
+        IniData& data,
+        const std::wstring& name,
+        std::wstring& lastSectionName,
+        Section*& lastSectionPtr
+    ) {
+        // 직전에 접근한 섹션과 동일하면 즉시 반환 (연속 키-값 삽입 시 O(1))
+        if (lastSectionPtr && lastSectionName == name)
+            return lastSectionPtr;
+
         for (auto& entry : data) {
-            if (entry.first == name)
-                return &entry.second;
+            if (entry.first == name) {
+                lastSectionName = name;
+                lastSectionPtr = &entry.second;
+                return lastSectionPtr;
+            }
         }
+
         data.emplace_back(name, Section{});
-        return &data.back().second;
+        lastSectionName = name;
+        lastSectionPtr = &data.back().second;
+        return lastSectionPtr;
     }
 
-    const IniParser::Section* IniParser::FindSection(const IniData& data, const std::wstring& name) {
+    const IniParser::Section* IniParser::FindSection(
+        const IniData& data,
+        const std::wstring& name
+    ) {
         for (const auto& entry : data) {
             if (entry.first == name)
                 return &entry.second;
@@ -89,7 +106,10 @@ namespace winsetup::adapters::persistence {
         return nullptr;
     }
 
-    const std::wstring* IniParser::FindValue(const Section& section, const std::wstring& key) {
+    const std::wstring* IniParser::FindValue(
+        const Section& section,
+        const std::wstring& key
+    ) {
         for (const auto& kv : section) {
             if (kv.first == key)
                 return &kv.second;
@@ -106,12 +126,13 @@ namespace winsetup::adapters::persistence {
 
     domain::Expected<IniParser::IniData> IniParser::ParseContent(const std::wstring& content) {
         IniData      data;
-        std::wstring currentSection;
+        std::wstring lastSectionName;
+        Section* lastSectionPtr = nullptr;
         Section* currentPtr = nullptr;
 
         std::wistringstream stream(content);
-        std::wstring line;
-        int lineNumber = 0;
+        std::wstring        line;
+        int                 lineNumber = 0;
 
         while (std::getline(stream, line)) {
             ++lineNumber;
@@ -124,12 +145,12 @@ namespace winsetup::adapters::persistence {
                 continue;
 
             if (IsSection(line)) {
-                currentSection = ExtractSectionName(line);
-                if (currentSection.empty())
+                std::wstring sectionName = ExtractSectionName(line);
+                if (sectionName.empty())
                     return domain::Error(
                         L"Invalid section name at line " + std::to_wstring(lineNumber),
                         lineNumber, domain::ErrorCategory::Parsing);
-                currentPtr = FindOrCreateSection(data, currentSection);
+                currentPtr = FindOrCreateSection(data, sectionName, lastSectionName, lastSectionPtr);
                 continue;
             }
 
@@ -169,10 +190,12 @@ namespace winsetup::adapters::persistence {
         return Trim(line.substr(1, line.length() - 2));
     }
 
-    bool IniParser::ParseKeyValue(const std::wstring& line,
+    bool IniParser::ParseKeyValue(
+        const std::wstring& line,
         std::wstring& key,
-        std::wstring& value) const {
-        size_t pos = line.find(L'=');
+        std::wstring& value
+    ) const {
+        const size_t pos = line.find(L'=');
         if (pos == std::wstring::npos) return false;
         key = Trim(line.substr(0, pos));
         value = Trim(line.substr(pos + 1));
