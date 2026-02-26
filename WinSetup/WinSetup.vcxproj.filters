@@ -57,9 +57,6 @@
     <ClCompile Include="src\adapters\platform\win32\storage\DiskTransaction.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\adapters\platform\win32\storage\IOCTLWrapper.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="src\adapters\platform\win32\storage\MFTScanner.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -318,9 +315,6 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\adapters\platform\win32\storage\DiskTransaction.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\adapters\platform\win32\storage\IOCTLWrapper.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\adapters\platform\win32\storage\MFTScanner.h">

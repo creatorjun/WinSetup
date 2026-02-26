@@ -9,9 +9,7 @@ namespace winsetup::adapters::platform {
 
     AsyncIOCTL::AsyncIOCTL() {
         mOperations.reserve(kMaxConcurrentOperations);
-
         mIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1);
-
         HANDLE hThread = CreateThread(nullptr, 0, CompletionThreadProc, this, 0, nullptr);
         if (hThread)
             mCompletionThread = Win32HandleFactory::MakeHandle(hThread);
@@ -66,6 +64,8 @@ namespace winsetup::adapters::platform {
             return domain::Error{ L"Failed to associate device with IOCP",
                 GetLastError(), domain::ErrorCategory::System };
 
+        const uint32_t returnId = op->id;
+
         {
             std::lock_guard<std::mutex> lock(mOperationsMutex);
             mOperations.push_back(op);
@@ -89,24 +89,21 @@ namespace winsetup::adapters::platform {
             if (error != ERROR_IO_PENDING) {
                 op->state.store(AsyncIOCTLState::Failed);
                 op->errorCode = error;
+                SetEvent(Win32HandleFactory::ToWin32Handle(op->hEvent));
                 NotifyCompletion(op);
                 mPendingOperations.fetch_sub(1);
-                RemoveOperation(op->id);
+                RemoveOperation(returnId);
                 return domain::Error{ L"DeviceIoControl failed",
                     error, domain::ErrorCategory::System };
             }
+            // ERROR_IO_PENDING: CompletionLoop가 완료 패킷을 처리
         }
         else {
-            op->bytesTransferred = bytesReturned;
-            op->errorCode = ERROR_SUCCESS;
-            op->state.store(AsyncIOCTLState::Completed);
-            SetEvent(Win32HandleFactory::ToWin32Handle(op->hEvent));
-            NotifyCompletion(op);
-            mPendingOperations.fetch_sub(1);
-            RemoveOperation(op->id);
+            // 동기 완료: IOCP에 완료 패킷이 자동으로 큐잉됨
+            // CompletionLoop가 패킷을 수신하여 처리하므로 여기서 별도 처리 불필요
         }
 
-        return op->id;
+        return returnId;
     }
 
     DWORD WINAPI AsyncIOCTL::CompletionThreadProc(LPVOID lpParam) {
@@ -123,6 +120,11 @@ namespace winsetup::adapters::platform {
             BOOL ok = GetQueuedCompletionStatus(
                 mIOCP, &bytesTransferred, &completionKey, &pOverlapped, INFINITE);
 
+            // IOCP 자체 오류 (pOverlapped == nullptr, ok == FALSE)
+            if (!ok && pOverlapped == nullptr)
+                break;
+
+            // 명시적 종료 패킷
             if (completionKey == kShutdownKey)
                 break;
 
@@ -140,6 +142,7 @@ namespace winsetup::adapters::platform {
                     op = *it;
             }
 
+            // 이미 CancelAll로 제거된 op — 카운터 보정 없이 skip
             if (!op)
                 continue;
 
@@ -150,8 +153,9 @@ namespace winsetup::adapters::platform {
             }
             else {
                 op->errorCode = GetLastError();
+                const auto currentState = op->state.load();
                 op->state.store(
-                    op->state.load() == AsyncIOCTLState::Cancelled
+                    currentState == AsyncIOCTLState::Cancelled
                     ? AsyncIOCTLState::Cancelled
                     : AsyncIOCTLState::Failed
                 );
@@ -232,7 +236,8 @@ namespace winsetup::adapters::platform {
         if (waitResult == WAIT_TIMEOUT)
             return domain::Error{ L"Operations timeout",
                 ERROR_TIMEOUT, domain::ErrorCategory::System };
-        if (waitResult < WAIT_OBJECT_0 || waitResult >= WAIT_OBJECT_0 + events.size())
+        if (waitResult < WAIT_OBJECT_0 ||
+            waitResult >= WAIT_OBJECT_0 + static_cast<DWORD>(events.size()))
             return domain::Error{ L"Wait failed",
                 GetLastError(), domain::ErrorCategory::System };
 
@@ -267,17 +272,23 @@ namespace winsetup::adapters::platform {
     }
 
     void AsyncIOCTL::CancelAll() {
-        std::lock_guard<std::mutex> lock(mOperationsMutex);
-        for (auto& op : mOperations) {
-            if (op && op->state.load() == AsyncIOCTLState::Pending) {
+        std::vector<std::shared_ptr<AsyncOperation>> snapshot;
+        {
+            std::lock_guard<std::mutex> lock(mOperationsMutex);
+            snapshot = mOperations;
+            mOperations.clear();
+        }
+
+        for (auto& op : snapshot) {
+            if (!op) continue;
+            if (op->state.load() == AsyncIOCTLState::Pending) {
                 CancelIoEx(op->hDevice, &op->overlapped);
                 op->state.store(AsyncIOCTLState::Cancelled);
                 if (op->hEvent)
                     SetEvent(Win32HandleFactory::ToWin32Handle(op->hEvent));
+                mPendingOperations.fetch_sub(1);
             }
         }
-        mOperations.clear();
-        mPendingOperations.store(0);
     }
 
     bool AsyncIOCTL::IsOperationPending(uint32_t operationId) const {

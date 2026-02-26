@@ -36,7 +36,6 @@
     <ClCompile Include="src\adapters\platform\win32\storage\AsyncIOCTL.cpp" />
     <ClCompile Include="src\adapters\platform\win32\storage\DiskLayoutBuilder.cpp" />
     <ClCompile Include="src\adapters\platform\win32\storage\DiskTransaction.cpp" />
-    <ClCompile Include="src\adapters\platform\win32\storage\IOCTLWrapper.cpp" />
     <ClCompile Include="src\adapters\platform\win32\storage\MFTScanner.cpp" />
     <ClCompile Include="src\adapters\platform\win32\storage\Win32DiskService.cpp" />
     <ClCompile Include="src\adapters\platform\win32\storage\Win32FileCopyService.cpp" />
@@ -153,7 +152,6 @@
     <ClInclude Include="src\adapters\platform\win32\storage\AsyncIOCTL.h" />
     <ClInclude Include="src\adapters\platform\win32\storage\DiskLayoutBuilder.h" />
     <ClInclude Include="src\adapters\platform\win32\storage\DiskTransaction.h" />
-    <ClInclude Include="src\adapters\platform\win32\storage\IOCTLWrapper.h" />
     <ClInclude Include="src\adapters\platform\win32\storage\MFTScanner.h" />
     <ClInclude Include="src\adapters\platform\win32\storage\Win32DiskService.h" />
     <ClInclude Include="src\adapters\platform\win32\storage\Win32FileCopyService.h" />
