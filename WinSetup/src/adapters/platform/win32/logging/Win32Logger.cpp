@@ -1,61 +1,156 @@
 ﻿#include "adapters/platform/win32/logging/Win32Logger.h"
 #include "adapters/platform/win32/core/Win32HandleFactory.h"
 #include <Windows.h>
-#include <chrono>
 
 namespace winsetup::adapters::platform {
 
     Win32Logger::Win32Logger(const std::wstring& logFilePath)
         : mLogFilePath(logFilePath)
     {
-        mBuffer.reserve(kBufferSize);
+        mWriteBuffer.reserve(kWriteBufferReserve);
+        mQueue.reserve(kQueueReserve);
+        mFlushQueue.reserve(kQueueReserve);
 
-        if (EnsureFileOpen() && mHFile) {
-            std::wstring initMsg = L"[INIT] Win32Logger initialized\r\n";
-            DWORD bytesWritten = 0;
-            WriteFile(
-                Win32HandleFactory::ToWin32Handle(mHFile),
-                initMsg.data(),
-                static_cast<DWORD>(initMsg.size() * sizeof(wchar_t)),
-                &bytesWritten,
-                nullptr);
-            FlushFileBuffers(Win32HandleFactory::ToWin32Handle(mHFile));
+        InitializeCriticalSectionAndSpinCount(&mQueueLock, 1000);
+        InitializeConditionVariable(&mQueueCV);
+
+        HANDLE hThread = CreateThread(nullptr, 0, WriterThreadProc, this, 0, nullptr);
+        if (hThread)
+            mWriterThread = Win32HandleFactory::MakeHandle(hThread);
+    }
+
+    Win32Logger::~Win32Logger() {
+        Flush();
+
+        EnterCriticalSection(&mQueueLock);
+        mShutdown = true;
+        LeaveCriticalSection(&mQueueLock);
+        WakeConditionVariable(&mQueueCV);
+
+        if (mWriterThread)
+            WaitForSingleObject(Win32HandleFactory::ToWin32Handle(mWriterThread), INFINITE);
+
+        DeleteCriticalSection(&mQueueLock);
+    }
+
+    void Win32Logger::Log(
+        abstractions::LogLevel      level,
+        const std::wstring& message,
+        const std::source_location& /*location*/)
+    {
+        LogEntry entry{};
+        entry.level = level;
+        entry.message = message;
+        FormatTimestamp(entry.timestamp, 32);
+
+        OutputDebugStringW(entry.message.c_str());
+
+        EnterCriticalSection(&mQueueLock);
+        mQueue.push_back(std::move(entry));
+        const bool shouldWakeImmediately =
+            (level == abstractions::LogLevel::Error ||
+                level == abstractions::LogLevel::Fatal);
+        if (shouldWakeImmediately)
+            mFlushRequested = true;
+        LeaveCriticalSection(&mQueueLock);
+
+        if (shouldWakeImmediately)
+            WakeConditionVariable(&mQueueCV);
+    }
+
+    void Win32Logger::Flush() {
+        EnterCriticalSection(&mQueueLock);
+        mFlushRequested = true;
+        LeaveCriticalSection(&mQueueLock);
+        WakeConditionVariable(&mQueueCV);
+
+        // Writer 스레드가 flush를 처리할 때까지 잠시 양보
+        // (완전한 동기 flush가 필요하다면 flush 완료 이벤트 추가 가능)
+        Sleep(0);
+    }
+
+    DWORD WINAPI Win32Logger::WriterThreadProc(LPVOID lpParam) {
+        static_cast<Win32Logger*>(lpParam)->WriterLoop();
+        return 0;
+    }
+
+    void Win32Logger::WriterLoop() {
+        while (true) {
+            EnterCriticalSection(&mQueueLock);
+
+            while (mQueue.empty() && !mShutdown && !mFlushRequested)
+                SleepConditionVariableCS(&mQueueCV, &mQueueLock, 100);
+
+            mFlushQueue.clear();
+            std::swap(mQueue, mFlushQueue);
+            const bool shutdown = mShutdown;
+            mFlushRequested = false;
+
+            LeaveCriticalSection(&mQueueLock);
+
+            if (!mFlushQueue.empty())
+                FlushBatch(mFlushQueue);
+
+            if (shutdown) {
+                // 종료 직전 잔여 큐 한 번 더 드레인
+                EnterCriticalSection(&mQueueLock);
+                std::swap(mQueue, mFlushQueue);
+                LeaveCriticalSection(&mQueueLock);
+                if (!mFlushQueue.empty())
+                    FlushBatch(mFlushQueue);
+                break;
+            }
         }
     }
 
-    Win32Logger::~Win32Logger()
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-        FlushBufferUnsafe();
+    void Win32Logger::FlushBatch(std::vector<LogEntry>& batch) {
+        if (!EnsureFileOpen()) return;
+
+        mWriteBuffer.clear();
+        for (const auto& entry : batch)
+            FormatAndWrite(entry);
+
+        if (mWriteBuffer.empty()) return;
+
+        DWORD bytesWritten = 0;
+        WriteFile(
+            Win32HandleFactory::ToWin32Handle(mHFile),
+            mWriteBuffer.data(),
+            static_cast<DWORD>(mWriteBuffer.size() * sizeof(wchar_t)),
+            &bytesWritten,
+            nullptr);
+        FlushFileBuffers(Win32HandleFactory::ToWin32Handle(mHFile));
     }
 
-    bool Win32Logger::EnsureDirectoryExists()
-    {
+    void Win32Logger::FormatAndWrite(const LogEntry& entry) {
+        mWriteBuffer += entry.timestamp;
+        mWriteBuffer += L" [";
+        mWriteBuffer += GetLevelString(entry.level);
+        mWriteBuffer += L"] ";
+        mWriteBuffer += entry.message;
+        mWriteBuffer += L"\r\n";
+    }
+
+    bool Win32Logger::EnsureDirectoryExists() {
         const size_t lastSlash = mLogFilePath.find_last_of(L"\\/");
         if (lastSlash == std::wstring::npos)
             return true;
 
         const std::wstring dirPath = mLogFilePath.substr(0, lastSlash);
-
         const DWORD attribs = GetFileAttributesW(dirPath.c_str());
         if (attribs != INVALID_FILE_ATTRIBUTES)
             return (attribs & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
         if (!CreateDirectoryW(dirPath.c_str(), nullptr)) {
-            const DWORD error = GetLastError();
-            if (error != ERROR_ALREADY_EXISTS)
+            if (GetLastError() != ERROR_ALREADY_EXISTS)
                 return false;
         }
         return true;
     }
 
-    bool Win32Logger::EnsureFileOpen()
-    {
-        if (mHFile)
-            return true;
-
-        if (!EnsureDirectoryExists())
-            return false;
+    bool Win32Logger::EnsureFileOpen() {
+        if (mHFile) return true;
+        if (!EnsureDirectoryExists()) return false;
 
         HANDLE hFile = CreateFileW(
             mLogFilePath.c_str(),
@@ -66,80 +161,13 @@ namespace winsetup::adapters::platform {
             FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH,
             nullptr);
 
-        if (hFile == INVALID_HANDLE_VALUE)
-            return false;
-
+        if (hFile == INVALID_HANDLE_VALUE) return false;
         SetFilePointer(hFile, 0, nullptr, FILE_END);
         mHFile = Win32HandleFactory::MakeHandle(hFile);
         return true;
     }
 
-    bool Win32Logger::ShouldFlushImmediately(abstractions::LogLevel level) const noexcept
-    {
-        return level == abstractions::LogLevel::Error
-            || level == abstractions::LogLevel::Fatal;
-    }
-
-    void Win32Logger::Log(
-        abstractions::LogLevel level,
-        const std::wstring& message,
-        const std::source_location& location)
-    {
-        wchar_t timestamp[32];
-        FormatTimestamp(timestamp, 32);
-
-        std::wstring entry;
-        entry.reserve(256);
-        entry += timestamp;
-        entry += L" [";
-        entry += GetLevelString(level);
-        entry += L"] ";
-        entry += message;
-        entry += L"\r\n";
-
-        OutputDebugStringW(entry.c_str());
-
-        const bool forceFlush = ShouldFlushImmediately(level);
-
-        std::lock_guard<std::mutex> lock(mMutex);
-        if (!EnsureFileOpen())
-            return;
-        WriteBufferedEntry(entry, forceFlush);
-    }
-
-    void Win32Logger::WriteBufferedEntry(const std::wstring& entry, bool forceFlush)
-    {
-        mBuffer += entry;
-
-        if (forceFlush || mBuffer.size() >= kFlushThreshold)
-            FlushBufferUnsafe();
-    }
-
-    void Win32Logger::Flush()
-    {
-        std::lock_guard<std::mutex> lock(mMutex);
-        FlushBufferUnsafe();
-    }
-
-    void Win32Logger::FlushBufferUnsafe()
-    {
-        if (!mHFile || mBuffer.empty())
-            return;
-
-        DWORD bytesWritten = 0;
-        WriteFile(
-            Win32HandleFactory::ToWin32Handle(mHFile),
-            mBuffer.data(),
-            static_cast<DWORD>(mBuffer.size() * sizeof(wchar_t)),
-            &bytesWritten,
-            nullptr);
-
-        FlushFileBuffers(Win32HandleFactory::ToWin32Handle(mHFile));
-        mBuffer.clear();
-    }
-
-    const wchar_t* Win32Logger::GetLevelString(abstractions::LogLevel level) const noexcept
-    {
+    const wchar_t* Win32Logger::GetLevelString(abstractions::LogLevel level) const noexcept {
         switch (level) {
         case abstractions::LogLevel::Trace:   return L"TRACE";
         case abstractions::LogLevel::Debug:   return L"DEBUG";
@@ -151,13 +179,10 @@ namespace winsetup::adapters::platform {
         }
     }
 
-    void Win32Logger::FormatTimestamp(wchar_t* buffer, size_t bufferSize) const noexcept
-    {
+    void Win32Logger::FormatTimestamp(wchar_t* buffer, size_t bufferSize) const noexcept {
         SYSTEMTIME st;
         GetLocalTime(&st);
-        swprintf_s(
-            buffer,
-            bufferSize,
+        swprintf_s(buffer, bufferSize,
             L"%04d-%02d-%02d %02d:%02d:%02d.%03d",
             st.wYear, st.wMonth, st.wDay,
             st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
