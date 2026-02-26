@@ -1,6 +1,6 @@
-﻿// src/application/usecases/disk/AnalyzeVolumesUseCase.cpp
-#include "application/usecases/disk/AnalyzeVolumesUseCase.h"
+﻿#include "application/usecases/disk/AnalyzeVolumesUseCase.h"
 #include <algorithm>
+#include <unordered_set>
 
 namespace winsetup::application {
 
@@ -44,6 +44,29 @@ namespace winsetup::application {
 
         std::vector<domain::VolumeInfo> volumes(*volumeResult.Value());
         std::vector<domain::DiskInfo>   disks(*diskResult.Value());
+
+        std::unordered_set<uint32_t> usbDiskIndices;
+        for (const auto& disk : disks) {
+            if (disk.GetBusType() == domain::BusType::USB)
+                usbDiskIndices.insert(disk.GetIndex());
+        }
+
+        disks.erase(
+            std::remove_if(disks.begin(), disks.end(),
+                [](const domain::DiskInfo& disk) {
+                    return disk.GetBusType() == domain::BusType::USB;
+                }),
+            disks.end()
+        );
+
+        volumes.erase(
+            std::remove_if(volumes.begin(), volumes.end(),
+                [&](const domain::VolumeInfo& vol) {
+                    const auto idx = mPathChecker->FindDiskIndexByVolumeGuid(vol.GetVolumePath());
+                    return idx.has_value() && usbDiskIndices.count(idx.value()) > 0;
+                }),
+            volumes.end()
+        );
 
         DiskIndexCache cache;
         cache.reserve(volumes.size());
