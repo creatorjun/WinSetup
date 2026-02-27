@@ -15,7 +15,7 @@
 #include "application/usecases/disk/EnumerateVolumesStep.h"
 #include "application/usecases/disk/AnalyzeVolumesStep.h"
 #include "application/usecases/disk/AnalyzeDisksStep.h"
-#include "application/usecases/install/InstallWindowsUseCase.h"
+#include "application/usecases/install/SetupSystemUseCase.h"
 #include "application/viewmodels/MainViewModel.h"
 #include "application/services/Dispatcher.h"
 #include "abstractions/infrastructure/logging/ILogger.h"
@@ -28,7 +28,7 @@
 #include "abstractions/services/storage/IPathChecker.h"
 #include "abstractions/usecases/IAnalyzeSystemUseCase.h"
 #include "abstractions/usecases/ILoadConfigurationUseCase.h"
-#include "abstractions/usecases/IInstallWindowsUseCase.h"
+#include "abstractions/usecases/ISetupSystemUseCase.h"
 #include "abstractions/usecases/steps/IEnumerateDisksStep.h"
 #include "abstractions/usecases/steps/IEnumerateVolumesStep.h"
 #include "abstractions/usecases/steps/IAnalyzeVolumesStep.h"
@@ -155,9 +155,9 @@ namespace winsetup {
                     analyzeVolumes, analyzeDisks,
                     analysis, configRepo, logger)));
 
-        container.RegisterInstance<abstractions::IInstallWindowsUseCase>(
-            std::static_pointer_cast<abstractions::IInstallWindowsUseCase>(
-                std::make_shared<application::InstallWindowsUseCase>(logger)));
+        container.RegisterInstance<abstractions::ISetupSystemUseCase>(
+            std::static_pointer_cast<abstractions::ISetupSystemUseCase>(
+                std::make_shared<application::SetupSystemUseCase>(logger)));
     }
 
     void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container)
@@ -165,7 +165,7 @@ namespace winsetup {
         auto logger = ResolveOrThrow<abstractions::ILogger>(container, "ILogger");
         auto loadConfig = ResolveOrThrow<abstractions::ILoadConfigurationUseCase>(container, "ILoadConfigurationUseCase");
         auto analyze = ResolveOrThrow<abstractions::IAnalyzeSystemUseCase>(container, "IAnalyzeSystemUseCase");
-        auto installUC = ResolveOrThrow<abstractions::IInstallWindowsUseCase>(container, "IInstallWindowsUseCase");
+        auto setupSystem = ResolveOrThrow<abstractions::ISetupSystemUseCase>(container, "ISetupSystemUseCase");
         auto configRepo = ResolveOrThrow<abstractions::IConfigRepository>(container, "IConfigRepository");
         auto analysis = ResolveOrThrow<abstractions::IAnalysisRepository>(container, "IAnalysisRepository");
         auto dispatcher = ResolveOrThrow<abstractions::IUIDispatcher>(container, "IUIDispatcher");
@@ -173,7 +173,7 @@ namespace winsetup {
         container.RegisterInstance<abstractions::IMainViewModel>(
             std::static_pointer_cast<abstractions::IMainViewModel>(
                 std::make_shared<application::MainViewModel>(
-                    loadConfig, analyze, installUC,
+                    loadConfig, analyze, setupSystem,
                     configRepo, analysis, dispatcher, logger)));
     }
 

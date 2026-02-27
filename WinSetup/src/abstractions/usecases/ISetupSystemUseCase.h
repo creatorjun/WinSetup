@@ -1,4 +1,3 @@
-// src/abstractions/usecases/IInstallWindowsUseCase.h
 #pragma once
 #include "domain/primitives/Expected.h"
 #include "domain/entities/SetupConfig.h"
@@ -6,10 +5,9 @@
 
 namespace winsetup::abstractions {
 
-    class IInstallWindowsUseCase {
+    class ISetupSystemUseCase {
     public:
-        virtual ~IInstallWindowsUseCase() = default;
-
+        virtual ~ISetupSystemUseCase() = default;
         [[nodiscard]] virtual domain::Expected<void> Execute(
             std::shared_ptr<const domain::SetupConfig> config) = 0;
     };

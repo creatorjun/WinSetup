@@ -6,14 +6,14 @@ namespace winsetup::application {
     MainViewModel::MainViewModel(
         std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfigUseCase,
         std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     analyzeSystemUseCase,
-        std::shared_ptr<abstractions::IInstallWindowsUseCase>    installWindowsUseCase,
+        std::shared_ptr<abstractions::ISetupSystemUseCase>       setupSystemUseCase,
         std::shared_ptr<abstractions::IConfigRepository>         configRepository,
         std::shared_ptr<abstractions::IAnalysisRepository>       analysisRepository,
         std::shared_ptr<abstractions::IUIDispatcher>             dispatcher,
         std::shared_ptr<abstractions::ILogger>                   logger)
         : mLoadConfigUseCase(std::move(loadConfigUseCase))
         , mAnalyzeSystemUseCase(std::move(analyzeSystemUseCase))
-        , mInstallWindowsUseCase(std::move(installWindowsUseCase))
+        , mSetupSystemUseCase(std::move(setupSystemUseCase))
         , mConfigRepository(std::move(configRepository))
         , mAnalysisRepository(std::move(analysisRepository))
         , mDispatcher(std::move(dispatcher))
@@ -150,10 +150,10 @@ namespace winsetup::application {
             });
 
         domain::Expected<void> result =
-            domain::Error(L"InstallWindowsUseCase not registered", 0, domain::ErrorCategory::System);
+            domain::Error(L"SetupSystemUseCase not registered", 0, domain::ErrorCategory::System);
 
-        if (mInstallWindowsUseCase) {
-            result = mInstallWindowsUseCase->Execute(config);
+        if (mSetupSystemUseCase) {
+            result = mSetupSystemUseCase->Execute(config);
         }
 
         dispatcher->Post([self, result]() mutable {
@@ -168,7 +168,7 @@ namespace winsetup::application {
             else {
                 self->SetStatusText(L"Installation failed: " + result.GetError().GetMessage());
                 if (self->mLogger)
-                    self->mLogger->Error(L"InstallWindowsUseCase failed: " +
+                    self->mLogger->Error(L"SetupSystemUseCase failed: " +
                         result.GetError().GetMessage());
             }
             self->NotifyPropertyChanged(L"EnableAllButtons");

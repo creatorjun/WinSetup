@@ -207,7 +207,7 @@
     <ClCompile Include="src\adapters\platform\win32\concurrency\Win32ThreadPoolExecutor.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\application\usecases\install\InstallWindowsUseCase.cpp">
+    <ClCompile Include="src\application\usecases\install\SetupSystemUseCase.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\application\usecases\disk\AnalyzeDisksStep.cpp">
@@ -593,10 +593,10 @@
     <ClInclude Include="src\abstractions\ui\IUIDispatcher.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\usecases\install\InstallWindowsUseCase.h">
+    <ClInclude Include="src\application\usecases\install\SetupSystemUseCase.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\usecases\IInstallWindowsUseCase.h">
+    <ClInclude Include="src\abstractions\usecases\ISetupSystemUseCase.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\abstractions\usecases\IApplyImageUseCase.h">

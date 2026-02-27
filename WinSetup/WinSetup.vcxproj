@@ -67,7 +67,7 @@
     <ClCompile Include="src\application\usecases\disk\AnalyzeVolumesStep.cpp" />
     <ClCompile Include="src\application\usecases\disk\EnumerateDisksStep.cpp" />
     <ClCompile Include="src\application\usecases\disk\EnumerateVolumesStep.cpp" />
-    <ClCompile Include="src\application\usecases\install\InstallWindowsUseCase.cpp" />
+    <ClCompile Include="src\application\usecases\install\SetupSystemUseCase.cpp" />
     <ClCompile Include="src\application\usecases\system\AnalyzeSystemUseCase.cpp" />
     <ClCompile Include="src\application\usecases\system\LoadConfigurationUseCase.cpp" />
     <ClCompile Include="src\application\viewmodels\MainViewModel.cpp" />
@@ -124,7 +124,7 @@
     <ClInclude Include="src\abstractions\ui\IWindow.h" />
     <ClInclude Include="src\abstractions\usecases\IAnalyzeSystemUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\IApplyImageUseCase.h" />
-    <ClInclude Include="src\abstractions\usecases\IInstallWindowsUseCase.h" />
+    <ClInclude Include="src\abstractions\usecases\ISetupSystemUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\ILoadConfigurationUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\steps\IAnalyzeDisksStep.h" />
     <ClInclude Include="src\abstractions\usecases\steps\IAnalyzeVolumesStep.h" />
@@ -185,7 +185,7 @@
     <ClInclude Include="src\application\usecases\disk\AnalyzeVolumesStep.h" />
     <ClInclude Include="src\application\usecases\disk\EnumerateDisksStep.h" />
     <ClInclude Include="src\application\usecases\disk\EnumerateVolumesStep.h" />
-    <ClInclude Include="src\application\usecases\install\InstallWindowsUseCase.h" />
+    <ClInclude Include="src\application\usecases\install\SetupSystemUseCase.h" />
     <ClInclude Include="src\application\usecases\system\AnalyzeSystemUseCase.h" />
     <ClInclude Include="src\application\usecases\system\LoadConfigurationUseCase.h" />
     <ClInclude Include="src\application\viewmodels\MainViewModel.h" />

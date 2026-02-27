@@ -1,17 +1,17 @@
 ﻿#pragma once
-#include "abstractions/usecases/IInstallWindowsUseCase.h"
+#include "abstractions/usecases/ISetupSystemUseCase.h"
 #include "abstractions/infrastructure/logging/ILogger.h"
 #include <memory>
 
 namespace winsetup::application {
 
-    class InstallWindowsUseCase final : public abstractions::IInstallWindowsUseCase {
+    class SetupSystemUseCase final : public abstractions::ISetupSystemUseCase {
     public:
-        explicit InstallWindowsUseCase(
+        explicit SetupSystemUseCase(
             std::shared_ptr<abstractions::ILogger> logger);
-        ~InstallWindowsUseCase() override = default;
-        InstallWindowsUseCase(const InstallWindowsUseCase&) = delete;
-        InstallWindowsUseCase& operator=(const InstallWindowsUseCase&) = delete;
+        ~SetupSystemUseCase() override = default;
+        SetupSystemUseCase(const SetupSystemUseCase&) = delete;
+        SetupSystemUseCase& operator=(const SetupSystemUseCase&) = delete;
 
         [[nodiscard]] domain::Expected<void> Execute(
             std::shared_ptr<const domain::SetupConfig> config) override;

@@ -1,10 +1,9 @@
-﻿// src/application/viewmodels/MainViewModel.h
-#pragma once
+﻿#pragma once
 #include "abstractions/ui/IMainViewModel.h"
 #include "abstractions/ui/IUIDispatcher.h"
 #include "abstractions/usecases/ILoadConfigurationUseCase.h"
 #include "abstractions/usecases/IAnalyzeSystemUseCase.h"
-#include "abstractions/usecases/IInstallWindowsUseCase.h"
+#include "abstractions/usecases/ISetupSystemUseCase.h"
 #include "abstractions/repositories/IConfigRepository.h"
 #include "abstractions/repositories/IAnalysisRepository.h"
 #include "abstractions/infrastructure/logging/ILogger.h"
@@ -22,7 +21,7 @@ namespace winsetup::application {
         explicit MainViewModel(
             std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfigUseCase,
             std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     analyzeSystemUseCase,
-            std::shared_ptr<abstractions::IInstallWindowsUseCase>    installWindowsUseCase,
+            std::shared_ptr<abstractions::ISetupSystemUseCase>       setupSystemUseCase,
             std::shared_ptr<abstractions::IConfigRepository>         configRepository,
             std::shared_ptr<abstractions::IAnalysisRepository>       analysisRepository,
             std::shared_ptr<abstractions::IUIDispatcher>             dispatcher,
@@ -63,7 +62,7 @@ namespace winsetup::application {
 
         std::shared_ptr<abstractions::ILoadConfigurationUseCase> mLoadConfigUseCase;
         std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     mAnalyzeSystemUseCase;
-        std::shared_ptr<abstractions::IInstallWindowsUseCase>    mInstallWindowsUseCase;
+        std::shared_ptr<abstractions::ISetupSystemUseCase>       mSetupSystemUseCase;
         std::shared_ptr<abstractions::IConfigRepository>         mConfigRepository;
         std::shared_ptr<abstractions::IAnalysisRepository>       mAnalysisRepository;
         std::shared_ptr<abstractions::IUIDispatcher>             mDispatcher;
