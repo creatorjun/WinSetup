@@ -1,294 +1,291 @@
 ﻿#include "application/viewmodels/MainViewModel.h"
 #include <thread>
 
-namespace winsetup::application {
+namespace winsetup {
+    namespace application {
 
-    MainViewModel::MainViewModel(
-        std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfigUseCase,
-        std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     analyzeSystemUseCase,
-        std::shared_ptr<abstractions::ISetupSystemUseCase>       setupSystemUseCase,
-        std::shared_ptr<abstractions::IConfigRepository>         configRepository,
-        std::shared_ptr<abstractions::IAnalysisRepository>       analysisRepository,
-        std::shared_ptr<abstractions::IUIDispatcher>             dispatcher,
-        std::shared_ptr<abstractions::ILogger>                   logger)
-        : mLoadConfigUseCase(std::move(loadConfigUseCase))
-        , mAnalyzeSystemUseCase(std::move(analyzeSystemUseCase))
-        , mSetupSystemUseCase(std::move(setupSystemUseCase))
-        , mConfigRepository(std::move(configRepository))
-        , mAnalysisRepository(std::move(analysisRepository))
-        , mDispatcher(std::move(dispatcher))
-        , mLogger(std::move(logger))
-        , mStatusText(L"시스템 분석중")
-        , mWindowTitle(L"WinSetup v1.0")
-    {
-    }
-
-    std::wstring MainViewModel::GetStatusText() const { return mStatusText; }
-    std::wstring MainViewModel::GetWindowTitle() const { return mWindowTitle; }
-
-    void MainViewModel::SetStatusText(const std::wstring& text) {
-        if (mStatusText == text) return;
-        mStatusText = text;
-        NotifyPropertyChanged(L"StatusText");
-    }
-
-    void MainViewModel::SetWindowTitle(const std::wstring& title) {
-        if (mWindowTitle == title) return;
-        mWindowTitle = title;
-        NotifyPropertyChanged(L"WindowTitle");
-    }
-
-    std::vector<domain::InstallationType> MainViewModel::GetInstallationTypes() const {
-        if (!mConfigRepository || !mConfigRepository->IsLoaded()) return {};
-        auto result = mConfigRepository->GetConfig();
-        if (!result.HasValue()) return {};
-        return result.Value()->GetInstallationTypes();
-    }
-
-    std::wstring MainViewModel::GetTypeDescription() const { return mTypeDescription; }
-
-    void MainViewModel::SetTypeDescription(const std::wstring& key) {
-        if (!mConfigRepository || !mConfigRepository->IsLoaded()) return;
-        auto result = mConfigRepository->GetConfig();
-        if (!result.HasValue()) return;
-        for (const auto& type : result.Value()->GetInstallationTypes()) {
-            if (type.name != key) continue;
-            if (mTypeDescription != type.description) {
-                mTypeDescription = type.description;
-                NotifyPropertyChanged(L"TypeDescription");
-            }
-            const bool shouldEnableBitlocker = (type.name == L"출장용");
-            if (mBitlockerEnabled != shouldEnableBitlocker) {
-                mBitlockerEnabled = shouldEnableBitlocker;
-                NotifyPropertyChanged(L"BitlockerEnabled");
-            }
-            return;
+        MainViewModel::MainViewModel(
+            std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfigUseCase,
+            std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     analyzeSystemUseCase,
+            std::shared_ptr<abstractions::ISetupSystemUseCase>       setupSystemUseCase,
+            std::shared_ptr<abstractions::IConfigRepository>         configRepository,
+            std::shared_ptr<abstractions::IAnalysisRepository>       analysisRepository,
+            std::shared_ptr<abstractions::IUIDispatcher>             dispatcher,
+            std::shared_ptr<abstractions::ILogger>                   logger)
+            : mLoadConfigUseCase(std::move(loadConfigUseCase))
+            , mAnalyzeSystemUseCase(std::move(analyzeSystemUseCase))
+            , mSetupSystemUseCase(std::move(setupSystemUseCase))
+            , mConfigRepository(std::move(configRepository))
+            , mAnalysisRepository(std::move(analysisRepository))
+            , mDispatcher(std::move(dispatcher))
+            , mLogger(std::move(logger))
+            , mStatusText(L"시스템 분석중")
+            , mWindowTitle(L"WinSetup v1.0")
+        {
         }
-    }
 
-    bool MainViewModel::GetDataPreservation() const { return mDataPreservation; }
-    bool MainViewModel::GetBitlockerEnabled() const { return mBitlockerEnabled; }
-    bool MainViewModel::IsInitializing() const { return mIsInitializing; }
-    bool MainViewModel::IsProcessing() const { return mIsProcessing; }
-    bool MainViewModel::IsCompleted() const { return mIsCompleted; }
-    int  MainViewModel::GetProgress() const { return mProgress; }
-    int  MainViewModel::GetRemainingSeconds() const { return static_cast<int>(mRemainingSeconds); }
+        std::wstring MainViewModel::GetStatusText() const { return mStatusText; }
+        std::wstring MainViewModel::GetWindowTitle() const { return mWindowTitle; }
 
-    void MainViewModel::SetDataPreservation(bool enabled) {
-        if (mDataPreservation == enabled) return;
-        mDataPreservation = enabled;
-        NotifyPropertyChanged(L"DataPreservation");
-    }
-
-    void MainViewModel::SetBitlockerEnabled(bool enabled) {
-        if (mBitlockerEnabled == enabled) return;
-        mBitlockerEnabled = enabled;
-        NotifyPropertyChanged(L"BitlockerEnabled");
-    }
-
-    void MainViewModel::SetProcessing(bool processing) {
-        if (mIsProcessing == processing) return;
-        mIsProcessing = processing;
-        NotifyPropertyChanged(L"IsProcessing");
-    }
-
-    void MainViewModel::TickTimer() {
-        if (!mIsProcessing || mIsCompleted) return;
-        ++mElapsedSeconds;
-        if (mTotalSeconds > 0u) {
-            mProgress = static_cast<int>(
-                static_cast<double>(mElapsedSeconds) /
-                static_cast<double>(mTotalSeconds) * 100.0);
-            if (mProgress > 100) mProgress = 100;
+        void MainViewModel::SetStatusText(const std::wstring& text) {
+            if (mStatusText == text) return;
+            mStatusText = text;
+            NotifyPropertyChanged(L"StatusText");
         }
-        mRemainingSeconds = (mTotalSeconds > mElapsedSeconds)
-            ? (mTotalSeconds - mElapsedSeconds) : 0u;
-        NotifyPropertyChanged(L"Progress");
-        NotifyPropertyChanged(L"RemainingSeconds");
-        if (mElapsedSeconds >= mTotalSeconds) {
-            mIsCompleted = true;
-            mIsProcessing = false;
-            NotifyPropertyChanged(L"IsCompleted");
+
+        void MainViewModel::SetWindowTitle(const std::wstring& title) {
+            if (mWindowTitle == title) return;
+            mWindowTitle = title;
+            NotifyPropertyChanged(L"WindowTitle");
+        }
+
+        std::vector<domain::InstallationType> MainViewModel::GetInstallationTypes() const {
+            if (!mConfigRepository || !mConfigRepository->IsLoaded()) return {};
+            auto result = mConfigRepository->GetConfig();
+            if (!result.HasValue()) return {};
+            return result.Value()->GetInstallationTypes();
+        }
+
+        std::wstring MainViewModel::GetTypeDescription() const { return mTypeDescription; }
+
+        void MainViewModel::SetTypeDescription(const std::wstring& key) {
+            if (!mConfigRepository || !mConfigRepository->IsLoaded()) return;
+            auto result = mConfigRepository->GetConfig();
+            if (!result.HasValue()) return;
+            for (const auto& type : result.Value()->GetInstallationTypes()) {
+                if (type.name != key) continue;
+                if (mTypeDescription != type.description) {
+                    mTypeDescription = type.description;
+                    NotifyPropertyChanged(L"TypeDescription");
+                }
+                const bool shouldEnableBitlocker = (type.name == L"출장용");
+                if (mBitlockerEnabled != shouldEnableBitlocker) {
+                    mBitlockerEnabled = shouldEnableBitlocker;
+                    NotifyPropertyChanged(L"BitlockerEnabled");
+                }
+                return;
+            }
+        }
+
+        bool MainViewModel::GetDataPreservation() const { return mDataPreservation; }
+        bool MainViewModel::GetBitlockerEnabled() const { return mBitlockerEnabled; }
+        bool MainViewModel::IsInitializing() const { return mIsInitializing; }
+        bool MainViewModel::IsProcessing() const { return mIsProcessing; }
+        bool MainViewModel::IsCompleted() const { return mIsCompleted; }
+        int  MainViewModel::GetProgress() const { return mProgress; }
+        int  MainViewModel::GetRemainingSeconds() const { return static_cast<int>(mRemainingSeconds); }
+
+        void MainViewModel::SetDataPreservation(bool enabled) {
+            if (mDataPreservation == enabled) return;
+            mDataPreservation = enabled;
+            NotifyPropertyChanged(L"DataPreservation");
+        }
+
+        void MainViewModel::SetBitlockerEnabled(bool enabled) {
+            if (mBitlockerEnabled == enabled) return;
+            mBitlockerEnabled = enabled;
+            NotifyPropertyChanged(L"BitlockerEnabled");
+        }
+
+        void MainViewModel::SetProcessing(bool processing) {
+            if (mIsProcessing == processing) return;
+            mIsProcessing = processing;
             NotifyPropertyChanged(L"IsProcessing");
         }
-    }
 
-    void MainViewModel::InitializeAsync() {
-        if (mIsInitializing) return;
-        mIsInitializing = true;
-        NotifyPropertyChanged(L"IsInitializing");
-        if (mLogger) mLogger->Info(L"MainViewModel InitializeAsync started.");
-        auto self = shared_from_this();
-        std::thread([self]() { self->RunInitializeOnBackground(); }).detach();
-    }
+        void MainViewModel::TickTimer() {
+            if (!mIsProcessing || mIsCompleted) return;
+            ++mElapsedSeconds;
+            if (mTotalSeconds > 0u) {
+                mProgress = static_cast<int>(
+                    static_cast<double>(mElapsedSeconds) /
+                    static_cast<double>(mTotalSeconds) * 100.0);
+                if (mProgress > 100) mProgress = 100;
+            }
+            mRemainingSeconds = (mTotalSeconds > mElapsedSeconds)
+                ? (mTotalSeconds - mElapsedSeconds) : 0u;
+            NotifyPropertyChanged(L"Progress");
+            NotifyPropertyChanged(L"RemainingSeconds");
+            if (mElapsedSeconds >= mTotalSeconds) {
+                mIsCompleted = true;
+                mIsProcessing = false;
+                NotifyPropertyChanged(L"IsCompleted");
+                NotifyPropertyChanged(L"IsProcessing");
+            }
+        }
 
-    void MainViewModel::StartInstall() {
-        if (mIsProcessing || mIsInitializing) return;
-        if (mLogger) mLogger->Info(L"MainViewModel StartInstall called.");
-        auto self = shared_from_this();
-        std::thread([self]() { self->RunInstallOnBackground(); }).detach();
-    }
+        void MainViewModel::InitializeAsync() {
+            if (mIsInitializing) return;
+            mIsInitializing = true;
+            NotifyPropertyChanged(L"IsInitializing");
+            if (mLogger) mLogger->Info(L"MainViewModel InitializeAsync started.");
+            auto self = shared_from_this();
+            std::thread([self]() { self->RunInitializeOnBackground(); }).detach();
+        }
 
-    void MainViewModel::RunInstallOnBackground() {
-        auto dispatcher = mDispatcher;
-        auto self = shared_from_this();
+        void MainViewModel::StartInstall() {
+            if (mIsProcessing || mIsInitializing) return;
+            if (mLogger) mLogger->Info(L"MainViewModel StartInstall called.");
+            mIsCompleted = false;
+            mElapsedSeconds = 0u;
+            mProgress = 0;
+            mRemainingSeconds = mTotalSeconds;
+            SetProcessing(true);
+            SetStatusText(L"Installing...");
+            NotifyPropertyChanged(L"DisableAllButtons");
+            auto self = shared_from_this();
+            std::thread([self]() { self->RunInstallOnBackground(); }).detach();
+        }
 
-        std::shared_ptr<const domain::SetupConfig> config;
-        if (mConfigRepository && mConfigRepository->IsLoaded()) {
+        void MainViewModel::RunInstallOnBackground() {
+            std::shared_ptr<const domain::SetupConfig> config;
+            if (mConfigRepository && mConfigRepository->IsLoaded()) {
+                auto cfgResult = mConfigRepository->GetConfig();
+                if (cfgResult.HasValue()) config = cfgResult.Value();
+            }
+
+            domain::Expected<void> result =
+                domain::Error(L"SetupSystemUseCase not registered", 0, domain::ErrorCategory::System);
+
+            if (mSetupSystemUseCase)
+                result = mSetupSystemUseCase->Execute(config);
+
+            auto dispatcher = mDispatcher;
+            auto self = shared_from_this();
+            dispatcher->Post([self, result]() mutable {
+                self->SetProcessing(false);
+                if (result.HasValue()) {
+                    self->mIsCompleted = true;
+                    self->mProgress = 100;
+                    self->SetStatusText(L"Installation completed.");
+                    self->NotifyPropertyChanged(L"IsCompleted");
+                    self->NotifyPropertyChanged(L"Progress");
+                }
+                else {
+                    self->SetStatusText(L"Installation failed: " + result.GetError().GetMessage());
+                    if (self->mLogger)
+                        self->mLogger->Error(L"SetupSystemUseCase failed: " +
+                            result.GetError().GetMessage());
+                }
+                self->NotifyPropertyChanged(L"EnableAllButtons");
+                });
+        }
+
+        domain::Expected<void> MainViewModel::RunLoadConfiguration() {
+            if (!mLoadConfigUseCase)
+                return domain::Error(L"LoadConfigurationUseCase not registered", 0, domain::ErrorCategory::System);
+            if (!mConfigRepository)
+                return domain::Error(L"IConfigRepository not registered", 0, domain::ErrorCategory::System);
+
+            SetStatusText(L"Loading configuration...");
+            auto result = mLoadConfigUseCase->Execute(L"config.ini");
+            if (!result.HasValue())
+                return result.GetError();
+
+            mElapsedSeconds = 0u;
+            mTotalSeconds = kDefaultTotalSeconds;
+            mRemainingSeconds = kDefaultTotalSeconds;
+            mProgress = 0;
+
             auto cfgResult = mConfigRepository->GetConfig();
-            if (cfgResult.HasValue()) config = cfgResult.Value();
-        }
+            if (!cfgResult.HasValue())
+                return cfgResult.GetError();
 
-        dispatcher->Post([self, config]() mutable {
-            self->mIsCompleted = false;
-            self->mElapsedSeconds = 0u;
-            self->mProgress = 0;
-            self->mRemainingSeconds = self->mTotalSeconds;
-            self->SetProcessing(true);
-            self->SetStatusText(L"Installing...");
-            self->NotifyPropertyChanged(L"DisableAllButtons");
-            });
-
-        domain::Expected<void> result =
-            domain::Error(L"SetupSystemUseCase not registered", 0, domain::ErrorCategory::System);
-
-        if (mSetupSystemUseCase) {
-            result = mSetupSystemUseCase->Execute(config);
-        }
-
-        dispatcher->Post([self, result]() mutable {
-            self->SetProcessing(false);
-            if (result.HasValue()) {
-                self->mIsCompleted = true;
-                self->mProgress = 100;
-                self->SetStatusText(L"Installation completed.");
-                self->NotifyPropertyChanged(L"IsCompleted");
-                self->NotifyPropertyChanged(L"Progress");
-            }
-            else {
-                self->SetStatusText(L"Installation failed: " + result.GetError().GetMessage());
-                if (self->mLogger)
-                    self->mLogger->Error(L"SetupSystemUseCase failed: " +
-                        result.GetError().GetMessage());
-            }
-            self->NotifyPropertyChanged(L"EnableAllButtons");
-            });
-    }
-
-    domain::Expected<void> MainViewModel::RunLoadConfiguration() {
-        if (!mLoadConfigUseCase)
-            return domain::Error(L"LoadConfigurationUseCase not registered", 0, domain::ErrorCategory::System);
-        if (!mConfigRepository)
-            return domain::Error(L"IConfigRepository not registered", 0, domain::ErrorCategory::System);
-
-        SetStatusText(L"Loading configuration...");
-        auto result = mLoadConfigUseCase->Execute(L"config.ini");
-        if (!result.HasValue())
-            return result.GetError();
-
-        mElapsedSeconds = 0u;
-        mTotalSeconds = kDefaultTotalSeconds;
-        mRemainingSeconds = kDefaultTotalSeconds;
-        mProgress = 0;
-
-        auto cfgResult = mConfigRepository->GetConfig();
-        if (!cfgResult.HasValue())
-            return cfgResult.GetError();
-
-        const auto config = cfgResult.Value();
-        if (mAnalysisRepository && mAnalysisRepository->IsLoaded()) {
-            auto sysInfoResult = mAnalysisRepository->GetSystemInfo();
-            if (sysInfoResult.HasValue()) {
-                const std::wstring model = sysInfoResult.Value()->GetMotherboardModel();
-                if (config->HasEstimatedTime(model)) {
-                    const uint32_t secs = config->GetEstimatedTime(model);
-                    if (secs > 0u) {
-                        mTotalSeconds = secs;
-                        mRemainingSeconds = secs;
+            const auto config = cfgResult.Value();
+            if (mAnalysisRepository && mAnalysisRepository->IsLoaded()) {
+                auto sysInfoResult = mAnalysisRepository->GetSystemInfo();
+                if (sysInfoResult.HasValue()) {
+                    const std::wstring model = sysInfoResult.Value()->GetMotherboardModel();
+                    if (config->HasEstimatedTime(model)) {
+                        const uint32_t secs = config->GetEstimatedTime(model);
+                        if (secs > 0u) {
+                            mTotalSeconds = secs;
+                            mRemainingSeconds = secs;
+                        }
                     }
                 }
             }
+
+            return domain::Expected<void>();
         }
 
-        return domain::Expected<void>();
-    }
-
-    domain::Expected<void> MainViewModel::RunAnalyzeSystem() {
-        if (!mAnalyzeSystemUseCase)
-            return domain::Error(L"AnalyzeSystemUseCase not registered", 0, domain::ErrorCategory::System);
-        SetStatusText(L"Reading system information...");
-        auto result = mAnalyzeSystemUseCase->Execute();
-        if (!result.HasValue()) return result.GetError();
-        return domain::Expected<void>();
-    }
-
-    void MainViewModel::RunInitializeOnBackground() {
-        auto cfgResult = RunLoadConfiguration();
-        if (!cfgResult.HasValue()) {
-            const std::wstring errMsg = cfgResult.GetError().GetMessage();
-            auto dispatcher = mDispatcher;
-            auto self = shared_from_this();
-            dispatcher->Post([self, errMsg]() {
-                self->mIsInitializing = false;
-                self->SetStatusText(L"Failed to load configuration.");
-                if (self->mLogger)
-                    self->mLogger->Error(L"Configuration load failed: " + errMsg);
-                self->NotifyPropertyChanged(L"DisableAllButtons");
-                self->NotifyPropertyChanged(L"IsInitializing");
-                });
-            return;
+        domain::Expected<void> MainViewModel::RunAnalyzeSystem() {
+            if (!mAnalyzeSystemUseCase)
+                return domain::Error(L"AnalyzeSystemUseCase not registered", 0, domain::ErrorCategory::System);
+            SetStatusText(L"Reading system information...");
+            auto result = mAnalyzeSystemUseCase->Execute();
+            if (!result.HasValue()) return result.GetError();
+            return domain::Expected<void>();
         }
 
-        auto sysResult = RunAnalyzeSystem();
-
-        const bool sysOk = sysResult.HasValue();
-        const std::wstring sysErrorMsg = sysOk ? std::wstring{} : sysResult.GetError().GetMessage();
-        const bool hasSystemVolume = sysOk && mAnalysisRepository &&
-            mAnalysisRepository->GetSystemVolume().has_value();
-        const bool hasDataVolume = sysOk && mAnalysisRepository &&
-            mAnalysisRepository->GetDataVolume().has_value();
-        const bool canPreserve = hasSystemVolume && hasDataVolume;
-
-        auto dispatcher = mDispatcher;
-        auto self = shared_from_this();
-
-        dispatcher->Post([self, sysOk, sysErrorMsg, canPreserve]() {
-            self->mIsInitializing = false;
-            if (!sysOk) {
-                self->SetStatusText(sysErrorMsg);
-                if (self->mLogger)
-                    self->mLogger->Error(L"System analysis failed: " + sysErrorMsg);
-                self->NotifyPropertyChanged(L"DisableAllButtons");
-                self->NotifyPropertyChanged(L"IsInitializing");
+        void MainViewModel::RunInitializeOnBackground() {
+            auto cfgResult = RunLoadConfiguration();
+            if (!cfgResult.HasValue()) {
+                const std::wstring errMsg = cfgResult.GetError().GetMessage();
+                auto dispatcher = mDispatcher;
+                auto self = shared_from_this();
+                dispatcher->Post([self, errMsg]() {
+                    self->mIsInitializing = false;
+                    self->SetStatusText(L"Failed to load configuration.");
+                    if (self->mLogger)
+                        self->mLogger->Error(L"Configuration load failed: " + errMsg);
+                    self->NotifyPropertyChanged(L"DisableAllButtons");
+                    self->NotifyPropertyChanged(L"IsInitializing");
+                    });
                 return;
             }
-            if (canPreserve) {
-                self->SetStatusText(L"데이터 보존이 가능합니다.");
-                self->NotifyPropertyChanged(L"EnableAllButtons");
-            }
-            else {
-                self->SetStatusText(L"데이터 보존이 불가합니다.");
-                self->NotifyPropertyChanged(L"EnableButtonsWithoutDataPreserve");
-            }
-            self->NotifyPropertyChanged(L"InstallationTypes");
-            self->NotifyPropertyChanged(L"RemainingSeconds");
-            self->NotifyPropertyChanged(L"IsInitializing");
-            if (self->mLogger)
-                self->mLogger->Info(L"MainViewModel Initialization completed.");
-            });
-    }
 
-    void MainViewModel::AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) {
-        mPropertyChangedHandlers.push_back(std::move(callback));
-    }
+            auto sysResult = RunAnalyzeSystem();
 
-    void MainViewModel::RemoveAllPropertyChangedHandlers() {
-        mPropertyChangedHandlers.clear();
-    }
+            const bool sysOk = sysResult.HasValue();
+            const std::wstring sysErrorMsg = sysOk ? std::wstring{} : sysResult.GetError().GetMessage();
+            const bool hasSystemVolume = sysOk && mAnalysisRepository &&
+                mAnalysisRepository->GetSystemVolume().has_value();
+            const bool hasDataVolume = sysOk && mAnalysisRepository &&
+                mAnalysisRepository->GetDataVolume().has_value();
+            const bool canPreserve = hasSystemVolume && hasDataVolume;
 
-    void MainViewModel::NotifyPropertyChanged(const std::wstring& propertyName) {
-        for (const auto& handler : mPropertyChangedHandlers)
-            handler(propertyName);
-    }
+            auto dispatcher = mDispatcher;
+            auto self = shared_from_this();
 
-} // namespace
+            dispatcher->Post([self, sysOk, sysErrorMsg, canPreserve]() {
+                self->mIsInitializing = false;
+                if (!sysOk) {
+                    self->SetStatusText(sysErrorMsg);
+                    if (self->mLogger)
+                        self->mLogger->Error(L"System analysis failed: " + sysErrorMsg);
+                    self->NotifyPropertyChanged(L"DisableAllButtons");
+                    self->NotifyPropertyChanged(L"IsInitializing");
+                    return;
+                }
+                if (canPreserve) {
+                    self->SetStatusText(L"데이터 보존이 가능합니다.");
+                    self->NotifyPropertyChanged(L"EnableAllButtons");
+                }
+                else {
+                    self->SetStatusText(L"데이터 보존이 불가합니다.");
+                    self->NotifyPropertyChanged(L"EnableButtonsWithoutDataPreserve");
+                }
+                self->NotifyPropertyChanged(L"InstallationTypes");
+                self->NotifyPropertyChanged(L"RemainingSeconds");
+                self->NotifyPropertyChanged(L"IsInitializing");
+                if (self->mLogger)
+                    self->mLogger->Info(L"MainViewModel Initialization completed.");
+                });
+        }
+
+        void MainViewModel::AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) {
+            mPropertyChangedHandlers.push_back(std::move(callback));
+        }
+
+        void MainViewModel::RemoveAllPropertyChangedHandlers() {
+            mPropertyChangedHandlers.clear();
+        }
+
+        void MainViewModel::NotifyPropertyChanged(const std::wstring& propertyName) {
+            for (const auto& handler : mPropertyChangedHandlers)
+                handler(propertyName);
+        }
+
+    } // namespace application
+} // namespace winsetup
