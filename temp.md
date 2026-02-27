@@ -88,3 +88,30 @@ const std::wstring& displayText = mText;
 | `SimpleButton::DrawButton` | 매 Paint마다 `GetWindowTextW` heap alloc | `mText` 멤버 캐싱 | GDI/heap 비용 제거 |
 | `TextWidget::DrawBorder` | 매 Draw마다 `CreatePen`/`DeleteObject` | pen 캐싱 + dirty 플래그 | GDI 생성 횟수 감소 |
 | `Win32Logger` `source_location` | 불필요한 값 복사 | `const&`로 변경 | 복사 횟수 감소 |
+
+
+1. DIContainer::Resolve — Lock 통합
+src/application/core/DIContainer.h — Resolve 메서드 수정
+
+2. MFTScanner::GetFullPath — 메모이제이션
+src/adapters/platform/win32/storage/MFTScanner.h — pathCache 멤버 추가
+
+src/adapters/platform/win32/storage/MFTScanner.cpp — GetFullPath 로직 수정
+
+3. MFTScanner::FindFilesByExtension — 역인덱스
+src/adapters/platform/win32/storage/MFTScanner.h — mExtensionIndex 멤버 추가
+
+src/adapters/platform/win32/storage/MFTScanner.cpp — BuildFilePathMap + FindFilesByExtension 수정
+
+4. SimpleButton::GetText — 텍스트 캐싱
+src/adapters/ui/win32/controls/SimpleButton.h — mText 멤버 추가
+
+src/adapters/ui/win32/controls/SimpleButton.cpp — SetText, DrawButton, GetText 수정
+
+5. TextWidget::DrawBorder — Pen 캐싱
+src/adapters/ui/win32/controls/TextWidget.h — mBorderPen, mPenDirty 멤버 추가
+
+src/adapters/ui/win32/controls/TextWidget.cpp — SetStyle, EnsurePen, DrawBorder, ReleaseFont 수정
+
+6. Win32Logger — source_location 참조 전달
+src/abstractions/infrastructure/logging/ILogger.h — Log 및 래퍼 메서드 시그니처 수정
