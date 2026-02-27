@@ -72,29 +72,25 @@ namespace winsetup::application {
         [[nodiscard]] domain::Expected<std::shared_ptr<TInterface>> Resolve() {
             const auto typeIndex = std::type_index(typeid(TInterface));
 
-            // --- Singleton fast-path: read-lock ---
-            {
-                std::shared_lock readLock(mMutex);
-                auto sit = mSingletons.find(typeIndex);
-                if (sit != mSingletons.end())
-                    return std::static_pointer_cast<TInterface>(sit->second);
-            }
-
-            // --- Registration 조회: read-lock ---
             std::function<std::shared_ptr<void>()> factory;
             ServiceLifetime lifetime{};
             {
                 std::shared_lock readLock(mMutex);
+
+                auto sit = mSingletons.find(typeIndex);
+                if (sit != mSingletons.end())
+                    return std::static_pointer_cast<TInterface>(sit->second);
+
                 auto rit = mRegistrations.find(typeIndex);
                 if (rit == mRegistrations.end())
                     return domain::Error{
                         L"Service not registered: " + GetTypeName<TInterface>(),
                         0, domain::ErrorCategory::System };
+
                 factory = rit->second.factory;
                 lifetime = rit->second.lifetime;
             }
 
-            // --- Transient: lock 해제 후 인스턴스 생성 ---
             if (lifetime != ServiceLifetime::Singleton) {
                 auto instance = factory();
                 if (!instance)
@@ -104,13 +100,11 @@ namespace winsetup::application {
                 return std::static_pointer_cast<TInterface>(instance);
             }
 
-            // --- Singleton slow-path: write-lock + double-check ---
             std::unique_lock writeLock(mMutex);
-            {
-                auto sit = mSingletons.find(typeIndex);
-                if (sit != mSingletons.end())
-                    return std::static_pointer_cast<TInterface>(sit->second);
-            }
+
+            auto sit = mSingletons.find(typeIndex);
+            if (sit != mSingletons.end())
+                return std::static_pointer_cast<TInterface>(sit->second);
 
             auto instance = factory();
             if (!instance)
