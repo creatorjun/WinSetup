@@ -1,124 +1,90 @@
-﻿코드베이스를 충분히 파악했습니다. 이제 분석 결과를 정리합니다.
+﻿코드를 충분히 파악했습니다. 트레이드오프 없이 순수하게 개선 가능한 지점들을 정리합니다.
 
 ***
 
-## 클린 아키텍처 분석 - WinSetup (AnalyzeSystemUseCase 완성 기준)
+## 성능 최적화 가능 지점 분석
 
-전체 레이어 구조(Domain → Abstractions → Application → Adapters → Main)는 명확히 설계되어 있으며 의존성 방향도 잘 지켜지고 있습니다. 다만 현재 구현 범위 내에서 몇 가지 개선이 필요한 구체적 문제들이 존재합니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/6337e85f-3559-48c0-8696-88a0a8d8f70c/merged_codebase.md)
+코드 전반을 검토한 결과, **아키텍처/동작 변경 없이** 순수하게 성능만 개선 가능한 지점은 총 6곳입니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/e274b2cb-70ed-4312-b0d8-71cad642f01b/merged_codebase.md)
 
 ***
 
-## 1. `AnalyzeSystemUseCase` 내 책임 혼재 (SRP 위반)
+## 1. `DIContainer::Resolve` — 불필요한 double-lock 경합
 
-**문제:** `AnalyzeSystemUseCase::Execute()`가 직접 `ILoadConfigurationUseCase`를 호출하여 설정을 로드하고, 그 결과에서 예상 시간을 조회하는 로직까지 포함하고 있습니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/6337e85f-3559-48c0-8696-88a0a8d8f70c/merged_codebase.md)
+현재 Singleton fast-path에서 `std::shared_lock`으로 읽고, slow-path에서 `std::unique_lock`으로 업그레이드합니다.  문제는 Singleton 등록 시점(`RegisterInstance`)에 이미 `mSingletons`에 캐싱하므로, **팩토리가 있는 Singleton에만** slow-path가 발동합니다. 그런데 slow-path 진입 후 `mRegistrations`를 또 읽기 위해 이미 해제된 `readLock`을 다시 잡습니다. 이 과정에서 lock을 총 3번 획득합니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/e274b2cb-70ed-4312-b0d8-71cad642f01b/merged_codebase.md)
+
+**개선:** `Resolve` 내부에서 `mRegistrations`와 `mSingletons`를 같은 `readLock` 스코프 안에서 한 번에 조회하면 lock 획득 횟수가 2회 → 1~2회로 줄고, 특히 N번 호출 시 누적 효과가 큽니다.
+
+***
+
+## 2. `MFTScanner::BuildFilePathMap` — `GetFullPath` 반복 traversal
+
+`BuildFilePathMap`에서 모든 레코드에 대해 `GetFullPath`를 호출하고, `GetFullPath` 내부에서는 `mFileRecordMap.find`를 깊이만큼 반복 호출합니다.  즉 파일 10만 개 기준 평균 깊이 5라면 **50만 번의 map lookup**이 발생합니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/e274b2cb-70ed-4312-b0d8-71cad642f01b/merged_codebase.md)
+
+**개선:** `BuildFilePathMap` 통과 시 top-down으로 부모 경로가 이미 계산된 경우 재사용하는 **메모이제이션(별도 `unordered_map<uint64_t, wstring>` pathCache)** 을 도입하면 lookup이 레코드 수 N에 선형으로 줄어듭니다.
 
 ```cpp
-// AnalyzeSystemUseCase::Execute() 내부
-auto configResult = mLoadConfiguration->Execute(L"config.ini");
-const auto times = configResult.Value->GetEstimatedTimes();
-const auto it = times.find(boardModel);
-```
+std::unordered_map<uint64_t, std::wstring> pathCache;
 
-UseCase가 다른 UseCase를 직접 내부에서 호출하는 것은 UseCase 간 암묵적 순서 의존성과 결합도를 만듭니다. `AnalyzeSystemUseCase`의 책임은 순수하게 **시스템 하드웨어 분석**이어야 합니다. 예상 시간 조회는 `MainViewModel::RunInitializeOnBackground()`에서 두 UseCase를 독립적으로 순서대로 호출하는 방식으로 분리해야 합니다.
-
-**개선 방향:**
-- `AnalyzeSystemUseCase`에서 `ILoadConfigurationUseCase` 의존성 제거
-- 예상 시간 로직은 ViewModel 또는 별도의 Orchestrator로 이동
-
-***
-
-## 2. `AnalysisRepository` 위치 오류 (레이어 위반)
-
-**문제:** `AnalysisRepository`의 헤더 경로가 `applicationrepositories/AnalysisRepository.h`인데, 구현 파일 namespace는 `winsetupadapterspersistence`입니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/6337e85f-3559-48c0-8696-88a0a8d8f70c/merged_codebase.md)
-
-```cpp
-// .h: #include "applicationrepositories/AnalysisRepository.h"
-// .cpp: namespace winsetupadapterspersistence { ... }
-```
-
-Application 레이어는 인터페이스만 소유해야 하며, 구체 구현은 Adapters 레이어에 있어야 합니다. 물리적 파일 경로(`src/adapters/persistence/analysis/`)와 헤더 include 경로가 불일치하면 레이어 경계가 코드에서 불명확해집니다.
-
-**개선 방향:**
-- `AnalysisRepository.h/.cpp`를 `src/adapters/persistence/analysis/`로 경로 통일
-- `ServiceRegistration.cpp`의 include도 `adapters` 경로로 수정
-
-***
-
-## 3. Step 클래스의 Guard 패턴 비일관성
-
-**문제:** `EnumerateDisksStep`과 `EnumerateVolumesStep`은 의존성이 없으면 빈 컨테이너를 반환(soft fail)하는 반면, `AnalyzeDisksStep`과 `AnalyzeVolumesStep`은 `domain::Error`를 반환(hard fail)합니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/6337e85f-3559-48c0-8696-88a0a8d8f70c/merged_codebase.md)
-
-```cpp
-// EnumerateDisksStep - soft fail
-if (!mDiskService) { return std::make_shared<...>(); }
-
-// AnalyzeDisksStep - hard fail
-if (!mAnalysisRepository) { return domain::Error(..., ErrorCategory::System); }
-```
-
-같은 Step 계층 내에서 필수 의존성 누락에 대한 처리 정책이 달라 호출 측에서 동작을 예측하기 어렵습니다. `IDiskService` 없이 진행하는 것은 논리적으로도 불가능하므로 Enumerate 계열도 hard fail이 적합합니다.
-
-**개선 방향:**
-- 모든 Step의 필수 의존성 누락 시 `domain::Error` 반환으로 통일
-
-***
-
-## 4. `SetupConfig`의 `BitLockerPin` 도메인 오염
-
-**문제:** `SetupConfig`(Domain 엔티티)가 `mBitLockerPin` 필드를 직접 보유하고 있습니다. BitLocker PIN은 보안 자격증명(Security Credential)으로, 도메인 엔티티가 이를 plain `std::wstring`으로 소유하는 것은 Domain 순수성을 해칩니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/6337e85f-3559-48c0-8696-88a0a8d8f70c/merged_codebase.md)
-
-**개선 방향:**
-- `BitLockerPin`을 `std::wstring`이 아닌 별도 Value Object(`BitLockerPin` 또는 `SecurePin`)로 래핑
-- 또는 `ConfigureBitLockerUseCase`가 config에서 PIN을 직접 읽도록 하고 `SetupConfig`에서 제거
-
-***
-
-## 5. `AnalyzeVolumesStep`의 Domain 로직 침범
-
-**문제:** `IsSystemVolume()`, `IsDataVolume()`, `IsBootVolume()` 판별 로직이 Application 레이어의 Step 클래스 내부에 `private` 메서드로 구현되어 있습니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/6337e85f-3559-48c0-8696-88a0a8d8f70c/merged_codebase.md)
-
-```cpp
-bool AnalyzeVolumesStep::IsSystemVolume(const domain::VolumeInfo& volume, ...) const noexcept {
-    return mPathChecker->IsDirectory(guid, L"Windows\\System32") && ...;
+std::wstring MFTScanner::GetFullPath(uint64_t fileRefNumber) {
+    if (auto it = pathCache.find(fileRefNumber); it != pathCache.end())
+        return it->second;
+    // ... 기존 traversal 로직 ...
+    pathCache[fileRefNumber] = path;
+    return path;
 }
 ```
 
-볼륨이 시스템 볼륨인지 판별하는 규칙은 **도메인 지식**입니다. 이미 `DiskSpecifications`, `VolumeSpecifications`라는 Specification 클래스가 Domain 레이어에 존재하는데 이와 일관성이 없습니다.
+***
 
-**개선 방향:**
-- `VolumeSpecifications`에 `SystemVolumeSpec`, `DataVolumeSpec`, `BootVolumeSpec` 추가
-- Step은 Specification을 주입받아 사용하는 구조로 변경
+## 3. `MFTScanner::FindFilesByExtension` — 전체 맵 선형 탐색
+
+현재 `FindFilesByExtension`은 `mFileRecordMap` 전체를 순회하며 확장자를 비교합니다.  ScanVolume 결과가 수십만 개일 경우 매 호출마다 O(N)입니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/e274b2cb-70ed-4312-b0d8-71cad642f01b/merged_codebase.md)
+
+**개선:** `ScanVolume` 완료 후 `BuildFilePathMap` 단계에서 `unordered_map<wstring, vector<uint64_t>> mExtensionIndex`를 동시에 구축하면 `FindFilesByExtension`이 O(1) lookup으로 전환됩니다. 메모리 오버헤드는 확장자 문자열 키 추가분뿐이며, 동작은 동일합니다.
 
 ***
 
-## 6. `MainViewModel`의 UseCase 직접 실행 스레드 처리
+## 4. `SimpleButton` — `GetText` 호출 시 매번 Win32 버퍼 할당
 
-**문제:** `MainViewModel::RunInitializeOnBackground()`가 `std::thread`를 직접 생성합니다. Abstractions 레이어에 `IThreadPool`, `IScheduler`, `IExecutor`가 이미 정의되어 있음에도 ViewModel이 직접 스레드를 생성하면, ViewModel 단위테스트 시 실제 스레드가 실행되는 문제가 발생합니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/6337e85f-3559-48c0-8696-88a0a8d8f70c/merged_codebase.md)
+`DrawButton` 내부에서 `GetText()`를 호출하고, `GetText`는 매번 `std::vector<wchar_t>` 버퍼를 heap에 할당 후 `GetWindowTextW`로 채웁니다.  `DrawButton`은 `WM_PAINT`마다 호출되므로 빈번한 heap allocation이 발생합니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/e274b2cb-70ed-4312-b0d8-71cad642f01b/merged_codebase.md)
 
-**개선 방향:**
-- `MainViewModel`에 `IExecutor` 또는 `IScheduler`를 주입
-- `Execute()`를 executor에 위임하여 테스트 시 동기 실행 가능하도록 구성
+**개선:** `mText` 멤버 변수로 텍스트를 캐싱하고, `SetText`에서만 갱신하면 됩니다. 이미 `InvalidateCache`와 연동되어 있으므로 캐싱 로직 추가가 자연스럽습니다.
+
+```cpp
+// SetText에서
+mText = text;
+SetWindowTextW(mHwnd, text.c_str());
+InvalidateCache();
+
+// DrawButton에서
+const std::wstring& displayText = mText;
+```
 
 ***
 
-## 7. `Dispatcher`의 Win32 직접 의존 (Adapter 경계 누락)
+## 5. `TextWidget::DrawBorder` — 매 Draw마다 `CreatePen` / `DeleteObject`
 
-**문제:** `Dispatcher` 클래스가 `application/services/` 경로에 위치하지만, `#include <Windows.h>`를 직접 포함하고 `PostMessageW`, `HWND` 등 Win32 타입을 사용합니다. Application 레이어는 플랫폼에 독립적이어야 합니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/6337e85f-3559-48c0-8696-88a0a8d8f70c/merged_codebase.md)
+`Draw` 호출 시 border 라인 하나당 `CreatePen` → `SelectObject` → `LineTo` → `DeleteObject`를 반복합니다.  최대 4개 border면 4번의 GDI 객체 생성·소멸입니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/e274b2cb-70ed-4312-b0d8-71cad642f01b/merged_codebase.md)
 
-**개선 방향:**
-- `Dispatcher`를 `adapters/platform/win32/` 로 이동 (`Win32Dispatcher`로 rename)
-- Application 레이어에는 `IUIDispatcher` 인터페이스만 잔류
+**개선:** `TextWidgetStyle`이 변경될 때만 pen을 재생성해서 `mBorderPen` 멤버로 캐싱합니다. `SetStyle`은 이미 `mFontDirty` 플래그를 갖고 있으므로 동일한 패턴으로 `mPenDirty` 플래그를 추가하면 됩니다. `EnsureFont`와 완전히 동일한 구조로 확장 가능합니다.
+
+***
+
+## 6. `Win32Logger` — `std::source_location` 매개변수를 value로 전달
+
+`ILogger::Log` 시그니처가 `std::source_location location` 를 **값으로** 받고 있습니다.  `std::source_location`은 내부적으로 4개의 포인터/정수를 보유하며, 모든 `Trace`, `Debug`, `Info` 등 래퍼 메서드가 이를 다시 `Log`로 전달할 때 복사가 발생합니다. [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/157365209/e274b2cb-70ed-4312-b0d8-71cad642f01b/merged_codebase.md)
+
+**개선:** 파라미터를 `const std::source_location&`로 변경합니다. `std::source_location`은 trivially copyable이라 실제 비용 차이는 크지 않지만, 호출 체인이 깊어질수록(`Trace` → `Log` → `LogEntry 생성`) 복사 횟수를 줄이는 것이 올바른 의도를 표현합니다.
 
 ***
 
 ## 요약
 
-| 구분 | 위치 | 문제 유형 |
-|------|------|-----------|
-| UseCase→UseCase 직접 호출 | `AnalyzeSystemUseCase` | SRP / 결합도 |
-| Repository 위치 불일치 | `AnalysisRepository` | 레이어 경계 |
-| Step fail 정책 비일관성 | Enumerate계열 Step | 일관성 |
-| BitLockerPin raw 보유 | `SetupConfig` | Domain 순수성 |
-| 볼륨 판별 로직 위치 | `AnalyzeVolumesStep` | Domain 지식 누출 |
-| ViewModel 직접 스레드 생성 | `MainViewModel` | 테스트 용이성 |
-| Dispatcher Win32 직접 의존 | `Dispatcher` | 레이어 경계 |
+| 위치 | 문제 | 개선 방식 | 효과 |
+|---|---|---|---|
+| `DIContainer::Resolve` | lock 3회 획득 | 같은 스코프에서 단일 readLock으로 통합 | N번 Resolve 시 lock contention 감소 |
+| `MFTScanner::GetFullPath` | 반복 map traversal | pathCache 메모이제이션 | O(N·depth) → O(N) |
+| `MFTScanner::FindFilesByExtension` | 전체 맵 선형 탐색 | 확장자 역인덱스 구축 | O(N) → O(1) |
+| `SimpleButton::DrawButton` | 매 Paint마다 `GetWindowTextW` heap alloc | `mText` 멤버 캐싱 | GDI/heap 비용 제거 |
+| `TextWidget::DrawBorder` | 매 Draw마다 `CreatePen`/`DeleteObject` | pen 캐싱 + dirty 플래그 | GDI 생성 횟수 감소 |
+| `Win32Logger` `source_location` | 불필요한 값 복사 | `const&`로 변경 | 복사 횟수 감소 |
