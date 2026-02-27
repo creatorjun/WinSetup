@@ -50,13 +50,21 @@ namespace winsetup::application {
         if (!mConfigRepository || !mConfigRepository->IsLoaded()) return;
         auto result = mConfigRepository->GetConfig();
         if (!result.HasValue()) return;
+
         for (const auto& type : result.Value()->GetInstallationTypes()) {
-            if (type.name == key) {
-                if (mTypeDescription == type.description) return;
+            if (type.name != key) continue;
+
+            if (mTypeDescription != type.description) {
                 mTypeDescription = type.description;
                 NotifyPropertyChanged(L"TypeDescription");
-                return;
             }
+
+            const bool shouldEnableBitlocker = (key == L"출장용");
+            if (mBitlockerEnabled != shouldEnableBitlocker) {
+                mBitlockerEnabled = shouldEnableBitlocker;
+                NotifyPropertyChanged(L"BitlockerEnabled");
+            }
+            return;
         }
     }
 
@@ -115,8 +123,7 @@ namespace winsetup::application {
 
         if (mLogger) mLogger->Info(L"MainViewModel: InitializeAsync started.");
 
-        auto self = std::shared_ptr<MainViewModel>(this, [](MainViewModel*) {});
-
+        auto self = shared_from_this();
         std::thread([self]() {
             self->RunInitializeOnBackground();
             }).detach();
@@ -126,11 +133,17 @@ namespace winsetup::application {
         auto sysResult = RunAnalyzeSystem();
         auto cfgResult = RunLoadConfiguration();
 
+        const bool hasSystemVolume = mAnalysisRepository
+            && mAnalysisRepository->GetSystemVolume().has_value();
+        const bool hasDataVolume = mAnalysisRepository
+            && mAnalysisRepository->GetDataVolume().has_value();
+        const bool canPreserve = hasSystemVolume && hasDataVolume;
+
         auto dispatcher = mDispatcher;
-        auto self = std::shared_ptr<MainViewModel>(this, [](MainViewModel*) {});
+        auto self = shared_from_this();
         auto capturedCfgResult = std::move(cfgResult);
 
-        dispatcher->Post([self, capturedCfgResult]() mutable {
+        dispatcher->Post([self, capturedCfgResult, canPreserve]() mutable {
             self->mIsInitializing = false;
 
             if (!capturedCfgResult.HasValue()) {
@@ -143,7 +156,15 @@ namespace winsetup::application {
                 return;
             }
 
-            self->SetStatusText(L"Ready");
+            if (canPreserve) {
+                self->SetStatusText(L"데이터 보존이 가능합니다.");
+                self->NotifyPropertyChanged(L"EnableAllButtons");
+            }
+            else {
+                self->SetStatusText(L"데이터 보존이 불가능합니다.");
+                self->NotifyPropertyChanged(L"EnableButtonsWithoutDataPreserve");
+            }
+
             self->NotifyPropertyChanged(L"InstallationTypes");
             self->NotifyPropertyChanged(L"RemainingSeconds");
             self->NotifyPropertyChanged(L"IsInitializing");
@@ -212,4 +233,4 @@ namespace winsetup::application {
             handler(propertyName);
     }
 
-}
+} // namespace winsetup::application

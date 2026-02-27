@@ -12,7 +12,10 @@
 
 namespace winsetup::application {
 
-    class MainViewModel final : public abstractions::IMainViewModel {
+    class MainViewModel final
+        : public abstractions::IMainViewModel
+        , public std::enable_shared_from_this<MainViewModel>
+    {
     public:
         explicit MainViewModel(
             std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfigUseCase,
@@ -26,40 +29,33 @@ namespace winsetup::application {
 
         [[nodiscard]] std::wstring GetStatusText() const override;
         [[nodiscard]] std::wstring GetWindowTitle() const override;
-        void SetStatusText(const std::wstring& text) override;
-        void SetWindowTitle(const std::wstring& title) override;
-
         [[nodiscard]] std::vector<domain::InstallationType> GetInstallationTypes() const override;
         [[nodiscard]] std::wstring GetTypeDescription() const override;
-        void SetTypeDescription(const std::wstring& key) override;
-
         [[nodiscard]] bool GetDataPreservation() const override;
-        void SetDataPreservation(bool enabled) override;
-
         [[nodiscard]] bool GetBitlockerEnabled() const override;
-        void SetBitlockerEnabled(bool enabled) override;
-
         [[nodiscard]] bool IsInitializing() const override;
         [[nodiscard]] bool IsProcessing() const override;
         [[nodiscard]] bool IsCompleted() const override;
-        void SetProcessing(bool processing) override;
-
         [[nodiscard]] int GetProgress() const override;
         [[nodiscard]] int GetRemainingSeconds() const override;
-        void TickTimer() override;
 
+        void SetStatusText(const std::wstring& text) override;
+        void SetWindowTitle(const std::wstring& title) override;
+        void SetTypeDescription(const std::wstring& key) override;
+        void SetDataPreservation(bool enabled) override;
+        void SetBitlockerEnabled(bool enabled) override;
+        void SetProcessing(bool processing) override;
+        void TickTimer() override;
         void InitializeAsync() override;
 
         void AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) override;
         void RemoveAllPropertyChangedHandlers() override;
 
-    protected:
-        void NotifyPropertyChanged(const std::wstring& propertyName) override;
-
     private:
         void RunInitializeOnBackground();
         domain::Expected<void> RunAnalyzeSystem();
         domain::Expected<void> RunLoadConfiguration();
+        void NotifyPropertyChanged(const std::wstring& propertyName);
 
         std::shared_ptr<abstractions::ILoadConfigurationUseCase> mLoadConfigUseCase;
         std::shared_ptr<abstractions::IAnalyzeSystemUseCase> mAnalyzeSystemUseCase;
@@ -72,20 +68,20 @@ namespace winsetup::application {
         std::wstring mWindowTitle;
         std::wstring mTypeDescription;
 
+        bool mDataPreservation{ true };
+        bool mBitlockerEnabled{ false };
         bool mIsInitializing{ false };
         bool mIsProcessing{ false };
         bool mIsCompleted{ false };
-        bool mDataPreservation{ false };
-        bool mBitlockerEnabled{ false };
 
-        uint32_t mTotalSeconds{ 0u };
-        uint32_t mElapsedSeconds{ 0u };
-        uint32_t mRemainingSeconds{ 0u };
         int mProgress{ 0 };
-
-        static constexpr uint32_t kDefaultTotalSeconds = 180u;
+        uint32_t mElapsedSeconds{ 0u };
+        uint32_t mTotalSeconds{ kDefaultTotalSeconds };
+        uint32_t mRemainingSeconds{ kDefaultTotalSeconds };
 
         std::vector<abstractions::PropertyChangedCallback> mPropertyChangedHandlers;
+
+        static constexpr uint32_t kDefaultTotalSeconds = 120u;
     };
 
-}
+} // namespace winsetup::application

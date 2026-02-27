@@ -1,5 +1,4 @@
-﻿// src/adapters/ui/win32/panels/OptionPanel.cpp
-#include "adapters/ui/win32/panels/OptionPanel.h"
+﻿#include "adapters/ui/win32/panels/OptionPanel.h"
 #include <Windows.h>
 #include <windowsx.h>
 
@@ -10,8 +9,9 @@ namespace winsetup::adapters::ui {
     {
     }
 
-    void OptionPanel::Create(const CreateParams& params) {
-        HWND      hParent = static_cast<HWND>(params.hParent);
+    void OptionPanel::Create(const CreateParams& params)
+    {
+        HWND hParent = static_cast<HWND>(params.hParent);
         HINSTANCE hInst = static_cast<HINSTANCE>(params.hInstance);
         const int x = params.x;
         const int y = params.y;
@@ -20,13 +20,17 @@ namespace winsetup::adapters::ui {
         mBtnDataPreserve.Create(hParent, L"데이터 보존", x, y, width, BTNHEIGHT, IDTOGGLEDATAPRESERVE, hInst);
         mBtnBitlocker.Create(hParent, L"BitLocker", x, y + BTNHEIGHT + BTNGAP, width, BTNHEIGHT, IDTOGGLEBITLOCKER, hInst);
 
+        mBtnDataPreserve.SetEnabled(false);
+        mBtnBitlocker.SetEnabled(false);
+
         if (mViewModel) {
             mBtnDataPreserve.SetChecked(mViewModel->GetDataPreservation());
             mBtnBitlocker.SetChecked(mViewModel->GetBitlockerEnabled());
         }
     }
 
-    void OptionPanel::SetViewModel(std::shared_ptr<abstractions::IMainViewModel> viewModel) {
+    void OptionPanel::SetViewModel(std::shared_ptr<abstractions::IMainViewModel> viewModel)
+    {
         mViewModel = std::move(viewModel);
         if (mViewModel && IsValid()) {
             mBtnDataPreserve.SetChecked(mViewModel->GetDataPreservation());
@@ -34,7 +38,8 @@ namespace winsetup::adapters::ui {
         }
     }
 
-    bool OptionPanel::OnCommand(uintptr_t wParam, uintptr_t lParam) {
+    bool OptionPanel::OnCommand(uintptr_t wParam, uintptr_t lParam)
+    {
         if (HIWORD(wParam) != BN_CLICKED) return false;
         const int ctrlId = LOWORD(wParam);
         if (ctrlId == IDTOGGLEDATAPRESERVE && mViewModel) {
@@ -48,23 +53,42 @@ namespace winsetup::adapters::ui {
         return false;
     }
 
-    void OptionPanel::SetEnabled(bool enabled) {
+    void OptionPanel::SetEnabled(bool enabled)
+    {
         mBtnDataPreserve.SetEnabled(enabled);
-        mBtnBitlocker.SetEnabled(enabled);
+        mBtnBitlocker.SetEnabled(enabled && mViewModel && mViewModel->GetBitlockerEnabled());
     }
 
-    void OptionPanel::OnPropertyChanged(const std::wstring& propertyName) {
+    void OptionPanel::OnPropertyChanged(const std::wstring& propertyName)
+    {
         if (!mViewModel) return;
-        if (propertyName == L"DataPreservation" && mBtnDataPreserve.Handle()) {
-            mBtnDataPreserve.SetChecked(mViewModel->GetDataPreservation());
-            InvalidateRect(mBtnDataPreserve.Handle(), nullptr, TRUE);
+
+        if (propertyName == L"DataPreservation") {
+            if (mBtnDataPreserve.Handle()) {
+                mBtnDataPreserve.SetChecked(mViewModel->GetDataPreservation());
+                InvalidateRect(mBtnDataPreserve.Handle(), nullptr, TRUE);
+            }
         }
-        else if (propertyName == L"BitlockerEnabled" && mBtnBitlocker.Handle()) {
-            mBtnBitlocker.SetChecked(mViewModel->GetBitlockerEnabled());
-            InvalidateRect(mBtnBitlocker.Handle(), nullptr, TRUE);
+        else if (propertyName == L"BitlockerEnabled") {
+            const bool enabled = mViewModel->GetBitlockerEnabled();
+            if (mBtnBitlocker.Handle()) {
+                mBtnBitlocker.SetChecked(enabled);
+                mBtnBitlocker.SetEnabled(enabled);
+                InvalidateRect(mBtnBitlocker.Handle(), nullptr, TRUE);
+            }
+        }
+        else if (propertyName == L"EnableAllButtons") {
+            mBtnDataPreserve.SetEnabled(true);
+            mBtnBitlocker.SetEnabled(mViewModel->GetBitlockerEnabled());
+        }
+        else if (propertyName == L"EnableButtonsWithoutDataPreserve") {
+            mBtnDataPreserve.SetEnabled(false);
+            mBtnBitlocker.SetEnabled(mViewModel->GetBitlockerEnabled());
         }
         else if (propertyName == L"IsProcessing") {
-            SetEnabled(!mViewModel->IsProcessing());
+            const bool processing = mViewModel->IsProcessing();
+            mBtnDataPreserve.SetEnabled(!processing);
+            mBtnBitlocker.SetEnabled(!processing && mViewModel->GetBitlockerEnabled());
         }
     }
 
