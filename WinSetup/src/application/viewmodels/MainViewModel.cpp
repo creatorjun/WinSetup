@@ -57,7 +57,7 @@ namespace winsetup::application {
                 mTypeDescription = type.description;
                 NotifyPropertyChanged(L"TypeDescription");
             }
-            const bool shouldEnableBitlocker = (key != L"");
+            const bool shouldEnableBitlocker = (type.name == L"출장용");
             if (mBitlockerEnabled != shouldEnableBitlocker) {
                 mBitlockerEnabled = shouldEnableBitlocker;
                 NotifyPropertyChanged(L"BitlockerEnabled");
@@ -291,4 +291,4 @@ namespace winsetup::application {
             handler(propertyName);
     }
 
-} // namespace winsetup::application
+} // namespace
