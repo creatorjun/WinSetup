@@ -1,4 +1,4 @@
-// src/adapters/persistence/analysis/AnalysisRepository.h
+// src/application/repositories/AnalysisRepository.h
 #pragma once
 
 #include <abstractions/repositories/IAnalysisRepository.h>
