@@ -117,7 +117,6 @@ namespace winsetup::application {
         if (mIsInitializing) return;
         mIsInitializing = true;
         NotifyPropertyChanged(L"IsInitializing");
-        SetStatusText(L"Initializing...");
         if (mLogger) mLogger->Info(L"MainViewModel InitializeAsync started.");
         auto self = shared_from_this();
         std::thread([self]() { self->RunInitializeOnBackground(); }).detach();
