@@ -15,7 +15,6 @@
 #include "application/usecases/disk/EnumerateVolumesStep.h"
 #include "application/usecases/disk/AnalyzeVolumesStep.h"
 #include "application/usecases/disk/AnalyzeDisksStep.h"
-#include "application/usecases/install/ApplyImageUseCase.h"
 #include "application/usecases/install/InstallWindowsUseCase.h"
 #include "application/viewmodels/MainViewModel.h"
 #include "application/services/Dispatcher.h"
@@ -29,7 +28,6 @@
 #include "abstractions/services/storage/IPathChecker.h"
 #include "abstractions/usecases/IAnalyzeSystemUseCase.h"
 #include "abstractions/usecases/ILoadConfigurationUseCase.h"
-#include "abstractions/usecases/IApplyImageUseCase.h"
 #include "abstractions/usecases/IInstallWindowsUseCase.h"
 #include "abstractions/usecases/steps/IEnumerateDisksStep.h"
 #include "abstractions/usecases/steps/IEnumerateVolumesStep.h"
@@ -157,13 +155,9 @@ namespace winsetup {
                     analyzeVolumes, analyzeDisks,
                     analysis, configRepo, logger)));
 
-        auto applyImage = std::make_shared<application::ApplyImageUseCase>(nullptr, logger);
-        container.RegisterInstance<abstractions::IApplyImageUseCase>(
-            std::static_pointer_cast<abstractions::IApplyImageUseCase>(applyImage));
-
         container.RegisterInstance<abstractions::IInstallWindowsUseCase>(
             std::static_pointer_cast<abstractions::IInstallWindowsUseCase>(
-                std::make_shared<application::InstallWindowsUseCase>(applyImage, logger)));
+                std::make_shared<application::InstallWindowsUseCase>(logger)));
     }
 
     void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container)
