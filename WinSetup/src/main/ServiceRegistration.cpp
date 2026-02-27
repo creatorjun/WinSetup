@@ -1,5 +1,4 @@
-﻿// src / main / ServiceRegistration.cpp
-#include "main/ServiceRegistration.h"
+﻿#include "main/ServiceRegistration.h"
 #include "application/core/DIContainer.h"
 #include "adapters/platform/win32/logging/Win32Logger.h"
 #include "adapters/platform/win32/system/Win32SystemInfoService.h"
@@ -153,10 +152,10 @@ namespace winsetup {
         container.RegisterInstance<abstractions::IAnalyzeSystemUseCase>(
             std::static_pointer_cast<abstractions::IAnalyzeSystemUseCase>(
                 std::make_shared<application::AnalyzeSystemUseCase>(
-                    sysInfo, loadConfig,
+                    sysInfo,
                     enumerateDisks, enumerateVolumes,
                     analyzeVolumes, analyzeDisks,
-                    analysis, logger)));
+                    analysis, configRepo, logger)));
 
         auto applyImage = std::make_shared<application::ApplyImageUseCase>(nullptr, logger);
         container.RegisterInstance<abstractions::IApplyImageUseCase>(

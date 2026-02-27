@@ -18,7 +18,7 @@ namespace winsetup::application {
         , mAnalysisRepository(std::move(analysisRepository))
         , mDispatcher(std::move(dispatcher))
         , mLogger(std::move(logger))
-        , mStatusText(L"사스템 분석중")
+        , mStatusText(L"시스템 분석중")
         , mWindowTitle(L"WinSetup v1.0")
     {
     }
@@ -176,29 +176,26 @@ namespace winsetup::application {
             });
     }
 
-    domain::Expected<void> MainViewModel::RunAnalyzeSystem() {
-        if (!mAnalyzeSystemUseCase)
-            return domain::Error(L"AnalyzeSystemUseCase not registered", 0, domain::ErrorCategory::System);
-        SetStatusText(L"Reading system information...");
-        auto result = mAnalyzeSystemUseCase->Execute();
-        if (!result.HasValue()) return result.GetError();
-        return domain::Expected<void>();
-    }
-
     domain::Expected<void> MainViewModel::RunLoadConfiguration() {
         if (!mLoadConfigUseCase)
             return domain::Error(L"LoadConfigurationUseCase not registered", 0, domain::ErrorCategory::System);
         if (!mConfigRepository)
             return domain::Error(L"IConfigRepository not registered", 0, domain::ErrorCategory::System);
+
         SetStatusText(L"Loading configuration...");
         auto result = mLoadConfigUseCase->Execute(L"config.ini");
-        if (!result.HasValue()) return result.GetError();
+        if (!result.HasValue())
+            return result.GetError();
+
         mElapsedSeconds = 0u;
         mTotalSeconds = kDefaultTotalSeconds;
         mRemainingSeconds = kDefaultTotalSeconds;
         mProgress = 0;
+
         auto cfgResult = mConfigRepository->GetConfig();
-        if (!cfgResult.HasValue()) return cfgResult.GetError();
+        if (!cfgResult.HasValue())
+            return cfgResult.GetError();
+
         const auto config = cfgResult.Value();
         if (mAnalysisRepository && mAnalysisRepository->IsLoaded()) {
             auto sysInfoResult = mAnalysisRepository->GetSystemInfo();
@@ -213,12 +210,37 @@ namespace winsetup::application {
                 }
             }
         }
+
+        return domain::Expected<void>();
+    }
+
+    domain::Expected<void> MainViewModel::RunAnalyzeSystem() {
+        if (!mAnalyzeSystemUseCase)
+            return domain::Error(L"AnalyzeSystemUseCase not registered", 0, domain::ErrorCategory::System);
+        SetStatusText(L"Reading system information...");
+        auto result = mAnalyzeSystemUseCase->Execute();
+        if (!result.HasValue()) return result.GetError();
         return domain::Expected<void>();
     }
 
     void MainViewModel::RunInitializeOnBackground() {
-        auto sysResult = RunAnalyzeSystem();
         auto cfgResult = RunLoadConfiguration();
+        if (!cfgResult.HasValue()) {
+            const std::wstring errMsg = cfgResult.GetError().GetMessage();
+            auto dispatcher = mDispatcher;
+            auto self = shared_from_this();
+            dispatcher->Post([self, errMsg]() {
+                self->mIsInitializing = false;
+                self->SetStatusText(L"Failed to load configuration.");
+                if (self->mLogger)
+                    self->mLogger->Error(L"Configuration load failed: " + errMsg);
+                self->NotifyPropertyChanged(L"DisableAllButtons");
+                self->NotifyPropertyChanged(L"IsInitializing");
+                });
+            return;
+        }
+
+        auto sysResult = RunAnalyzeSystem();
 
         const bool sysOk = sysResult.HasValue();
         const std::wstring sysErrorMsg = sysOk ? std::wstring{} : sysResult.GetError().GetMessage();
@@ -230,38 +252,30 @@ namespace winsetup::application {
 
         auto dispatcher = mDispatcher;
         auto self = shared_from_this();
-        auto capturedCfgResult = std::move(cfgResult);
 
-        dispatcher->Post([self, capturedCfgResult, sysOk, sysErrorMsg, canPreserve]() mutable {
+        dispatcher->Post([self, sysOk, sysErrorMsg, canPreserve]() {
             self->mIsInitializing = false;
             if (!sysOk) {
                 self->SetStatusText(sysErrorMsg);
-                if (self->mLogger) self->mLogger->Error(L"System analysis failed: " + sysErrorMsg);
-                self->NotifyPropertyChanged(L"DisableAllButtons");
-                self->NotifyPropertyChanged(L"IsInitializing");
-                return;
-            }
-            if (!capturedCfgResult.HasValue()) {
-                self->SetStatusText(L"Failed to load configuration.");
                 if (self->mLogger)
-                    self->mLogger->Error(L"Configuration load failed: " +
-                        capturedCfgResult.GetError().GetMessage());
+                    self->mLogger->Error(L"System analysis failed: " + sysErrorMsg);
                 self->NotifyPropertyChanged(L"DisableAllButtons");
                 self->NotifyPropertyChanged(L"IsInitializing");
                 return;
             }
             if (canPreserve) {
-                self->SetStatusText(L"데이터 보존 가능합니다.");
+                self->SetStatusText(L"데이터 보존이 가능합니다.");
                 self->NotifyPropertyChanged(L"EnableAllButtons");
             }
             else {
-                self->SetStatusText(L"데이터 보존 불가합니다.");
+                self->SetStatusText(L"데이터 보존이 불가합니다.");
                 self->NotifyPropertyChanged(L"EnableButtonsWithoutDataPreserve");
             }
             self->NotifyPropertyChanged(L"InstallationTypes");
             self->NotifyPropertyChanged(L"RemainingSeconds");
             self->NotifyPropertyChanged(L"IsInitializing");
-            if (self->mLogger) self->mLogger->Info(L"MainViewModel Initialization completed.");
+            if (self->mLogger)
+                self->mLogger->Info(L"MainViewModel Initialization completed.");
             });
     }
 

@@ -1,25 +1,24 @@
-﻿// src/application/usecases/system/AnalyzeSystemUseCase.cpp
-#include "application/usecases/system/AnalyzeSystemUseCase.h"
+﻿#include "application/usecases/system/AnalyzeSystemUseCase.h"
 #include "domain/services/PathNormalizer.h"
 
 namespace winsetup::application {
 
     AnalyzeSystemUseCase::AnalyzeSystemUseCase(
-        std::shared_ptr<abstractions::ISystemInfoService>        systemInfoService,
-        std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfiguration,
-        std::shared_ptr<abstractions::IEnumerateDisksStep>       enumerateDisks,
-        std::shared_ptr<abstractions::IEnumerateVolumesStep>     enumerateVolumes,
-        std::shared_ptr<abstractions::IAnalyzeVolumesStep>       analyzeVolumes,
-        std::shared_ptr<abstractions::IAnalyzeDisksStep>         analyzeDisks,
-        std::shared_ptr<abstractions::IAnalysisRepository>       analysisRepository,
-        std::shared_ptr<abstractions::ILogger>                   logger)
+        std::shared_ptr<abstractions::ISystemInfoService>    systemInfoService,
+        std::shared_ptr<abstractions::IEnumerateDisksStep>   enumerateDisks,
+        std::shared_ptr<abstractions::IEnumerateVolumesStep> enumerateVolumes,
+        std::shared_ptr<abstractions::IAnalyzeVolumesStep>   analyzeVolumes,
+        std::shared_ptr<abstractions::IAnalyzeDisksStep>     analyzeDisks,
+        std::shared_ptr<abstractions::IAnalysisRepository>   analysisRepository,
+        std::shared_ptr<abstractions::IConfigRepository>     configRepository,
+        std::shared_ptr<abstractions::ILogger>               logger)
         : mSystemInfoService(std::move(systemInfoService))
-        , mLoadConfiguration(std::move(loadConfiguration))
         , mEnumerateDisks(std::move(enumerateDisks))
         , mEnumerateVolumes(std::move(enumerateVolumes))
         , mAnalyzeVolumes(std::move(analyzeVolumes))
         , mAnalyzeDisks(std::move(analyzeDisks))
         , mAnalysisRepository(std::move(analysisRepository))
+        , mConfigRepository(std::move(configRepository))
         , mLogger(std::move(logger))
     {
     }
@@ -30,8 +29,8 @@ namespace winsetup::application {
             return domain::Error(L"ISystemInfoService not provided", 0, domain::ErrorCategory::System);
         if (!mAnalysisRepository)
             return domain::Error(L"IAnalysisRepository not provided", 0, domain::ErrorCategory::System);
-        if (!mLoadConfiguration)
-            return domain::Error(L"ILoadConfigurationUseCase not provided", 0, domain::ErrorCategory::System);
+        if (!mConfigRepository)
+            return domain::Error(L"IConfigRepository not provided", 0, domain::ErrorCategory::System);
 
         if (mLogger)
             mLogger->Info(L"AnalyzeSystemUseCase: Analysis started.");
@@ -42,21 +41,26 @@ namespace winsetup::application {
 
         mAnalysisRepository->StoreSystemInfo(sysResult.Value());
 
-        auto configResult = mLoadConfiguration->Execute(L"config.ini");
-        if (!configResult.HasValue())
-            return configResult.GetError();
+        const std::wstring boardModel = sysResult.Value()->GetMotherboardModel();
 
-        const std::wstring  boardModel = sysResult.Value()->GetMotherboardModel();
-        const auto& times = configResult.Value()->GetEstimatedTimes();
-        const auto          it = times.find(boardModel);
-        if (it != times.end()) {
-            if (mLogger)
-                mLogger->Info(L"AnalyzeSystemUseCase: Estimated time for "
-                    + boardModel + L" = " + std::to_wstring(it->second) + L"s");
+        auto configResult = mConfigRepository->GetConfig();
+        if (configResult.HasValue()) {
+            const auto& times = configResult.Value()->GetEstimatedTimes();
+            const auto  it = times.find(boardModel);
+            if (it != times.end()) {
+                if (mLogger)
+                    mLogger->Info(L"AnalyzeSystemUseCase: Estimated time for "
+                        + boardModel + L" = " + std::to_wstring(it->second) + L"s");
+            }
+            else {
+                if (mLogger)
+                    mLogger->Warning(L"AnalyzeSystemUseCase: No estimated time found for " + boardModel);
+            }
         }
         else {
             if (mLogger)
-                mLogger->Warning(L"AnalyzeSystemUseCase: No estimated time found for " + boardModel);
+                mLogger->Warning(L"AnalyzeSystemUseCase: Config not available - "
+                    + configResult.GetError().GetMessage());
         }
 
         auto diskResult = mEnumerateDisks->Execute();
