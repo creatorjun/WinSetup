@@ -1,4 +1,4 @@
-﻿// src/adapters/ui/win32/panels/ActionPanel.h
+﻿// src / adapters / ui / win32 / panels / ActionPanel.h
 #pragma once
 #include "abstractions/ui/IWidget.h"
 #include "abstractions/ui/IMainViewModel.h"

@@ -1,4 +1,5 @@
-﻿#include "adapters/ui/win32/panels/ActionPanel.h"
+﻿// src/adapters/ui/win32/panels/ActionPanel.cpp
+#include "adapters/ui/win32/panels/ActionPanel.h"
 #include <Windows.h>
 #include <windowsx.h>
 
@@ -37,7 +38,9 @@ namespace winsetup::adapters::ui {
     {
         if (HIWORD(wParam) != BN_CLICKED || LOWORD(wParam) != IDBTNSTARTSTOP || !mViewModel)
             return false;
-        mViewModel->SetProcessing(!mViewModel->IsProcessing());
+        if (mViewModel->IsProcessing())
+            return true;
+        mViewModel->StartInstall();
         return true;
     }
 
@@ -52,7 +55,8 @@ namespace winsetup::adapters::ui {
 
         if (propertyName == L"IsProcessing") {
             const bool processing = mViewModel->IsProcessing();
-            mBtnStartStop.SetText(processing ? L"중지" : L"시작");
+            mBtnStartStop.SetText(processing ? L"진행 중..." : L"시작");
+            mBtnStartStop.SetEnabled(!processing);
             mProgressBar.Reset();
         }
         else if (propertyName == L"EnableAllButtons"

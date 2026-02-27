@@ -5,14 +5,15 @@ namespace winsetup::application {
 
     MainViewModel::MainViewModel(
         std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfigUseCase,
-        std::shared_ptr<abstractions::IAnalyzeSystemUseCase> analyzeSystemUseCase,
-        std::shared_ptr<abstractions::IConfigRepository> configRepository,
-        std::shared_ptr<abstractions::IAnalysisRepository> analysisRepository,
-        std::shared_ptr<abstractions::IUIDispatcher> dispatcher,
-        std::shared_ptr<abstractions::ILogger> logger
-    )
+        std::shared_ptr<abstractions::IAnalyzeSystemUseCase>     analyzeSystemUseCase,
+        std::shared_ptr<abstractions::IInstallWindowsUseCase>    installWindowsUseCase,
+        std::shared_ptr<abstractions::IConfigRepository>         configRepository,
+        std::shared_ptr<abstractions::IAnalysisRepository>       analysisRepository,
+        std::shared_ptr<abstractions::IUIDispatcher>             dispatcher,
+        std::shared_ptr<abstractions::ILogger>                   logger)
         : mLoadConfigUseCase(std::move(loadConfigUseCase))
         , mAnalyzeSystemUseCase(std::move(analyzeSystemUseCase))
+        , mInstallWindowsUseCase(std::move(installWindowsUseCase))
         , mConfigRepository(std::move(configRepository))
         , mAnalysisRepository(std::move(analysisRepository))
         , mDispatcher(std::move(dispatcher))
@@ -50,16 +51,13 @@ namespace winsetup::application {
         if (!mConfigRepository || !mConfigRepository->IsLoaded()) return;
         auto result = mConfigRepository->GetConfig();
         if (!result.HasValue()) return;
-
         for (const auto& type : result.Value()->GetInstallationTypes()) {
             if (type.name != key) continue;
-
             if (mTypeDescription != type.description) {
                 mTypeDescription = type.description;
                 NotifyPropertyChanged(L"TypeDescription");
             }
-
-            const bool shouldEnableBitlocker = (key == L"출장용");
+            const bool shouldEnableBitlocker = (key != L"");
             if (mBitlockerEnabled != shouldEnableBitlocker) {
                 mBitlockerEnabled = shouldEnableBitlocker;
                 NotifyPropertyChanged(L"BitlockerEnabled");
@@ -96,17 +94,17 @@ namespace winsetup::application {
 
     void MainViewModel::TickTimer() {
         if (!mIsProcessing || mIsCompleted) return;
-        mElapsedSeconds++;
+        ++mElapsedSeconds;
         if (mTotalSeconds > 0u) {
             mProgress = static_cast<int>(
                 static_cast<double>(mElapsedSeconds) /
                 static_cast<double>(mTotalSeconds) * 100.0);
             if (mProgress > 100) mProgress = 100;
-            mRemainingSeconds = (mTotalSeconds > mElapsedSeconds)
-                ? (mTotalSeconds - mElapsedSeconds) : 0u;
-            NotifyPropertyChanged(L"Progress");
-            NotifyPropertyChanged(L"RemainingSeconds");
         }
+        mRemainingSeconds = (mTotalSeconds > mElapsedSeconds)
+            ? (mTotalSeconds - mElapsedSeconds) : 0u;
+        NotifyPropertyChanged(L"Progress");
+        NotifyPropertyChanged(L"RemainingSeconds");
         if (mElapsedSeconds >= mTotalSeconds) {
             mIsCompleted = true;
             mIsProcessing = false;
@@ -120,79 +118,67 @@ namespace winsetup::application {
         mIsInitializing = true;
         NotifyPropertyChanged(L"IsInitializing");
         SetStatusText(L"Initializing...");
-
-        if (mLogger) mLogger->Info(L"MainViewModel: InitializeAsync started.");
-
+        if (mLogger) mLogger->Info(L"MainViewModel InitializeAsync started.");
         auto self = shared_from_this();
-        std::thread([self]() {
-            self->RunInitializeOnBackground();
-            }).detach();
+        std::thread([self]() { self->RunInitializeOnBackground(); }).detach();
     }
 
-    void MainViewModel::RunInitializeOnBackground() {
-        auto sysResult = RunAnalyzeSystem();
-        auto cfgResult = RunLoadConfiguration();
+    void MainViewModel::StartInstall() {
+        if (mIsProcessing || mIsInitializing) return;
+        if (mLogger) mLogger->Info(L"MainViewModel StartInstall called.");
+        auto self = shared_from_this();
+        std::thread([self]() { self->RunInstallOnBackground(); }).detach();
+    }
 
-        const bool sysOk = sysResult.HasValue();
-        const std::wstring sysErrorMsg = sysOk
-            ? std::wstring{}
-        : sysResult.GetError().GetMessage();
-
-        const bool hasSystemVolume = sysOk && mAnalysisRepository
-            && mAnalysisRepository->GetSystemVolume().has_value();
-        const bool hasDataVolume = sysOk && mAnalysisRepository
-            && mAnalysisRepository->GetDataVolume().has_value();
-        const bool canPreserve = hasSystemVolume && hasDataVolume;
-
+    void MainViewModel::RunInstallOnBackground() {
         auto dispatcher = mDispatcher;
         auto self = shared_from_this();
-        auto capturedCfgResult = std::move(cfgResult);
 
-        dispatcher->Post([self, capturedCfgResult, sysOk, sysErrorMsg, canPreserve]() mutable {
-            self->mIsInitializing = false;
+        std::shared_ptr<const domain::SetupConfig> config;
+        if (mConfigRepository && mConfigRepository->IsLoaded()) {
+            auto cfgResult = mConfigRepository->GetConfig();
+            if (cfgResult.HasValue()) config = cfgResult.Value();
+        }
 
-            if (!sysOk) {
-                self->SetStatusText(sysErrorMsg);
-                if (self->mLogger)
-                    self->mLogger->Error(L"System analysis failed: " + sysErrorMsg);
-                self->NotifyPropertyChanged(L"DisableAllButtons");
-                self->NotifyPropertyChanged(L"IsInitializing");
-                return;
-            }
+        dispatcher->Post([self, config]() mutable {
+            self->mIsCompleted = false;
+            self->mElapsedSeconds = 0u;
+            self->mProgress = 0;
+            self->mRemainingSeconds = self->mTotalSeconds;
+            self->SetProcessing(true);
+            self->SetStatusText(L"Installing...");
+            self->NotifyPropertyChanged(L"DisableAllButtons");
+            });
 
-            if (!capturedCfgResult.HasValue()) {
-                self->SetStatusText(L"Failed to load configuration");
-                if (self->mLogger)
-                    self->mLogger->Error(
-                        L"Configuration load failed: " +
-                        capturedCfgResult.GetError().GetMessage());
-                self->NotifyPropertyChanged(L"DisableAllButtons");
-                self->NotifyPropertyChanged(L"IsInitializing");
-                return;
-            }
+        domain::Expected<void> result =
+            domain::Error(L"InstallWindowsUseCase not registered", 0, domain::ErrorCategory::System);
 
-            if (canPreserve) {
-                self->SetStatusText(L"데이터 보존이 가능합니다.");
-                self->NotifyPropertyChanged(L"EnableAllButtons");
+        if (mInstallWindowsUseCase) {
+            result = mInstallWindowsUseCase->Execute(config);
+        }
+
+        dispatcher->Post([self, result]() mutable {
+            self->SetProcessing(false);
+            if (result.HasValue()) {
+                self->mIsCompleted = true;
+                self->mProgress = 100;
+                self->SetStatusText(L"Installation completed.");
+                self->NotifyPropertyChanged(L"IsCompleted");
+                self->NotifyPropertyChanged(L"Progress");
             }
             else {
-                self->SetStatusText(L"데이터 보존이 불가능합니다.");
-                self->NotifyPropertyChanged(L"EnableButtonsWithoutDataPreserve");
+                self->SetStatusText(L"Installation failed: " + result.GetError().GetMessage());
+                if (self->mLogger)
+                    self->mLogger->Error(L"InstallWindowsUseCase failed: " +
+                        result.GetError().GetMessage());
             }
-
-            self->NotifyPropertyChanged(L"InstallationTypes");
-            self->NotifyPropertyChanged(L"RemainingSeconds");
-            self->NotifyPropertyChanged(L"IsInitializing");
-
-            if (self->mLogger)
-                self->mLogger->Info(L"MainViewModel: Initialization completed.");
+            self->NotifyPropertyChanged(L"EnableAllButtons");
             });
     }
 
     domain::Expected<void> MainViewModel::RunAnalyzeSystem() {
         if (!mAnalyzeSystemUseCase)
-            return domain::Error(L"AnalyzeSystemUseCase not registered", 0,
-                domain::ErrorCategory::System);
+            return domain::Error(L"AnalyzeSystemUseCase not registered", 0, domain::ErrorCategory::System);
         SetStatusText(L"Reading system information...");
         auto result = mAnalyzeSystemUseCase->Execute();
         if (!result.HasValue()) return result.GetError();
@@ -201,24 +187,19 @@ namespace winsetup::application {
 
     domain::Expected<void> MainViewModel::RunLoadConfiguration() {
         if (!mLoadConfigUseCase)
-            return domain::Error(L"LoadConfigurationUseCase not registered", 0,
-                domain::ErrorCategory::System);
+            return domain::Error(L"LoadConfigurationUseCase not registered", 0, domain::ErrorCategory::System);
         if (!mConfigRepository)
-            return domain::Error(L"IConfigRepository not registered", 0,
-                domain::ErrorCategory::System);
+            return domain::Error(L"IConfigRepository not registered", 0, domain::ErrorCategory::System);
         SetStatusText(L"Loading configuration...");
         auto result = mLoadConfigUseCase->Execute(L"config.ini");
         if (!result.HasValue()) return result.GetError();
-
         mElapsedSeconds = 0u;
         mTotalSeconds = kDefaultTotalSeconds;
         mRemainingSeconds = kDefaultTotalSeconds;
         mProgress = 0;
-
         auto cfgResult = mConfigRepository->GetConfig();
         if (!cfgResult.HasValue()) return cfgResult.GetError();
         const auto config = cfgResult.Value();
-
         if (mAnalysisRepository && mAnalysisRepository->IsLoaded()) {
             auto sysInfoResult = mAnalysisRepository->GetSystemInfo();
             if (sysInfoResult.HasValue()) {
@@ -233,6 +214,55 @@ namespace winsetup::application {
             }
         }
         return domain::Expected<void>();
+    }
+
+    void MainViewModel::RunInitializeOnBackground() {
+        auto sysResult = RunAnalyzeSystem();
+        auto cfgResult = RunLoadConfiguration();
+
+        const bool sysOk = sysResult.HasValue();
+        const std::wstring sysErrorMsg = sysOk ? std::wstring{} : sysResult.GetError().GetMessage();
+        const bool hasSystemVolume = sysOk && mAnalysisRepository &&
+            mAnalysisRepository->GetSystemVolume().has_value();
+        const bool hasDataVolume = sysOk && mAnalysisRepository &&
+            mAnalysisRepository->GetDataVolume().has_value();
+        const bool canPreserve = hasSystemVolume && hasDataVolume;
+
+        auto dispatcher = mDispatcher;
+        auto self = shared_from_this();
+        auto capturedCfgResult = std::move(cfgResult);
+
+        dispatcher->Post([self, capturedCfgResult, sysOk, sysErrorMsg, canPreserve]() mutable {
+            self->mIsInitializing = false;
+            if (!sysOk) {
+                self->SetStatusText(sysErrorMsg);
+                if (self->mLogger) self->mLogger->Error(L"System analysis failed: " + sysErrorMsg);
+                self->NotifyPropertyChanged(L"DisableAllButtons");
+                self->NotifyPropertyChanged(L"IsInitializing");
+                return;
+            }
+            if (!capturedCfgResult.HasValue()) {
+                self->SetStatusText(L"Failed to load configuration.");
+                if (self->mLogger)
+                    self->mLogger->Error(L"Configuration load failed: " +
+                        capturedCfgResult.GetError().GetMessage());
+                self->NotifyPropertyChanged(L"DisableAllButtons");
+                self->NotifyPropertyChanged(L"IsInitializing");
+                return;
+            }
+            if (canPreserve) {
+                self->SetStatusText(L"시스템 분석 완료. 데이터 보존 가능합니다.");
+                self->NotifyPropertyChanged(L"EnableAllButtons");
+            }
+            else {
+                self->SetStatusText(L"시스템 분석 완료. 데이터 보존 불가합니다.");
+                self->NotifyPropertyChanged(L"EnableButtonsWithoutDataPreserve");
+            }
+            self->NotifyPropertyChanged(L"InstallationTypes");
+            self->NotifyPropertyChanged(L"RemainingSeconds");
+            self->NotifyPropertyChanged(L"IsInitializing");
+            if (self->mLogger) self->mLogger->Info(L"MainViewModel Initialization completed.");
+            });
     }
 
     void MainViewModel::AddPropertyChangedHandler(abstractions::PropertyChangedCallback callback) {

@@ -129,9 +129,6 @@
     <ClCompile Include="src\application\usecases\install\InjectDriversUseCase.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\application\usecases\install\InstallWindowsUseCase.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="src\application\usecases\install\RestoreUserDataUseCase.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -235,6 +232,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\adapters\platform\win32\concurrency\Win32ThreadPoolExecutor.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\application\usecases\install\InstallWindowsUseCase.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -399,9 +399,6 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\application\usecases\install\InjectDriversUseCase.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\usecases\install\InstallWindowsUseCase.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\application\usecases\install\RestoreUserDataUseCase.h">
@@ -648,6 +645,15 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\abstractions\usecases\IAnalyzeDisksUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\application\usecases\install\InstallWindowsUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\usecases\IInstallWindowsUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\usecases\IApplyImageUseCase.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

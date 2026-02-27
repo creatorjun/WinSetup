@@ -15,6 +15,8 @@
 #include "application/usecases/disk/EnumerateVolumesUseCase.h"
 #include "application/usecases/disk/AnalyzeVolumesUseCase.h"
 #include "application/usecases/disk/AnalyzeDisksUseCase.h"
+#include "application/usecases/install/ApplyImageUseCase.h"
+#include "application/usecases/install/InstallWindowsUseCase.h"
 #include "application/viewmodels/MainViewModel.h"
 #include "application/services/Dispatcher.h"
 #include "abstractions/infrastructure/logging/ILogger.h"
@@ -31,6 +33,8 @@
 #include "abstractions/usecases/ILoadConfigurationUseCase.h"
 #include "abstractions/usecases/IEnumerateDisksUseCase.h"
 #include "abstractions/usecases/IEnumerateVolumesUseCase.h"
+#include "abstractions/usecases/IApplyImageUseCase.h"
+#include "abstractions/usecases/IInstallWindowsUseCase.h"
 #include "abstractions/ui/IUIDispatcher.h"
 #include "abstractions/ui/IMainViewModel.h"
 #include "abstractions/ui/IWindow.h"
@@ -64,7 +68,8 @@ namespace winsetup {
         RegisterUIServices(container, hInstance);
     }
 
-    void ServiceRegistration::RegisterInfrastructureServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterInfrastructureServices(application::DIContainer& container)
+    {
         CreateDirectoryW(L"log", nullptr);
         auto logger = std::make_shared<adapters::platform::Win32Logger>(L"log/log.txt");
         container.RegisterInstance<abstractions::ILogger>(
@@ -78,7 +83,8 @@ namespace winsetup {
 
     void ServiceRegistration::RegisterDomainServices(application::DIContainer& container) {}
 
-    void ServiceRegistration::RegisterRepositoryServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterRepositoryServices(application::DIContainer& container)
+    {
         container.RegisterInstance<abstractions::IConfigRepository>(
             std::static_pointer_cast<abstractions::IConfigRepository>(
                 std::make_shared<adapters::persistence::IniConfigRepository>()));
@@ -87,14 +93,16 @@ namespace winsetup {
                 std::make_shared<adapters::persistence::AnalysisRepository>()));
     }
 
-    void ServiceRegistration::RegisterPlatformServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterPlatformServices(application::DIContainer& container)
+    {
         auto logger = ResolveOrThrow<abstractions::ILogger>(container, "ILogger");
         container.RegisterInstance<abstractions::ISystemInfoService>(
             std::static_pointer_cast<abstractions::ISystemInfoService>(
                 std::make_shared<adapters::platform::Win32SystemInfoService>(logger)));
     }
 
-    void ServiceRegistration::RegisterStorageServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterStorageServices(application::DIContainer& container)
+    {
         auto logger = ResolveOrThrow<abstractions::ILogger>(container, "ILogger");
         container.RegisterInstance<abstractions::IDiskService>(
             std::static_pointer_cast<abstractions::IDiskService>(
@@ -110,7 +118,8 @@ namespace winsetup {
                 std::make_shared<adapters::persistence::Win32PathChecker>()));
     }
 
-    void ServiceRegistration::RegisterUseCaseServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterUseCaseServices(application::DIContainer& container)
+    {
         auto logger = ResolveOrThrow<abstractions::ILogger>(container, "ILogger");
         auto configRepo = ResolveOrThrow<abstractions::IConfigRepository>(container, "IConfigRepository");
         auto analysis = ResolveOrThrow<abstractions::IAnalysisRepository>(container, "IAnalysisRepository");
@@ -146,12 +155,22 @@ namespace winsetup {
                     sysInfo, loadConfig, enumerateDisks,
                     enumerateVolumes, analyzeVolumes, analyzeDisks,
                     analysis, logger)));
+
+        auto applyImage = std::make_shared<application::ApplyImageUseCase>(nullptr, logger);
+        container.RegisterInstance<abstractions::IApplyImageUseCase>(
+            std::static_pointer_cast<abstractions::IApplyImageUseCase>(applyImage));
+
+        container.RegisterInstance<abstractions::IInstallWindowsUseCase>(
+            std::static_pointer_cast<abstractions::IInstallWindowsUseCase>(
+                std::make_shared<application::InstallWindowsUseCase>(applyImage, logger)));
     }
 
-    void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container) {
+    void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container)
+    {
         auto logger = ResolveOrThrow<abstractions::ILogger>(container, "ILogger");
         auto loadConfig = ResolveOrThrow<abstractions::ILoadConfigurationUseCase>(container, "ILoadConfigurationUseCase");
         auto analyze = ResolveOrThrow<abstractions::IAnalyzeSystemUseCase>(container, "IAnalyzeSystemUseCase");
+        auto installUC = ResolveOrThrow<abstractions::IInstallWindowsUseCase>(container, "IInstallWindowsUseCase");
         auto configRepo = ResolveOrThrow<abstractions::IConfigRepository>(container, "IConfigRepository");
         auto analysis = ResolveOrThrow<abstractions::IAnalysisRepository>(container, "IAnalysisRepository");
         auto dispatcher = ResolveOrThrow<abstractions::IUIDispatcher>(container, "IUIDispatcher");
@@ -159,7 +178,8 @@ namespace winsetup {
         container.RegisterInstance<abstractions::IMainViewModel>(
             std::static_pointer_cast<abstractions::IMainViewModel>(
                 std::make_shared<application::MainViewModel>(
-                    loadConfig, analyze, configRepo, analysis, dispatcher, logger)));
+                    loadConfig, analyze, installUC,
+                    configRepo, analysis, dispatcher, logger)));
     }
 
     void ServiceRegistration::RegisterUIServices(
@@ -176,4 +196,4 @@ namespace winsetup {
             std::static_pointer_cast<abstractions::IWindow>(window));
     }
 
-}
+} // namespace winsetup

@@ -129,8 +129,10 @@
     <ClInclude Include="src\abstractions\ui\IWindow.h" />
     <ClInclude Include="src\abstractions\usecases\IAnalyzeDisksUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\IAnalyzeSystemUseCase.h" />
+    <ClInclude Include="src\abstractions\usecases\IApplyImageUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\IEnumerateDisksUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\IEnumerateVolumesUseCase.h" />
+    <ClInclude Include="src\abstractions\usecases\IInstallWindowsUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\ILoadConfigurationUseCase.h" />
     <ClInclude Include="src\abstractions\usecases\IAnalyzeVolumesUseCase.h" />
     <ClInclude Include="src\adapters\imaging\DismAdapter.h" />

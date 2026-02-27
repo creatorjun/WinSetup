@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿// src/abstractions/ui/IMainViewModel.h
+#pragma once
 #include "IPropertyChanged.h"
 #include "domain/primitives/Expected.h"
 #include "domain/valueobjects/InstallationType.h"
@@ -33,9 +34,10 @@ namespace winsetup::abstractions {
 
         [[nodiscard]] virtual int GetProgress() const = 0;
         [[nodiscard]] virtual int GetRemainingSeconds() const = 0;
-        virtual void TickTimer() = 0;
 
+        virtual void TickTimer() = 0;
         virtual void InitializeAsync() = 0;
+        virtual void StartInstall() = 0;
     };
 
-}
+} // namespace winsetup::abstractions

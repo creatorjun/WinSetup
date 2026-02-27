@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿// src/main/ServiceRegistration.h
+#pragma once
 #include "application/core/DIContainer.h"
 #include <Windows.h>
 
