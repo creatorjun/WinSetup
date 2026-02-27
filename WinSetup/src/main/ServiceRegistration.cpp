@@ -16,6 +16,13 @@
 #include "application/usecases/disk/AnalyzeVolumesStep.h"
 #include "application/usecases/disk/AnalyzeDisksStep.h"
 #include "application/usecases/install/SetupSystemUseCase.h"
+#include "application/usecases/install/BackupDataStep.h"
+#include "application/usecases/install/FormatPartitionStep.h"
+#include "application/usecases/install/ApplyImageStep.h"
+#include "application/usecases/install/InstallDriversStep.h"
+#include "application/usecases/install/RestoreDataStep.h"
+#include "application/usecases/install/ProvisioningStep.h"
+#include "application/usecases/install/RebootStep.h"
 #include "application/viewmodels/MainViewModel.h"
 #include "application/services/Dispatcher.h"
 #include "abstractions/infrastructure/logging/ILogger.h"
@@ -33,6 +40,13 @@
 #include "abstractions/usecases/steps/IEnumerateVolumesStep.h"
 #include "abstractions/usecases/steps/IAnalyzeVolumesStep.h"
 #include "abstractions/usecases/steps/IAnalyzeDisksStep.h"
+#include "abstractions/usecases/steps/IBackupDataStep.h"
+#include "abstractions/usecases/steps/IFormatPartitionStep.h"
+#include "abstractions/usecases/steps/IApplyImageStep.h"
+#include "abstractions/usecases/steps/IInstallDriversStep.h"
+#include "abstractions/usecases/steps/IRestoreDataStep.h"
+#include "abstractions/usecases/steps/IProvisioningStep.h"
+#include "abstractions/usecases/steps/IRebootStep.h"
 #include "abstractions/ui/IUIDispatcher.h"
 #include "abstractions/ui/IMainViewModel.h"
 #include "abstractions/ui/IWindow.h"
@@ -155,9 +169,34 @@ namespace winsetup {
                     analyzeVolumes, analyzeDisks,
                     analysis, configRepo, logger)));
 
+        auto backupData = std::make_shared<application::BackupDataStep>(logger);
+        auto formatPartition = std::make_shared<application::FormatPartitionStep>(logger);
+        auto applyImage = std::make_shared<application::ApplyImageStep>(logger);
+        auto installDrivers = std::make_shared<application::InstallDriversStep>(logger);
+        auto restoreData = std::make_shared<application::RestoreDataStep>(logger);
+        auto provisioning = std::make_shared<application::ProvisioningStep>(logger);
+        auto reboot = std::make_shared<application::RebootStep>(logger);
+
+        container.RegisterInstance<abstractions::IBackupDataStep>(
+            std::static_pointer_cast<abstractions::IBackupDataStep>(backupData));
+        container.RegisterInstance<abstractions::IFormatPartitionStep>(
+            std::static_pointer_cast<abstractions::IFormatPartitionStep>(formatPartition));
+        container.RegisterInstance<abstractions::IApplyImageStep>(
+            std::static_pointer_cast<abstractions::IApplyImageStep>(applyImage));
+        container.RegisterInstance<abstractions::IInstallDriversStep>(
+            std::static_pointer_cast<abstractions::IInstallDriversStep>(installDrivers));
+        container.RegisterInstance<abstractions::IRestoreDataStep>(
+            std::static_pointer_cast<abstractions::IRestoreDataStep>(restoreData));
+        container.RegisterInstance<abstractions::IProvisioningStep>(
+            std::static_pointer_cast<abstractions::IProvisioningStep>(provisioning));
+        container.RegisterInstance<abstractions::IRebootStep>(
+            std::static_pointer_cast<abstractions::IRebootStep>(reboot));
+
         container.RegisterInstance<abstractions::ISetupSystemUseCase>(
             std::static_pointer_cast<abstractions::ISetupSystemUseCase>(
-                std::make_shared<application::SetupSystemUseCase>(logger)));
+                std::make_shared<application::SetupSystemUseCase>(
+                    backupData, formatPartition, applyImage, installDrivers,
+                    restoreData, provisioning, reboot, logger)));
     }
 
     void ServiceRegistration::RegisterApplicationServices(application::DIContainer& container)
