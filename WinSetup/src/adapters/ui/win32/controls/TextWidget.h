@@ -1,4 +1,3 @@
-// src/adapters/ui/win32/controls/TextWidget.h
 #pragma once
 
 #include <Windows.h>
@@ -48,7 +47,9 @@ namespace winsetup::adapters::ui {
 
     private:
         void EnsureFont() const;
+        void EnsurePen() const;
         void ReleaseFont();
+        void ReleasePen();
         void DrawBorder(HDC hdc, bool condition, POINT from, POINT to) const;
 
         TextWidgetStyle  mStyle;
@@ -58,6 +59,8 @@ namespace winsetup::adapters::ui {
 
         mutable HFONT    mFont;
         mutable bool     mFontDirty;
+        mutable HPEN     mBorderPen;
+        mutable bool     mPenDirty;
     };
 
 }

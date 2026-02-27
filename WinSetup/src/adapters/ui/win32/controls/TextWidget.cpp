@@ -1,4 +1,3 @@
-// src/adapters/ui/win32/controls/TextWidget.cpp
 #include <adapters/ui/win32/controls/TextWidget.h>
 
 namespace winsetup::adapters::ui {
@@ -10,16 +9,20 @@ namespace winsetup::adapters::ui {
         , mPlaceholder()
         , mFont(nullptr)
         , mFontDirty(true)
+        , mBorderPen(nullptr)
+        , mPenDirty(true)
     {
     }
 
     TextWidget::~TextWidget() {
         ReleaseFont();
+        ReleasePen();
     }
 
     void TextWidget::SetStyle(const TextWidgetStyle& style) {
         mStyle = style;
         mFontDirty = true;
+        mPenDirty = true;
     }
 
     void TextWidget::SetRect(const RECT& rect) {
@@ -46,6 +49,14 @@ namespace winsetup::adapters::ui {
         mFontDirty = true;
     }
 
+    void TextWidget::ReleasePen() {
+        if (mBorderPen) {
+            DeleteObject(mBorderPen);
+            mBorderPen = nullptr;
+        }
+        mPenDirty = true;
+    }
+
     void TextWidget::EnsureFont() const {
         if (!mFontDirty && mFont) return;
 
@@ -64,14 +75,24 @@ namespace winsetup::adapters::ui {
         mFontDirty = false;
     }
 
+    void TextWidget::EnsurePen() const {
+        if (!mPenDirty && mBorderPen) return;
+
+        if (mBorderPen) {
+            DeleteObject(mBorderPen);
+            mBorderPen = nullptr;
+        }
+
+        mBorderPen = CreatePen(PS_SOLID, 1, mStyle.borderColor);
+        mPenDirty = false;
+    }
+
     void TextWidget::DrawBorder(HDC hdc, bool condition, POINT from, POINT to) const {
         if (!condition) return;
-        HPEN hPen = CreatePen(PS_SOLID, 1, mStyle.borderColor);
-        HPEN hOldPen = static_cast<HPEN>(SelectObject(hdc, hPen));
+        HPEN hOldPen = static_cast<HPEN>(SelectObject(hdc, mBorderPen));
         MoveToEx(hdc, from.x, from.y, nullptr);
         LineTo(hdc, to.x, to.y);
         SelectObject(hdc, hOldPen);
-        DeleteObject(hPen);
     }
 
     void TextWidget::Draw(HDC hdc) const {
@@ -83,21 +104,23 @@ namespace winsetup::adapters::ui {
             DeleteObject(hBg);
         }
 
-        DrawBorder(hdc, mStyle.drawTopBorder,
-            { r.left,      r.top },
-            { r.right,     r.top });
-
-        DrawBorder(hdc, mStyle.drawBottomBorder,
-            { r.left,      r.bottom - 1 },
-            { r.right,     r.bottom - 1 });
-
-        DrawBorder(hdc, mStyle.drawLeftBorder,
-            { r.left,      r.top },
-            { r.left,      r.bottom });
-
-        DrawBorder(hdc, mStyle.drawRightBorder,
-            { r.right - 1, r.top },
-            { r.right - 1, r.bottom });
+        const bool hasBorder = mStyle.drawTopBorder || mStyle.drawBottomBorder
+            || mStyle.drawLeftBorder || mStyle.drawRightBorder;
+        if (hasBorder) {
+            EnsurePen();
+            DrawBorder(hdc, mStyle.drawTopBorder,
+                { r.left,      r.top },
+                { r.right,     r.top });
+            DrawBorder(hdc, mStyle.drawBottomBorder,
+                { r.left,      r.bottom - 1 },
+                { r.right,     r.bottom - 1 });
+            DrawBorder(hdc, mStyle.drawLeftBorder,
+                { r.left,      r.top },
+                { r.left,      r.bottom });
+            DrawBorder(hdc, mStyle.drawRightBorder,
+                { r.right - 1, r.top },
+                { r.right - 1, r.bottom });
+        }
 
         const std::wstring& displayText = mText.empty() ? mPlaceholder : mText;
         if (displayText.empty()) return;
