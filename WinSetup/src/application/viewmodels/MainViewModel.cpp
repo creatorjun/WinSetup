@@ -18,7 +18,7 @@ namespace winsetup::application {
         , mAnalysisRepository(std::move(analysisRepository))
         , mDispatcher(std::move(dispatcher))
         , mLogger(std::move(logger))
-        , mStatusText(L"Ready")
+        , mStatusText(L"사스템 분석중")
         , mWindowTitle(L"WinSetup v1.0")
     {
     }
@@ -251,11 +251,11 @@ namespace winsetup::application {
                 return;
             }
             if (canPreserve) {
-                self->SetStatusText(L"시스템 분석 완료. 데이터 보존 가능합니다.");
+                self->SetStatusText(L"데이터 보존 가능합니다.");
                 self->NotifyPropertyChanged(L"EnableAllButtons");
             }
             else {
-                self->SetStatusText(L"시스템 분석 완료. 데이터 보존 불가합니다.");
+                self->SetStatusText(L"데이터 보존 불가합니다.");
                 self->NotifyPropertyChanged(L"EnableButtonsWithoutDataPreserve");
             }
             self->NotifyPropertyChanged(L"InstallationTypes");
