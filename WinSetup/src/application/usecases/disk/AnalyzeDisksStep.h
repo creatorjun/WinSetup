@@ -1,6 +1,6 @@
-﻿// src/application/usecases/disk/AnalyzeDisksUseCase.h
+﻿// src/application/usecases/disk/AnalyzeDisksStep.h
 #pragma once
-#include "abstractions/usecases/IAnalyzeDisksUseCase.h"
+#include "abstractions/usecases/steps/IAnalyzeDisksStep.h"
 #include "abstractions/repositories/IAnalysisRepository.h"
 #include "abstractions/infrastructure/logging/ILogger.h"
 #include "domain/primitives/Expected.h"
@@ -10,13 +10,13 @@
 
 namespace winsetup::application {
 
-    class AnalyzeDisksUseCase final : public abstractions::IAnalyzeDisksUseCase {
+    class AnalyzeDisksStep final : public abstractions::IAnalyzeDisksStep {
     public:
-        explicit AnalyzeDisksUseCase(
+        explicit AnalyzeDisksStep(
             std::shared_ptr<abstractions::IAnalysisRepository> analysisRepository,
-            std::shared_ptr<abstractions::ILogger>             logger
-        );
-        ~AnalyzeDisksUseCase() override = default;
+            std::shared_ptr<abstractions::ILogger>             logger);
+
+        ~AnalyzeDisksStep() override = default;
 
         [[nodiscard]] domain::Expected<void> Execute() override;
 
@@ -35,4 +35,4 @@ namespace winsetup::application {
         std::shared_ptr<abstractions::ILogger>             mLogger;
     };
 
-}
+} // namespace winsetup::application

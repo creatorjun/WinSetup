@@ -1,25 +1,25 @@
-﻿#include "application/usecases/disk/AnalyzeDisksUseCase.h"
+﻿// src/application/usecases/disk/AnalyzeDisksStep.cpp
+#include "application/usecases/disk/AnalyzeDisksStep.h"
 #include "domain/valueobjects/DiskType.h"
 #include <algorithm>
 
 namespace winsetup::application {
 
-    AnalyzeDisksUseCase::AnalyzeDisksUseCase(
+    AnalyzeDisksStep::AnalyzeDisksStep(
         std::shared_ptr<abstractions::IAnalysisRepository> analysisRepository,
-        std::shared_ptr<abstractions::ILogger>             logger
-    )
+        std::shared_ptr<abstractions::ILogger>             logger)
         : mAnalysisRepository(std::move(analysisRepository))
         , mLogger(std::move(logger))
     {
     }
 
-    domain::Expected<void> AnalyzeDisksUseCase::Execute()
+    domain::Expected<void> AnalyzeDisksStep::Execute()
     {
         if (!mAnalysisRepository)
             return domain::Error(L"IAnalysisRepository not provided", 0, domain::ErrorCategory::System);
 
         if (mLogger)
-            mLogger->Info(L"AnalyzeDisksUseCase: Started.");
+            mLogger->Info(L"AnalyzeDisksStep: Started.");
 
         auto diskResult = mAnalysisRepository->GetDisks();
         if (!diskResult.HasValue())
@@ -29,12 +29,12 @@ namespace winsetup::application {
 
         if (AllRolesAssigned(*mAnalysisRepository)) {
             if (mLogger)
-                mLogger->Info(L"AnalyzeDisksUseCase: All volume roles assigned. Assigning disks by volume ownership.");
+                mLogger->Info(L"AnalyzeDisksStep: All volume roles assigned. Assigning disks by volume ownership.");
             AssignByVolumes(disks, *mAnalysisRepository);
         }
         else {
             if (mLogger)
-                mLogger->Warning(L"AnalyzeDisksUseCase: One or more volume roles missing. Assigning disks by interface priority.");
+                mLogger->Warning(L"AnalyzeDisksStep: One or more volume roles missing. Assigning disks by interface priority.");
             AssignByPriority(disks);
         }
 
@@ -42,7 +42,7 @@ namespace winsetup::application {
         for (const auto& disk : disks) {
             if (disk.IsSystem()) {
                 if (mLogger)
-                    mLogger->Info(L"AnalyzeDisksUseCase: [System] Disk "
+                    mLogger->Info(L"AnalyzeDisksStep: [System] Disk "
                         + std::to_wstring(disk.GetIndex())
                         + L" [" + disk.GetModel() + L"] "
                         + std::to_wstring(static_cast<uint64_t>(disk.GetSize().ToGB())) + L" GB");
@@ -50,7 +50,7 @@ namespace winsetup::application {
             }
             if (disk.IsData()) {
                 if (mLogger)
-                    mLogger->Info(L"AnalyzeDisksUseCase: [Data]   Disk "
+                    mLogger->Info(L"AnalyzeDisksStep: [Data]   Disk "
                         + std::to_wstring(disk.GetIndex())
                         + L" [" + disk.GetModel() + L"] "
                         + std::to_wstring(static_cast<uint64_t>(disk.GetSize().ToGB())) + L" GB");
@@ -60,7 +60,7 @@ namespace winsetup::application {
 
         if (!foundSystem) {
             if (mLogger)
-                mLogger->Error(L"AnalyzeDisksUseCase: [System] disk not found — aborting.");
+                mLogger->Error(L"AnalyzeDisksStep: [System] disk not found — aborting.");
             return domain::Error(
                 L"시스템 디스크를 찾을 수 없습니다.",
                 0,
@@ -69,7 +69,7 @@ namespace winsetup::application {
 
         if (!foundData) {
             if (mLogger)
-                mLogger->Error(L"AnalyzeDisksUseCase: [Data] disk not found — aborting.");
+                mLogger->Error(L"AnalyzeDisksStep: [Data] disk not found — aborting.");
             return domain::Error(
                 L"데이터 디스크를 찾을 수 없습니다.",
                 0,
@@ -79,19 +79,19 @@ namespace winsetup::application {
         mAnalysisRepository->StoreUpdatedDisks(std::move(disks));
 
         if (mLogger)
-            mLogger->Info(L"AnalyzeDisksUseCase: Complete.");
+            mLogger->Info(L"AnalyzeDisksStep: Complete.");
 
         return domain::Expected<void>();
     }
 
-    bool AnalyzeDisksUseCase::AllRolesAssigned(const abstractions::IAnalysisRepository& repo)
+    bool AnalyzeDisksStep::AllRolesAssigned(const abstractions::IAnalysisRepository& repo)
     {
         return repo.GetSystemVolume().has_value()
             && repo.GetDataVolume().has_value()
             && repo.GetBootVolume().has_value();
     }
 
-    domain::DiskInfo* AnalyzeDisksUseCase::FindDiskByIndex(
+    domain::DiskInfo* AnalyzeDisksStep::FindDiskByIndex(
         std::vector<domain::DiskInfo>& disks, uint32_t index)
     {
         auto it = std::find_if(disks.begin(), disks.end(),
@@ -99,7 +99,7 @@ namespace winsetup::application {
         return it != disks.end() ? &(*it) : nullptr;
     }
 
-    void AnalyzeDisksUseCase::AssignByVolumes(
+    void AnalyzeDisksStep::AssignByVolumes(
         std::vector<domain::DiskInfo>& disks,
         const abstractions::IAnalysisRepository& repo)
     {
@@ -117,8 +117,7 @@ namespace winsetup::application {
         }
     }
 
-    void AnalyzeDisksUseCase::AssignByPriority(
-        std::vector<domain::DiskInfo>& disks)
+    void AnalyzeDisksStep::AssignByPriority(std::vector<domain::DiskInfo>& disks)
     {
         std::vector<domain::DiskInfo*> candidates;
         candidates.reserve(disks.size());

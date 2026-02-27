@@ -1,10 +1,11 @@
-﻿#pragma once
+﻿//src/application/usecases/system/AnalyzeSystemUseCase.cpp
+#pragma once
 #include "abstractions/usecases/IAnalyzeSystemUseCase.h"
 #include "abstractions/usecases/ILoadConfigurationUseCase.h"
-#include "abstractions/usecases/IEnumerateDisksUseCase.h"
-#include "abstractions/usecases/IEnumerateVolumesUseCase.h"
-#include "abstractions/usecases/IAnalyzeVolumesUseCase.h"
-#include "abstractions/usecases/IAnalyzeDisksUseCase.h"
+#include "abstractions/usecases/steps/IEnumerateDisksStep.h"
+#include "abstractions/usecases/steps/IEnumerateVolumesStep.h"
+#include "abstractions/usecases/steps/IAnalyzeVolumesStep.h"
+#include "abstractions/usecases/steps/IAnalyzeDisksStep.h"
 #include "abstractions/repositories/IAnalysisRepository.h"
 #include "abstractions/services/platform/ISystemInfoService.h"
 #include "abstractions/infrastructure/logging/ILogger.h"
@@ -24,13 +25,12 @@ namespace winsetup::application {
         explicit AnalyzeSystemUseCase(
             std::shared_ptr<abstractions::ISystemInfoService>        systemInfoService,
             std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfiguration,
-            std::shared_ptr<abstractions::IEnumerateDisksUseCase>    enumerateDisks,
-            std::shared_ptr<abstractions::IEnumerateVolumesUseCase>  enumerateVolumes,
-            std::shared_ptr<abstractions::IAnalyzeVolumesUseCase>    analyzeVolumes,
-            std::shared_ptr<abstractions::IAnalyzeDisksUseCase>      analyzeDisks,
+            std::shared_ptr<abstractions::IEnumerateDisksStep>       enumerateDisks,
+            std::shared_ptr<abstractions::IEnumerateVolumesStep>     enumerateVolumes,
+            std::shared_ptr<abstractions::IAnalyzeVolumesStep>       analyzeVolumes,
+            std::shared_ptr<abstractions::IAnalyzeDisksStep>         analyzeDisks,
             std::shared_ptr<abstractions::IAnalysisRepository>       analysisRepository,
-            std::shared_ptr<abstractions::ILogger>                   logger
-        );
+            std::shared_ptr<abstractions::ILogger>                   logger);
 
         ~AnalyzeSystemUseCase() override = default;
 
@@ -38,6 +38,7 @@ namespace winsetup::application {
 
     private:
         [[nodiscard]] domain::Expected<std::shared_ptr<domain::SystemInfo>> CollectSystemInfo() const;
+
         void LogStoredResults(
             const std::vector<domain::DiskInfo>& disks,
             const std::vector<domain::VolumeInfo>& volumes) const;
@@ -47,10 +48,10 @@ namespace winsetup::application {
 
         std::shared_ptr<abstractions::ISystemInfoService>        mSystemInfoService;
         std::shared_ptr<abstractions::ILoadConfigurationUseCase> mLoadConfiguration;
-        std::shared_ptr<abstractions::IEnumerateDisksUseCase>    mEnumerateDisks;
-        std::shared_ptr<abstractions::IEnumerateVolumesUseCase>  mEnumerateVolumes;
-        std::shared_ptr<abstractions::IAnalyzeVolumesUseCase>    mAnalyzeVolumes;
-        std::shared_ptr<abstractions::IAnalyzeDisksUseCase>      mAnalyzeDisks;
+        std::shared_ptr<abstractions::IEnumerateDisksStep>       mEnumerateDisks;
+        std::shared_ptr<abstractions::IEnumerateVolumesStep>     mEnumerateVolumes;
+        std::shared_ptr<abstractions::IAnalyzeVolumesStep>       mAnalyzeVolumes;
+        std::shared_ptr<abstractions::IAnalyzeDisksStep>         mAnalyzeDisks;
         std::shared_ptr<abstractions::IAnalysisRepository>       mAnalysisRepository;
         std::shared_ptr<abstractions::ILogger>                   mLogger;
     };

@@ -1,11 +1,12 @@
+// src/abstractions/usecases/steps/IAnalyzeVolumesStep.h
 #pragma once
 #include "domain/primitives/Expected.h"
 
 namespace winsetup::abstractions {
 
-    class IAnalyzeVolumesUseCase {
+    class IAnalyzeVolumesStep {
     public:
-        virtual ~IAnalyzeVolumesUseCase() = default;
+        virtual ~IAnalyzeVolumesStep() = default;
         [[nodiscard]] virtual domain::Expected<void> Execute() = 0;
     };
 

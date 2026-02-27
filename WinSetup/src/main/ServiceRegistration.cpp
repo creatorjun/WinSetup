@@ -1,4 +1,5 @@
-﻿#include "main/ServiceRegistration.h"
+﻿// src / main / ServiceRegistration.cpp
+#include "main/ServiceRegistration.h"
 #include "application/core/DIContainer.h"
 #include "adapters/platform/win32/logging/Win32Logger.h"
 #include "adapters/platform/win32/system/Win32SystemInfoService.h"
@@ -11,10 +12,10 @@
 #include "adapters/ui/win32/Win32MainWindow.h"
 #include "application/usecases/system/AnalyzeSystemUseCase.h"
 #include "application/usecases/system/LoadConfigurationUseCase.h"
-#include "application/usecases/disk/EnumerateDisksUseCase.h"
-#include "application/usecases/disk/EnumerateVolumesUseCase.h"
-#include "application/usecases/disk/AnalyzeVolumesUseCase.h"
-#include "application/usecases/disk/AnalyzeDisksUseCase.h"
+#include "application/usecases/disk/EnumerateDisksStep.h"
+#include "application/usecases/disk/EnumerateVolumesStep.h"
+#include "application/usecases/disk/AnalyzeVolumesStep.h"
+#include "application/usecases/disk/AnalyzeDisksStep.h"
 #include "application/usecases/install/ApplyImageUseCase.h"
 #include "application/usecases/install/InstallWindowsUseCase.h"
 #include "application/viewmodels/MainViewModel.h"
@@ -28,13 +29,13 @@
 #include "abstractions/services/storage/IFileCopyService.h"
 #include "abstractions/services/storage/IPathChecker.h"
 #include "abstractions/usecases/IAnalyzeSystemUseCase.h"
-#include "abstractions/usecases/IAnalyzeVolumesUseCase.h"
-#include "abstractions/usecases/IAnalyzeDisksUseCase.h"
 #include "abstractions/usecases/ILoadConfigurationUseCase.h"
-#include "abstractions/usecases/IEnumerateDisksUseCase.h"
-#include "abstractions/usecases/IEnumerateVolumesUseCase.h"
 #include "abstractions/usecases/IApplyImageUseCase.h"
 #include "abstractions/usecases/IInstallWindowsUseCase.h"
+#include "abstractions/usecases/steps/IEnumerateDisksStep.h"
+#include "abstractions/usecases/steps/IEnumerateVolumesStep.h"
+#include "abstractions/usecases/steps/IAnalyzeVolumesStep.h"
+#include "abstractions/usecases/steps/IAnalyzeDisksStep.h"
 #include "abstractions/ui/IUIDispatcher.h"
 #include "abstractions/ui/IMainViewModel.h"
 #include "abstractions/ui/IWindow.h"
@@ -132,28 +133,29 @@ namespace winsetup {
         container.RegisterInstance<abstractions::ILoadConfigurationUseCase>(
             std::static_pointer_cast<abstractions::ILoadConfigurationUseCase>(loadConfig));
 
-        auto enumerateDisks = std::make_shared<application::EnumerateDisksUseCase>(diskService, logger);
-        container.RegisterInstance<abstractions::IEnumerateDisksUseCase>(
-            std::static_pointer_cast<abstractions::IEnumerateDisksUseCase>(enumerateDisks));
+        auto enumerateDisks = std::make_shared<application::EnumerateDisksStep>(diskService, logger);
+        container.RegisterInstance<abstractions::IEnumerateDisksStep>(
+            std::static_pointer_cast<abstractions::IEnumerateDisksStep>(enumerateDisks));
 
-        auto enumerateVolumes = std::make_shared<application::EnumerateVolumesUseCase>(volService, logger);
-        container.RegisterInstance<abstractions::IEnumerateVolumesUseCase>(
-            std::static_pointer_cast<abstractions::IEnumerateVolumesUseCase>(enumerateVolumes));
+        auto enumerateVolumes = std::make_shared<application::EnumerateVolumesStep>(volService, logger);
+        container.RegisterInstance<abstractions::IEnumerateVolumesStep>(
+            std::static_pointer_cast<abstractions::IEnumerateVolumesStep>(enumerateVolumes));
 
-        auto analyzeVolumes = std::make_shared<application::AnalyzeVolumesUseCase>(
+        auto analyzeVolumes = std::make_shared<application::AnalyzeVolumesStep>(
             analysis, configRepo, pathChecker, logger);
-        container.RegisterInstance<abstractions::IAnalyzeVolumesUseCase>(
-            std::static_pointer_cast<abstractions::IAnalyzeVolumesUseCase>(analyzeVolumes));
+        container.RegisterInstance<abstractions::IAnalyzeVolumesStep>(
+            std::static_pointer_cast<abstractions::IAnalyzeVolumesStep>(analyzeVolumes));
 
-        auto analyzeDisks = std::make_shared<application::AnalyzeDisksUseCase>(analysis, logger);
-        container.RegisterInstance<abstractions::IAnalyzeDisksUseCase>(
-            std::static_pointer_cast<abstractions::IAnalyzeDisksUseCase>(analyzeDisks));
+        auto analyzeDisks = std::make_shared<application::AnalyzeDisksStep>(analysis, logger);
+        container.RegisterInstance<abstractions::IAnalyzeDisksStep>(
+            std::static_pointer_cast<abstractions::IAnalyzeDisksStep>(analyzeDisks));
 
         container.RegisterInstance<abstractions::IAnalyzeSystemUseCase>(
             std::static_pointer_cast<abstractions::IAnalyzeSystemUseCase>(
                 std::make_shared<application::AnalyzeSystemUseCase>(
-                    sysInfo, loadConfig, enumerateDisks,
-                    enumerateVolumes, analyzeVolumes, analyzeDisks,
+                    sysInfo, loadConfig,
+                    enumerateDisks, enumerateVolumes,
+                    analyzeVolumes, analyzeDisks,
                     analysis, logger)));
 
         auto applyImage = std::make_shared<application::ApplyImageUseCase>(nullptr, logger);

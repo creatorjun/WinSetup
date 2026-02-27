@@ -1,4 +1,5 @@
-﻿#include "application/usecases/system/AnalyzeSystemUseCase.h"
+﻿// src/application/usecases/system/AnalyzeSystemUseCase.cpp
+#include "application/usecases/system/AnalyzeSystemUseCase.h"
 #include "domain/services/PathNormalizer.h"
 
 namespace winsetup::application {
@@ -6,13 +7,12 @@ namespace winsetup::application {
     AnalyzeSystemUseCase::AnalyzeSystemUseCase(
         std::shared_ptr<abstractions::ISystemInfoService>        systemInfoService,
         std::shared_ptr<abstractions::ILoadConfigurationUseCase> loadConfiguration,
-        std::shared_ptr<abstractions::IEnumerateDisksUseCase>    enumerateDisks,
-        std::shared_ptr<abstractions::IEnumerateVolumesUseCase>  enumerateVolumes,
-        std::shared_ptr<abstractions::IAnalyzeVolumesUseCase>    analyzeVolumes,
-        std::shared_ptr<abstractions::IAnalyzeDisksUseCase>      analyzeDisks,
+        std::shared_ptr<abstractions::IEnumerateDisksStep>       enumerateDisks,
+        std::shared_ptr<abstractions::IEnumerateVolumesStep>     enumerateVolumes,
+        std::shared_ptr<abstractions::IAnalyzeVolumesStep>       analyzeVolumes,
+        std::shared_ptr<abstractions::IAnalyzeDisksStep>         analyzeDisks,
         std::shared_ptr<abstractions::IAnalysisRepository>       analysisRepository,
-        std::shared_ptr<abstractions::ILogger>                   logger
-    )
+        std::shared_ptr<abstractions::ILogger>                   logger)
         : mSystemInfoService(std::move(systemInfoService))
         , mLoadConfiguration(std::move(loadConfiguration))
         , mEnumerateDisks(std::move(enumerateDisks))
@@ -46,9 +46,9 @@ namespace winsetup::application {
         if (!configResult.HasValue())
             return configResult.GetError();
 
-        const std::wstring boardModel = sysResult.Value()->GetMotherboardModel();
+        const std::wstring  boardModel = sysResult.Value()->GetMotherboardModel();
         const auto& times = configResult.Value()->GetEstimatedTimes();
-        auto it = times.find(boardModel);
+        const auto          it = times.find(boardModel);
         if (it != times.end()) {
             if (mLogger)
                 mLogger->Info(L"AnalyzeSystemUseCase: Estimated time for "
@@ -75,7 +75,7 @@ namespace winsetup::application {
             if (!analyzeResult.HasValue()) {
                 const auto& error = analyzeResult.GetError();
                 if (mLogger)
-                    mLogger->Error(L"AnalyzeSystemUseCase: AnalyzeVolumes failed - "
+                    mLogger->Error(L"AnalyzeSystemUseCase: AnalyzeVolumesStep failed - "
                         + error.GetMessage());
                 if (error.GetCategory() == domain::ErrorCategory::Validation)
                     return error;
@@ -86,7 +86,7 @@ namespace winsetup::application {
             auto analyzeResult = mAnalyzeDisks->Execute();
             if (!analyzeResult.HasValue()) {
                 if (mLogger)
-                    mLogger->Warning(L"AnalyzeSystemUseCase: AnalyzeDisks failed - "
+                    mLogger->Warning(L"AnalyzeSystemUseCase: AnalyzeDisksStep failed - "
                         + analyzeResult.GetError().GetMessage());
             }
         }

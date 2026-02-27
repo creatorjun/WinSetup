@@ -111,10 +111,10 @@
     <ClCompile Include="src\application\services\TaskScheduler.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\application\usecases\disk\AnalyzeDisksUseCase.cpp">
+    <ClCompile Include="src\application\usecases\disk\AnalyzeDisksStep.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\application\usecases\disk\EnumerateDisksUseCase.cpp">
+    <ClCompile Include="src\application\usecases\disk\EnumerateDisksStep.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\application\usecases\disk\SelectTargetDisksUseCase.cpp">
@@ -219,13 +219,13 @@
     <ClCompile Include="src\adapters\platform\win32\storage\Win32FileCopyService.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\application\usecases\disk\EnumerateVolumesUseCase.cpp">
+    <ClCompile Include="src\application\usecases\disk\EnumerateVolumesStep.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\adapters\persistence\filesystem\Win32PathChecker.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\application\usecases\disk\AnalyzeVolumesUseCase.cpp">
+    <ClCompile Include="src\application\usecases\disk\AnalyzeVolumesStep.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="src\application\repositories\AnalysisRepository.cpp">
@@ -383,10 +383,10 @@
     <ClInclude Include="src\application\services\TaskScheduler.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\usecases\disk\AnalyzeDisksUseCase.h">
+    <ClInclude Include="src\application\usecases\disk\AnalyzeDisksStep.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\application\usecases\disk\EnumerateDisksUseCase.h">
+    <ClInclude Include="src\application\usecases\disk\EnumerateDisksStep.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\application\usecases\disk\SelectTargetDisksUseCase.h">
@@ -614,13 +614,7 @@
     <ClInclude Include="src\abstractions\repositories\IAnalysisRepository.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\usecases\IEnumerateDisksUseCase.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\abstractions\usecases\IEnumerateVolumesUseCase.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\usecases\disk\EnumerateVolumesUseCase.h">
+    <ClInclude Include="src\application\usecases\disk\EnumerateVolumesStep.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\abstractions\services\storage\IPathChecker.h">
@@ -629,10 +623,7 @@
     <ClInclude Include="src\adapters\persistence\filesystem\Win32PathChecker.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\usecases\IAnalyzeVolumesUseCase.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="src\application\usecases\disk\AnalyzeVolumesUseCase.h">
+    <ClInclude Include="src\application\usecases\disk\AnalyzeVolumesStep.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\application\repositories\AnalysisRepository.h">
@@ -644,9 +635,6 @@
     <ClInclude Include="src\abstractions\ui\IUIDispatcher.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="src\abstractions\usecases\IAnalyzeDisksUseCase.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="src\application\usecases\install\InstallWindowsUseCase.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -654,6 +642,18 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="src\abstractions\usecases\IApplyImageUseCase.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\usecases\steps\IEnumerateDisksStep.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\usecases\steps\IEnumerateVolumesStep.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\usecases\steps\IAnalyzeVolumesStep.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="src\abstractions\usecases\steps\IAnalyzeDisksStep.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

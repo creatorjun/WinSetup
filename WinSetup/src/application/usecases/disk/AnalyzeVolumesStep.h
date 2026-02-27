@@ -1,6 +1,6 @@
-// src/application/usecases/disk/AnalyzeVolumesUseCase.h
+// src/application/usecases/disk/AnalyzeVolumesStep.h
 #pragma once
-#include "abstractions/usecases/IAnalyzeVolumesUseCase.h"
+#include "abstractions/usecases/steps/IAnalyzeVolumesStep.h"
 #include "abstractions/repositories/IAnalysisRepository.h"
 #include "abstractions/repositories/IConfigRepository.h"
 #include "abstractions/services/storage/IPathChecker.h"
@@ -11,25 +11,44 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <optional>
 #include <string>
 
 namespace winsetup::application {
 
-    class AnalyzeVolumesUseCase final : public abstractions::IAnalyzeVolumesUseCase {
+    class AnalyzeVolumesStep final : public abstractions::IAnalyzeVolumesStep {
     public:
-        explicit AnalyzeVolumesUseCase(
+        explicit AnalyzeVolumesStep(
             std::shared_ptr<abstractions::IAnalysisRepository> analysisRepository,
-            std::shared_ptr<abstractions::IConfigRepository> configRepository,
-            std::shared_ptr<abstractions::IPathChecker> pathChecker,
-            std::shared_ptr<abstractions::ILogger> logger);
+            std::shared_ptr<abstractions::IConfigRepository>   configRepository,
+            std::shared_ptr<abstractions::IPathChecker>        pathChecker,
+            std::shared_ptr<abstractions::ILogger>             logger);
 
-        ~AnalyzeVolumesUseCase() override = default;
+        ~AnalyzeVolumesStep() override = default;
 
         [[nodiscard]] domain::Expected<void> Execute() override;
 
     private:
         using DiskIndexCache = std::unordered_map<std::wstring, std::optional<uint32_t>>;
+
+        void FilterUsbDevices(
+            std::vector<domain::DiskInfo>& disks,
+            std::vector<domain::VolumeInfo>& volumes) const;
+
+        [[nodiscard]] DiskIndexCache BuildDiskIndexCache(
+            const std::vector<domain::VolumeInfo>& volumes) const;
+
+        [[nodiscard]] domain::Expected<void> AssignVolumeRoles(
+            std::vector<domain::DiskInfo>& disks,
+            std::vector<domain::VolumeInfo>& volumes,
+            const std::wstring& userProfile,
+            const DiskIndexCache& cache) const;
+
+        void AssignDiskRoles(
+            std::vector<domain::DiskInfo>& disks,
+            const std::vector<domain::VolumeInfo>& volumes,
+            const DiskIndexCache& cache) const;
 
         [[nodiscard]] bool IsSystemVolume(
             const domain::VolumeInfo& volume,
