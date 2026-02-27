@@ -73,9 +73,12 @@ namespace winsetup::application {
         if (mAnalyzeVolumes) {
             auto analyzeResult = mAnalyzeVolumes->Execute();
             if (!analyzeResult.HasValue()) {
+                const auto& error = analyzeResult.GetError();
                 if (mLogger)
-                    mLogger->Warning(L"AnalyzeSystemUseCase: AnalyzeVolumes failed - "
-                        + analyzeResult.GetError().GetMessage());
+                    mLogger->Error(L"AnalyzeSystemUseCase: AnalyzeVolumes failed - "
+                        + error.GetMessage());
+                if (error.GetCategory() == domain::ErrorCategory::Validation)
+                    return error;
             }
         }
 

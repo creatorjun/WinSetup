@@ -73,8 +73,8 @@ namespace winsetup::application {
     bool MainViewModel::IsInitializing() const { return mIsInitializing; }
     bool MainViewModel::IsProcessing() const { return mIsProcessing; }
     bool MainViewModel::IsCompleted() const { return mIsCompleted; }
-    int MainViewModel::GetProgress() const { return mProgress; }
-    int MainViewModel::GetRemainingSeconds() const { return static_cast<int>(mRemainingSeconds); }
+    int  MainViewModel::GetProgress() const { return mProgress; }
+    int  MainViewModel::GetRemainingSeconds() const { return static_cast<int>(mRemainingSeconds); }
 
     void MainViewModel::SetDataPreservation(bool enabled) {
         if (mDataPreservation == enabled) return;
@@ -133,9 +133,14 @@ namespace winsetup::application {
         auto sysResult = RunAnalyzeSystem();
         auto cfgResult = RunLoadConfiguration();
 
-        const bool hasSystemVolume = mAnalysisRepository
+        const bool sysOk = sysResult.HasValue();
+        const std::wstring sysErrorMsg = sysOk
+            ? std::wstring{}
+        : sysResult.GetError().GetMessage();
+
+        const bool hasSystemVolume = sysOk && mAnalysisRepository
             && mAnalysisRepository->GetSystemVolume().has_value();
-        const bool hasDataVolume = mAnalysisRepository
+        const bool hasDataVolume = sysOk && mAnalysisRepository
             && mAnalysisRepository->GetDataVolume().has_value();
         const bool canPreserve = hasSystemVolume && hasDataVolume;
 
@@ -143,8 +148,17 @@ namespace winsetup::application {
         auto self = shared_from_this();
         auto capturedCfgResult = std::move(cfgResult);
 
-        dispatcher->Post([self, capturedCfgResult, canPreserve]() mutable {
+        dispatcher->Post([self, capturedCfgResult, sysOk, sysErrorMsg, canPreserve]() mutable {
             self->mIsInitializing = false;
+
+            if (!sysOk) {
+                self->SetStatusText(sysErrorMsg);
+                if (self->mLogger)
+                    self->mLogger->Error(L"System analysis failed: " + sysErrorMsg);
+                self->NotifyPropertyChanged(L"DisableAllButtons");
+                self->NotifyPropertyChanged(L"IsInitializing");
+                return;
+            }
 
             if (!capturedCfgResult.HasValue()) {
                 self->SetStatusText(L"Failed to load configuration");
@@ -152,6 +166,7 @@ namespace winsetup::application {
                     self->mLogger->Error(
                         L"Configuration load failed: " +
                         capturedCfgResult.GetError().GetMessage());
+                self->NotifyPropertyChanged(L"DisableAllButtons");
                 self->NotifyPropertyChanged(L"IsInitializing");
                 return;
             }

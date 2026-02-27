@@ -59,6 +59,9 @@ namespace winsetup::adapters::ui {
             || propertyName == L"EnableButtonsWithoutDataPreserve") {
             SetEnabled(true);
         }
+        else if (propertyName == L"DisableAllButtons") {
+            SetEnabled(false);
+        }
         else if (propertyName == L"Progress" || propertyName == L"RemainingSeconds") {
             UpdateProgress();
         }

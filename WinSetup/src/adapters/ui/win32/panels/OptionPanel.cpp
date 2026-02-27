@@ -85,6 +85,10 @@ namespace winsetup::adapters::ui {
             mBtnDataPreserve.SetEnabled(false);
             mBtnBitlocker.SetEnabled(mViewModel->GetBitlockerEnabled());
         }
+        else if (propertyName == L"DisableAllButtons") {
+            mBtnDataPreserve.SetEnabled(false);
+            mBtnBitlocker.SetEnabled(false);
+        }
         else if (propertyName == L"IsProcessing") {
             const bool processing = mViewModel->IsProcessing();
             mBtnDataPreserve.SetEnabled(!processing);

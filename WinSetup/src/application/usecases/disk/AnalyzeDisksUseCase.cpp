@@ -1,5 +1,4 @@
-﻿// src/application/usecases/disk/AnalyzeDisksUseCase.cpp
-#include "application/usecases/disk/AnalyzeDisksUseCase.h"
+﻿#include "application/usecases/disk/AnalyzeDisksUseCase.h"
 #include "domain/valueobjects/DiskType.h"
 #include <algorithm>
 
@@ -59,10 +58,23 @@ namespace winsetup::application {
             }
         }
 
-        if (!foundSystem && mLogger)
-            mLogger->Warning(L"AnalyzeDisksUseCase: [System] disk not found");
-        if (!foundData && mLogger)
-            mLogger->Warning(L"AnalyzeDisksUseCase: [Data]   disk not found");
+        if (!foundSystem) {
+            if (mLogger)
+                mLogger->Error(L"AnalyzeDisksUseCase: [System] disk not found — aborting.");
+            return domain::Error(
+                L"시스템 디스크를 찾을 수 없습니다.",
+                0,
+                domain::ErrorCategory::Validation);
+        }
+
+        if (!foundData) {
+            if (mLogger)
+                mLogger->Error(L"AnalyzeDisksUseCase: [Data] disk not found — aborting.");
+            return domain::Error(
+                L"데이터 디스크를 찾을 수 없습니다.",
+                0,
+                domain::ErrorCategory::Validation);
+        }
 
         mAnalysisRepository->StoreUpdatedDisks(std::move(disks));
 
@@ -131,4 +143,4 @@ namespace winsetup::application {
             candidates[0]->SetIsData(true);
     }
 
-}
+} // namespace winsetup::application

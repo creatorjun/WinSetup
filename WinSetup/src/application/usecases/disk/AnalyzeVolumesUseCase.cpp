@@ -1,4 +1,5 @@
-﻿#include "application/usecases/disk/AnalyzeVolumesUseCase.h"
+﻿// src/application/usecases/disk/AnalyzeVolumesUseCase.cpp
+#include "application/usecases/disk/AnalyzeVolumesUseCase.h"
 #include <algorithm>
 #include <unordered_set>
 
@@ -76,15 +77,34 @@ namespace winsetup::application {
 
         int systemVolIdx = -1;
         for (int i = 0; i < static_cast<int>(volumes.size()); i++) {
-            if (IsSystemVolume(volumes[i], userProfile)) {
-                volumes[i].SetIsSystem(true);
-                systemVolIdx = i;
-                break;
+            if (!IsSystemVolume(volumes[i], userProfile))
+                continue;
+
+            if (systemVolIdx != -1) {
+                if (mLogger)
+                    mLogger->Error(
+                        L"AnalyzeVolumesUseCase: Multiple system volumes detected. "
+                        L"Ambiguous environment — aborting analysis.");
+                return domain::Error(
+                    L"Multiple system volumes detected. Cannot determine target.",
+                    0,
+                    domain::ErrorCategory::Validation);
             }
+
+            systemVolIdx = i;
         }
+
+        if (systemVolIdx >= 0)
+            volumes[systemVolIdx].SetIsSystem(true);
+
+        const std::wstring systemVolGuid = (systemVolIdx >= 0)
+            ? volumes[systemVolIdx].GetVolumePath()
+            : std::wstring{};
 
         for (auto& vol : volumes) {
             if (vol.IsSystem())
+                continue;
+            if (vol.GetVolumePath() == systemVolGuid)
                 continue;
             if (IsDataVolume(vol, userProfile)) {
                 vol.SetIsData(true);
