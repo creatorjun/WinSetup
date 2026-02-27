@@ -1,4 +1,3 @@
-// src/adapters/ui/win32/controls/SimpleButton.h
 #pragma once
 
 #include <adapters/platform/win32/memory/UniqueHandle.h>
@@ -31,8 +30,8 @@ namespace winsetup::adapters::ui {
         struct RenderCache {
             adapters::platform::UniqueHandle hBitmap;
             adapters::platform::UniqueHandle hMemDC;
-            int width = 0;
-            int height = 0;
+            int  width = 0;
+            int  height = 0;
             bool isDirty = true;
         };
 
@@ -42,12 +41,13 @@ namespace winsetup::adapters::ui {
         void CleanupCache();
         void UpdateState(bool hovering, bool pressed);
 
-        HWND mHwnd;
-        bool mIsHovering;
-        bool mIsPressed;
-        bool mWasEnabled;
+        HWND                             mHwnd;
+        bool                             mIsHovering;
+        bool                             mIsPressed;
+        bool                             mWasEnabled;
+        std::wstring                     mText;
         adapters::platform::UniqueHandle mHFont;
-        RenderCache mCache;
+        RenderCache                      mCache;
 
         static std::unordered_map<HWND, SimpleButton*> sInstances;
     };

@@ -1,4 +1,3 @@
-// src/adapters/ui/win32/controls/SimpleButton.cpp
 #include "SimpleButton.h"
 #include <adapters/platform/win32/core/Win32HandleFactory.h>
 #include <vector>
@@ -26,6 +25,7 @@ namespace winsetup::adapters::ui {
         , mIsHovering(false)
         , mIsPressed(false)
         , mWasEnabled(true)
+        , mText()
         , mHFont()
     {
     }
@@ -39,6 +39,8 @@ namespace winsetup::adapters::ui {
     }
 
     HWND SimpleButton::Create(HWND hParent, const std::wstring& text, int x, int y, int width, int height, int id, HINSTANCE hInstance) {
+        mText = text;
+
         mHwnd = CreateWindowW(
             L"BUTTON", text.c_str(),
             WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_OWNERDRAW,
@@ -125,7 +127,9 @@ namespace winsetup::adapters::ui {
                 if (pButton->mIsPressed) {
                     pButton->UpdateState(pButton->mIsHovering, false);
                     if (pButton->mIsHovering) {
-                        SendMessage(GetParent(hWnd), WM_COMMAND, MAKEWPARAM(GetDlgCtrlID(hWnd), BN_CLICKED), reinterpret_cast<LPARAM>(hWnd));
+                        SendMessage(GetParent(hWnd), WM_COMMAND,
+                            MAKEWPARAM(GetDlgCtrlID(hWnd), BN_CLICKED),
+                            reinterpret_cast<LPARAM>(hWnd));
                     }
                 }
                 break;
@@ -228,14 +232,13 @@ namespace winsetup::adapters::ui {
         Rectangle(hdc, rc.left, rc.top, rc.right, rc.bottom);
         SelectObject(hdc, hOldPen);
 
-        std::wstring text = GetText();
-        if (!text.empty()) {
+        if (!mText.empty()) {
             SetBkMode(hdc, TRANSPARENT);
             SetTextColor(hdc, textColor);
             HFONT   hFont = mHFont ? platform::Win32HandleFactory::ToWin32Font(mHFont)
                 : reinterpret_cast<HFONT>(SendMessage(mHwnd, WM_GETFONT, 0, 0));
             HGDIOBJ hOldFont = SelectObject(hdc, hFont);
-            DrawTextW(hdc, text.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            DrawTextW(hdc, mText.c_str(), -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
             SelectObject(hdc, hOldFont);
         }
     }
@@ -252,17 +255,13 @@ namespace winsetup::adapters::ui {
 
     void SimpleButton::SetText(const std::wstring& text) {
         if (!mHwnd) return;
+        mText = text;
         SetWindowTextW(mHwnd, text.c_str());
         InvalidateCache();
     }
 
     std::wstring SimpleButton::GetText() const {
-        if (!mHwnd) return L"";
-        int len = GetWindowTextLength(mHwnd);
-        if (len == 0) return L"";
-        std::vector<wchar_t> buf(static_cast<size_t>(len) + 1);
-        GetWindowTextW(mHwnd, buf.data(), len + 1);
-        return std::wstring(buf.data());
+        return mText;
     }
 
 }

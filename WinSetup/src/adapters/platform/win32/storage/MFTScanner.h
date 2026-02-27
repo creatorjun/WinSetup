@@ -1,6 +1,4 @@
-﻿// src\adapters\platform\win32\storage\MFTScanner.h
-// src/adapters/platform/win32/storage/MFTScanner.h
-#pragma once
+﻿#pragma once
 
 #include <domain/primitives/Expected.h>
 #include <adapters/platform/win32/memory/UniqueHandle.h>
@@ -119,8 +117,11 @@ namespace winsetup::adapters::platform {
 
         uint32_t mMaxFilesToScan = 1000000;
         uint32_t mScanTimeoutMs = 30000;
-        std::unordered_map<uint64_t, MFTFileRecord> mFileRecordMap;
-        std::unordered_map<std::wstring, uint64_t> mPathToRefNumberMap;
+
+        std::unordered_map<uint64_t, MFTFileRecord>              mFileRecordMap;
+        std::unordered_map<std::wstring, uint64_t>               mPathToRefNumberMap;
+        std::unordered_map<uint64_t, std::wstring>               mPathCache;
+        std::unordered_map<std::wstring, std::vector<uint64_t>>  mExtensionIndex;
     };
 
 }

@@ -1,5 +1,4 @@
-﻿// src/adapters/platform/win32/storage/MFTScanner.cpp
-#include "MFTScanner.h"
+﻿#include "MFTScanner.h"
 #include <adapters/platform/win32/core/Win32ErrorHandler.h>
 #include <adapters/platform/win32/core/Win32HandleFactory.h>
 #include <chrono>
@@ -34,6 +33,12 @@ namespace winsetup::adapters::platform {
         std::wstring GetParentPath(const std::wstring& path) {
             size_t pos = path.find_last_of(L"\\/");
             return pos != std::wstring::npos ? path.substr(0, pos) : L"";
+        }
+
+        std::wstring ExtractExtension(const std::wstring& fileName) {
+            size_t pos = fileName.find_last_of(L'.');
+            if (pos == std::wstring::npos || pos == 0) return L"";
+            return ToLower(fileName.substr(pos));
         }
 
         FILETIME LargeIntegerToFileTime(const LARGE_INTEGER& li) noexcept {
@@ -167,7 +172,7 @@ namespace winsetup::adapters::platform {
         med.LowUsn = 0;
         med.HighUsn = journalData.NextUsn;
 
-        DWORD bytesReturned = 0;
+        DWORD    bytesReturned = 0;
         uint32_t filesScanned = 0;
 
         while (true) {
@@ -184,9 +189,7 @@ namespace winsetup::adapters::platform {
 
             if (!result) {
                 DWORD error = GetLastError();
-                if (error == ERROR_HANDLE_EOF) {
-                    break;
-                }
+                if (error == ERROR_HANDLE_EOF) break;
                 return domain::Error{
                     L"Failed to enumerate USN data",
                     error,
@@ -194,9 +197,7 @@ namespace winsetup::adapters::platform {
                 };
             }
 
-            if (bytesReturned < sizeof(USN)) {
-                break;
-            }
+            if (bytesReturned < sizeof(USN)) break;
 
             DWORD dwRetBytes = bytesReturned - sizeof(USN);
             USN* pUsn = reinterpret_cast<USN*>(buffer.data());
@@ -207,18 +208,15 @@ namespace winsetup::adapters::platform {
             while (dwRetBytes > 0) {
                 USN_RECORD* record = reinterpret_cast<USN_RECORD*>(pRecord);
 
-                if (record->RecordLength == 0 || record->RecordLength > dwRetBytes) {
-                    break;
-                }
+                if (record->RecordLength == 0 || record->RecordLength > dwRetBytes) break;
 
                 MFTFileRecord fileRecord;
                 if (ParseUSNRecord(record, fileRecord)) {
                     outRecords.push_back(std::move(fileRecord));
                     filesScanned++;
 
-                    if (filesScanned >= mMaxFilesToScan) {
+                    if (filesScanned >= mMaxFilesToScan)
                         return domain::Expected<void>();
-                    }
                 }
 
                 pRecord += record->RecordLength;
@@ -229,9 +227,50 @@ namespace winsetup::adapters::platform {
         return domain::Expected<void>();
     }
 
+    std::wstring MFTScanner::GetFullPath(uint64_t fileRefNumber) {
+        auto cacheIt = mPathCache.find(fileRefNumber);
+        if (cacheIt != mPathCache.end())
+            return cacheIt->second;
+
+        std::wstring path;
+        uint64_t     currentRef = fileRefNumber;
+        int          depth = 0;
+        const int    maxDepth = 256;
+
+        while (currentRef != 0 && depth < maxDepth) {
+            auto it = mFileRecordMap.find(currentRef);
+            if (it == mFileRecordMap.end()) break;
+
+            const auto& record = it->second;
+            if (record.fileName == L"." || record.fileName == L"..") break;
+
+            auto parentCacheIt = mPathCache.find(currentRef);
+            if (parentCacheIt != mPathCache.end()) {
+                path = parentCacheIt->second + L"\\" + path;
+                break;
+            }
+
+            path = path.empty() ? record.fileName : record.fileName + L"\\" + path;
+
+            if (currentRef == record.parentFileReferenceNumber) break;
+
+            currentRef = record.parentFileReferenceNumber;
+            depth++;
+        }
+
+        mPathCache[fileRefNumber] = path;
+        return path;
+    }
+
     void MFTScanner::BuildFilePathMap(const std::vector<MFTFileRecord>& records) {
         mFileRecordMap.clear();
         mPathToRefNumberMap.clear();
+        mPathCache.clear();
+        mExtensionIndex.clear();
+
+        mFileRecordMap.reserve(records.size());
+        mPathToRefNumberMap.reserve(records.size());
+        mPathCache.reserve(records.size());
 
         for (const auto& record : records) {
             mFileRecordMap[record.fileReferenceNumber] = record;
@@ -239,46 +278,18 @@ namespace winsetup::adapters::platform {
 
         for (const auto& record : records) {
             std::wstring fullPath = GetFullPath(record.fileReferenceNumber);
-            if (!fullPath.empty()) {
-                mPathToRefNumberMap[ToLower(fullPath)] = record.fileReferenceNumber;
+            if (fullPath.empty()) continue;
+
+            std::wstring lowerPath = ToLower(fullPath);
+            mPathToRefNumberMap[lowerPath] = record.fileReferenceNumber;
+
+            if (!record.isDirectory) {
+                std::wstring ext = ExtractExtension(record.fileName);
+                if (!ext.empty()) {
+                    mExtensionIndex[ext].push_back(record.fileReferenceNumber);
+                }
             }
         }
-    }
-
-    std::wstring MFTScanner::GetFullPath(uint64_t fileRefNumber) {
-        std::wstring path;
-        uint64_t currentRef = fileRefNumber;
-        int depth = 0;
-        const int maxDepth = 256;
-
-        while (currentRef != 0 && depth < maxDepth) {
-            auto it = mFileRecordMap.find(currentRef);
-            if (it == mFileRecordMap.end()) {
-                break;
-            }
-
-            const auto& record = it->second;
-
-            if (record.fileName == L"." || record.fileName == L"..") {
-                break;
-            }
-
-            if (!path.empty()) {
-                path = record.fileName + L"\\" + path;
-            }
-            else {
-                path = record.fileName;
-            }
-
-            if (currentRef == record.parentFileReferenceNumber) {
-                break;
-            }
-
-            currentRef = record.parentFileReferenceNumber;
-            depth++;
-        }
-
-        return path;
     }
 
     domain::Expected<MFTScanResult> MFTScanner::ScanVolume(const std::wstring& volumePath) {
@@ -339,9 +350,7 @@ namespace winsetup::adapters::platform {
     ) {
         if (mPathToRefNumberMap.empty()) {
             auto scanResult = ScanVolume(volumePath);
-            if (!scanResult.HasValue()) {
-                return scanResult.GetError();
-            }
+            if (!scanResult.HasValue()) return scanResult.GetError();
         }
 
         std::wstring normalizedPath = NormalizeFilePath(filePath);
@@ -354,9 +363,7 @@ namespace winsetup::adapters::platform {
     ) {
         if (mPathToRefNumberMap.empty()) {
             auto scanResult = ScanVolume(volumePath);
-            if (!scanResult.HasValue()) {
-                return scanResult.GetError();
-            }
+            if (!scanResult.HasValue()) return scanResult.GetError();
         }
 
         std::wstring normalizedPath = NormalizeFilePath(filePath);
@@ -388,22 +395,24 @@ namespace winsetup::adapters::platform {
     ) {
         if (mFileRecordMap.empty()) {
             auto scanResult = ScanVolume(volumePath);
-            if (!scanResult.HasValue()) {
-                return scanResult.GetError();
-            }
+            if (!scanResult.HasValue()) return scanResult.GetError();
         }
+
+        std::wstring lowerExt = ToLower(extension);
+        if (!lowerExt.empty() && lowerExt[0] != L'.')
+            lowerExt = L"." + lowerExt;
 
         std::vector<MFTFileRecord> matchingFiles;
-        std::wstring lowerExt = ToLower(extension);
 
-        if (!lowerExt.empty() && lowerExt[0] != L'.') {
-            lowerExt = L"." + lowerExt;
-        }
+        auto idxIt = mExtensionIndex.find(lowerExt);
+        if (idxIt == mExtensionIndex.end())
+            return matchingFiles;
 
-        for (const auto& [refNumber, record] : mFileRecordMap) {
-            if (!record.isDirectory && EndsWith(ToLower(record.fileName), lowerExt)) {
-                matchingFiles.push_back(record);
-            }
+        matchingFiles.reserve(idxIt->second.size());
+        for (uint64_t refNumber : idxIt->second) {
+            auto recordIt = mFileRecordMap.find(refNumber);
+            if (recordIt != mFileRecordMap.end())
+                matchingFiles.push_back(recordIt->second);
         }
 
         return matchingFiles;
@@ -415,9 +424,7 @@ namespace winsetup::adapters::platform {
     ) {
         if (mPathToRefNumberMap.empty()) {
             auto scanResult = ScanVolume(volumePath);
-            if (!scanResult.HasValue()) {
-                return scanResult.GetError();
-            }
+            if (!scanResult.HasValue()) return scanResult.GetError();
         }
 
         std::wstring normalizedDir = NormalizeFilePath(directoryPath);
@@ -426,9 +433,8 @@ namespace winsetup::adapters::platform {
         for (const auto& [path, refNumber] : mPathToRefNumberMap) {
             if (path.find(normalizedDir) == 0) {
                 auto recordIt = mFileRecordMap.find(refNumber);
-                if (recordIt != mFileRecordMap.end() && !recordIt->second.isDirectory) {
+                if (recordIt != mFileRecordMap.end() && !recordIt->second.isDirectory)
                     totalSize += recordIt->second.fileSize;
-                }
             }
         }
 
